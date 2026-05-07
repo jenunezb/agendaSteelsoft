@@ -1,0 +1,564 @@
+<main class="layout">
+  <header class="topbar panel">
+    <div class="brand">
+      <span class="brand-mark">S</span>
+      <div>
+        <p class="label">Steelsoft</p>
+        <h1>Agenda</h1>
+      </div>
+    </div>
+  </header>
+
+  <section class="board">
+    <div class="side-column">
+      <article class="panel activity-launch-panel">
+        <div class="panel-heading">
+          <h2>Actividades</h2>
+          <p>Abre un dia del calendario para ver, agregar, editar o eliminar actividades.</p>
+        </div>
+        <div class="activity-launch-content">
+          <div>
+            <p class="label">Dia seleccionado</p>
+            <h3>{{ formatFullDateLabel(selectedDate) }}</h3>
+          </div>
+          <p class="activity-launch-copy">
+            Tienes {{ selectedDateActivities.length }} actividad{{ selectedDateActivities.length === 1 ? '' : 'es' }}
+            en esta fecha.
+          </p>
+          <button type="button" (click)="openActivityPanel(selectedDate)">Abrir panel del dia</button>
+        </div>
+      </article>
+
+      <article class="panel pending-panel">
+        <div class="panel-heading">
+          <h2>Pendientes generales</h2>
+          <p>Actividades pendientes con fecha de registro.</p>
+        </div>
+        <div class="launch-summary">
+          <p class="activity-launch-copy">
+            Tienes {{ generalPendings.length }} pendiente{{ generalPendings.length === 1 ? '' : 's' }}
+            general{{ generalPendings.length === 1 ? '' : 'es' }}.
+          </p>
+          <button type="button" (click)="openPendingPanel()">Abrir pendientes</button>
+        </div>
+      </article>
+
+      <article class="panel finance-panel">
+        <div class="panel-heading">
+          <h2>Ingresos y egresos</h2>
+          <p>Control general de movimientos financieros con fecha de registro.</p>
+        </div>
+        <div class="launch-summary">
+          <p class="activity-launch-copy">
+            Tienes {{ financialEntries.length }} movimiento{{ financialEntries.length === 1 ? '' : 's' }}
+            financiero{{ financialEntries.length === 1 ? '' : 's' }}.
+          </p>
+          <button type="button" (click)="openFinancePanel()">Abrir ingresos y egresos</button>
+        </div>
+      </article>
+    </div>
+
+    <article class="panel calendar-panel">
+      <div class="calendar-header">
+        <div>
+          <p class="label">Visualizacion</p>
+          <h2>{{ currentPeriodLabel }}</h2>
+        </div>
+
+        <div class="calendar-controls">
+          <div class="view-switch">
+            <button type="button" [class.active]="viewMode === 'month'" (click)="setViewMode('month')">
+              Mes
+            </button>
+            <button type="button" [class.active]="viewMode === 'week'" (click)="setViewMode('week')">
+              Semana
+            </button>
+          </div>
+
+          <div class="month-actions">
+            <button type="button" (click)="previousPeriod()">Anterior</button>
+            <button type="button" (click)="nextPeriod()">Siguiente</button>
+          </div>
+        </div>
+      </div>
+
+      @if (viewMode === 'month') {
+        <div class="weekdays">
+          @for (dayName of weekDayNames; track dayName) {
+            <span>{{ dayName }}</span>
+          }
+        </div>
+
+        <div class="calendar-grid">
+          @for (day of calendarDays; track trackByIsoDate($index, day)) {
+            <button
+              type="button"
+              class="day-cell"
+              [class.outside]="!day.inCurrentMonth"
+              [class.selected]="selectedDate === day.isoDate"
+              [class.today]="day.isToday"
+              (click)="openActivityPanel(day.isoDate)"
+            >
+              <span class="day-number">{{ day.dayNumber }}</span>
+              <div class="mini-list">
+                @for (activity of day.activities.slice(0, 3); track trackByActivity($index, activity)) {
+                  <span class="mini-pill" [class.completed]="activity.completed">
+                    {{ activity.assignee }} | {{ activity.startTime }} - {{ activity.title }}
+                  </span>
+                }
+              </div>
+              @if (day.activities.length > 3) {
+                <small>+{{ day.activities.length - 3 }} mas</small>
+              }
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="week-agenda">
+          <div class="week-agenda-header">
+            <span class="slot-heading">Hora</span>
+            @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
+              <button
+                type="button"
+                class="week-day-heading"
+                [class.today]="day.isToday"
+                [class.selected]="selectedDate === day.isoDate"
+                (click)="openActivityPanel(day.isoDate)"
+              >
+                <strong>{{ formatWeekDayHeader(day) }}</strong>
+                <small>{{ day.activities.length }} actividades</small>
+              </button>
+            }
+          </div>
+
+          <div class="week-agenda-body">
+            <div class="week-time-column">
+              @for (time of weeklyTimeOptions; track time) {
+                <div class="time-slot week-time-cell">{{ formatTimeLabel(time) }}</div>
+              }
+            </div>
+
+            <div class="week-day-columns">
+              @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
+                <div
+                  class="week-day-column"
+                  [class.selected]="selectedDate === day.isoDate"
+                  tabindex="0"
+                  (click)="openActivityPanel(day.isoDate)"
+                  (keydown.enter)="openActivityPanel(day.isoDate)"
+                  (keydown.space)="openActivityPanel(day.isoDate)"
+                >
+                  <div class="week-day-grid">
+                    @for (time of weeklyTimeOptions; track time) {
+                      <span class="week-grid-cell"></span>
+                    }
+                  </div>
+
+                  <div class="week-day-activities">
+                    @for (activity of getActivitiesForWeekDay(day.isoDate); track trackByActivity($index, activity)) {
+                      <article
+                        class="slot-activity week-span-activity"
+                        [class.completed]="activity.completed"
+                        [style.top.px]="getWeekActivityTop(activity)"
+                        [style.height.px]="getWeekActivityHeight(activity)"
+                      >
+                        <span class="assignee-badge" [class]="getAssigneeClassName(activity.assignee)">
+                          {{ activity.assignee }}
+                        </span>
+                        <div class="slot-activity-header">
+                          <strong>{{ activity.title }}</strong>
+                          @if (activity.completed) {
+                            <span class="status-badge">Finalizado</span>
+                          }
+                        </div>
+                        <span>{{ formatActivityTimeRange(activity) }}</span>
+                        @if (activity.location) {
+                          <span>{{ activity.location }}</span>
+                        }
+                      </article>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </article>
+
+  </section>
+
+  <footer class="footer panel">
+    <p>Steelsoft Agenda</p>
+    <small>Vista de calendario activa</small>
+  </footer>
+
+  @if (isActivityPanelOpen) {
+    <div class="activity-overlay" (click)="closeActivityPanel()">
+      <section class="activity-modal panel" (click)="$event.stopPropagation()">
+        <div class="activity-modal-header">
+          <div>
+            <p class="label">Panel del dia</p>
+            <h2>{{ formatFullDateLabel(selectedDate) }}</h2>
+            <p>
+              {{ selectedDateActivities.length }} actividad{{ selectedDateActivities.length === 1 ? '' : 'es' }}
+              registradas.
+            </p>
+          </div>
+          <button type="button" class="close-button" (click)="closeActivityPanel()">Cerrar</button>
+        </div>
+
+        <div class="activity-modal-body">
+          <form class="activity-form" (ngSubmit)="addActivity()">
+            <label>
+              <span>Titulo</span>
+              <input
+                type="text"
+                name="title"
+                [(ngModel)]="newActivity.title"
+                placeholder="Ej. Reunion con cliente"
+                required
+              />
+            </label>
+
+            <label>
+              <span>Fecha</span>
+              <input type="date" name="date" [(ngModel)]="newActivity.date" required />
+            </label>
+
+            <label>
+              <span>Hora inicio</span>
+              <select name="startTime" [(ngModel)]="newActivity.startTime" required>
+                <option value="">Selecciona una hora</option>
+                @for (time of timeOptions; track time) {
+                  <option [value]="time">{{ formatTimeLabel(time) }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span>Hora fin</span>
+              <select name="endTime" [(ngModel)]="newActivity.endTime" required>
+                <option value="">Selecciona una hora</option>
+                @for (time of timeOptions; track time) {
+                  <option [value]="time">{{ formatTimeLabel(time) }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span>Asignado a</span>
+              <select name="assignee" [(ngModel)]="newActivity.assignee" required>
+                @for (assignee of assigneeOptions; track assignee) {
+                  <option [value]="assignee">{{ assignee }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span>Lugar</span>
+              <input
+                type="text"
+                name="location"
+                [(ngModel)]="newActivity.location"
+                placeholder="Ej. Sala de juntas, oficina o cliente"
+              />
+            </label>
+
+            <label>
+              <span>Descripcion</span>
+              <textarea
+                name="description"
+                [(ngModel)]="newActivity.description"
+                rows="4"
+                placeholder="Notas, responsables o recordatorios"
+              ></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button type="submit">
+                {{ isEditingActivity ? 'Guardar cambios' : 'Agregar actividad' }}
+              </button>
+              @if (isEditingActivity) {
+                <button type="button" class="secondary-button" (click)="cancelActivityEdit()">
+                  Cancelar edicion
+                </button>
+              }
+            </div>
+          </form>
+
+          <div class="selected-day activity-modal-list">
+            <div>
+              <p class="label">Agenda del dia</p>
+              <h3>{{ formatDayLabel(selectedDate) }}</h3>
+            </div>
+
+            <div class="selected-list">
+              @if (selectedDateActivities.length) {
+                @for (activity of selectedDateActivities; track trackByActivity($index, activity)) {
+                  <article class="activity-card" [class.completed]="activity.completed">
+                    <div>
+                      <span class="assignee-badge" [class]="getAssigneeClassName(activity.assignee)">
+                        {{ activity.assignee }}
+                      </span>
+                      <div class="activity-card-header">
+                        <strong>{{ activity.title }}</strong>
+                        @if (activity.completed) {
+                          <span class="status-badge">Finalizado</span>
+                        }
+                      </div>
+                      <p class="activity-time">{{ formatActivityTimeRange(activity) }}</p>
+                      @if (activity.location) {
+                        <p class="activity-location">{{ activity.location }}</p>
+                      }
+                      @if (activity.description) {
+                        <p>{{ activity.description }}</p>
+                      }
+                    </div>
+
+                    <div class="activity-actions">
+                      <button type="button" (click)="editActivity(activity)">Editar</button>
+                      <button type="button" (click)="toggleActivityCompleted(activity.id)">
+                        {{ activity.completed ? 'Reabrir' : 'Finalizar' }}
+                      </button>
+                      <button type="button" (click)="removeActivity(activity.id)">Eliminar</button>
+                    </div>
+                  </article>
+                }
+              } @else {
+                <p class="empty-state">No hay actividades registradas para este dia.</p>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (isPendingPanelOpen) {
+    <div class="activity-overlay" (click)="closePendingPanel()">
+      <section class="activity-modal panel" (click)="$event.stopPropagation()">
+        <div class="activity-modal-header">
+          <div>
+            <p class="label">Panel flotante</p>
+            <h2>Pendientes generales</h2>
+            <p>
+              {{ generalPendings.length }} pendiente{{ generalPendings.length === 1 ? '' : 's' }}
+              registrada{{ generalPendings.length === 1 ? '' : 's' }}.
+            </p>
+          </div>
+          <button type="button" class="close-button" (click)="closePendingPanel()">Cerrar</button>
+        </div>
+
+        <div class="activity-modal-body">
+          <form class="pending-form" (ngSubmit)="addGeneralPending()">
+            <label>
+              <span>Titulo</span>
+              <input
+                type="text"
+                name="pendingTitle"
+                [(ngModel)]="newGeneralPending.title"
+                placeholder="Ej. Revisar propuesta comercial"
+                required
+              />
+            </label>
+
+            <label>
+              <span>Fecha</span>
+              <input type="date" name="pendingDate" [(ngModel)]="newGeneralPending.date" required />
+            </label>
+
+            <label>
+              <span>Asignado a</span>
+              <select name="pendingAssignee" [(ngModel)]="newGeneralPending.assignee" required>
+                @for (assignee of assigneeOptions; track assignee) {
+                  <option [value]="assignee">{{ assignee }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span>Descripcion</span>
+              <textarea
+                name="pendingDescription"
+                [(ngModel)]="newGeneralPending.description"
+                rows="4"
+                placeholder="Notas o contexto del pendiente"
+              ></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button type="submit">
+                {{ isEditingGeneralPending ? 'Guardar cambios' : 'Agregar pendiente' }}
+              </button>
+              @if (isEditingGeneralPending) {
+                <button type="button" class="secondary-button" (click)="cancelGeneralPendingEdit()">
+                  Cancelar edicion
+                </button>
+              }
+            </div>
+          </form>
+
+          <div class="selected-day activity-modal-list">
+            <div>
+              <p class="label">Listado</p>
+              <h3>Pendientes activos</h3>
+            </div>
+
+            <div class="pending-list">
+              @if (generalPendings.length) {
+                @for (pending of generalPendings; track trackByPending($index, pending)) {
+                  <article class="pending-card">
+                    <div>
+                      <span class="assignee-badge" [class]="getAssigneeClassName(pending.assignee)">
+                        {{ pending.assignee }}
+                      </span>
+                      <strong>{{ pending.title }}</strong>
+                      <p class="entry-date">{{ formatFullDateLabel(pending.date) }}</p>
+                      @if (pending.description) {
+                        <p>{{ pending.description }}</p>
+                      }
+                    </div>
+                    <div class="card-actions">
+                      <button type="button" (click)="editGeneralPending(pending)">Editar</button>
+                      <button type="button" (click)="removeGeneralPending(pending.id)">Eliminar</button>
+                    </div>
+                  </article>
+                }
+              } @else {
+                <p class="empty-state">No hay pendientes generales registrados.</p>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (isFinancePanelOpen) {
+    <div class="activity-overlay" (click)="closeFinancePanel()">
+      <section class="activity-modal panel" (click)="$event.stopPropagation()">
+        <div class="activity-modal-header">
+          <div>
+            <p class="label">Panel flotante</p>
+            <h2>Ingresos y egresos</h2>
+            <p>
+              {{ financialEntries.length }} movimiento{{ financialEntries.length === 1 ? '' : 's' }}
+              registrado{{ financialEntries.length === 1 ? '' : 's' }}.
+            </p>
+          </div>
+          <button type="button" class="close-button" (click)="closeFinancePanel()">Cerrar</button>
+        </div>
+
+        <div class="activity-modal-body">
+          <form class="pending-form" (ngSubmit)="addFinancialEntry()">
+            <label>
+              <span>Concepto</span>
+              <input
+                type="text"
+                name="financialTitle"
+                [(ngModel)]="newFinancialEntry.title"
+                placeholder="Ej. Pago de cliente o compra de licencias"
+                required
+              />
+            </label>
+
+            <label>
+              <span>Fecha</span>
+              <input type="date" name="financialDate" [(ngModel)]="newFinancialEntry.date" required />
+            </label>
+
+            <label>
+              <span>Tipo</span>
+              <select name="financialType" [(ngModel)]="newFinancialEntry.type" required>
+                <option value="income">Ingreso</option>
+                <option value="expense">Egreso</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Monto</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                name="financialAmount"
+                [(ngModel)]="newFinancialEntry.amount"
+                placeholder="Ej. 250000"
+                required
+              />
+            </label>
+
+            <label>
+              <span>Asignado a</span>
+              <select name="financialAssignee" [(ngModel)]="newFinancialEntry.assignee" required>
+                @for (assignee of assigneeOptions; track assignee) {
+                  <option [value]="assignee">{{ assignee }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span>Descripcion</span>
+              <textarea
+                name="financialDescription"
+                [(ngModel)]="newFinancialEntry.description"
+                rows="4"
+                placeholder="Notas del movimiento"
+              ></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button type="submit">
+                {{ isEditingFinancialEntry ? 'Guardar cambios' : 'Agregar movimiento' }}
+              </button>
+              @if (isEditingFinancialEntry) {
+                <button type="button" class="secondary-button" (click)="cancelFinancialEntryEdit()">
+                  Cancelar edicion
+                </button>
+              }
+            </div>
+          </form>
+
+          <div class="selected-day activity-modal-list">
+            <div>
+              <p class="label">Listado</p>
+              <h3>Movimientos</h3>
+            </div>
+
+            <div class="pending-list">
+              @if (financialEntries.length) {
+                @for (entry of financialEntries; track trackByFinancialEntry($index, entry)) {
+                  <article class="pending-card finance-card" [class.expense]="entry.type === 'expense'">
+                    <div>
+                      <div class="finance-card-header">
+                        <span class="finance-type-badge" [class.expense]="entry.type === 'expense'">
+                          {{ getFinancialTypeLabel(entry.type) }}
+                        </span>
+                        <span class="assignee-badge" [class]="getAssigneeClassName(entry.assignee)">
+                          {{ entry.assignee }}
+                        </span>
+                      </div>
+                      <strong>{{ entry.title }}</strong>
+                      <p class="entry-date">{{ formatFullDateLabel(entry.date) }}</p>
+                      <p class="finance-amount">{{ formatCurrency(entry.amount) }}</p>
+                      @if (entry.description) {
+                        <p>{{ entry.description }}</p>
+                      }
+                    </div>
+                    <div class="card-actions">
+                      <button type="button" (click)="editFinancialEntry(entry)">Editar</button>
+                      <button type="button" (click)="removeFinancialEntry(entry.id)">Eliminar</button>
+                    </div>
+                  </article>
+                }
+              } @else {
+                <p class="empty-state">No hay ingresos o egresos registrados.</p>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  }
+</main>
