@@ -3,7 +3,16 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 import { AgendaApiService } from './agenda-api.service';
-import { Activity, CalendarDay, FinancialEntry, GeneralPending, WeekGroup } from './app.models';
+import {
+  Activity,
+  AuthSession,
+  AuthUser,
+  CalendarDay,
+  FinancialEntry,
+  GeneralPending,
+  PublicProfile,
+  WeekGroup
+} from './app.models';
 
 type ViewMode = 'month' | 'week';
 
@@ -37,10 +46,29 @@ export class AppComponent implements OnInit {
   protected readonly weeklyHourStart = 8;
   protected readonly weeklyHourEnd = 18;
   protected readonly weeklyRowHeight = 72;
-  protected readonly assigneeOptions = ['Jhonatan', 'Julian', 'Steelsoft'];
 
   protected currentMonth = this.startOfMonth(new Date());
   protected selectedDate = this.toIsoDate(this.normalizeCalendarDate(new Date()));
+  protected currentUser: AuthUser | null = null;
+  protected publicProfileUser: Pick<AuthUser, 'name' | 'username' | 'publicUrl'> | null = null;
+  protected canRegister = false;
+  protected authMode: 'login' | 'register' = 'login';
+  protected authError = '';
+  protected isAuthLoading = true;
+  protected isSubmittingAuth = false;
+  protected isPublicProfileMode = false;
+  protected publicProfileSlug = '';
+  protected publicProfileState: 'loading' | 'ready' | 'not-found' | 'disabled' = 'loading';
+  protected isUpdatingProfileVisibility = false;
+  protected loginForm = {
+    username: '',
+    password: ''
+  };
+  protected registerForm = {
+    name: 'Cristian',
+    username: 'cristian',
+    password: ''
+  };
   protected isActivityPanelOpen = false;
   protected isPendingPanelOpen = false;
   protected isFinancePanelOpen = false;
@@ -51,33 +79,130 @@ export class AppComponent implements OnInit {
   protected activities: Activity[] = [];
   protected generalPendings: GeneralPending[] = [];
   protected financialEntries: FinancialEntry[] = [];
-  protected newActivity: Omit<Activity, 'id'> = {
-    title: '',
-    startTime: '',
-    endTime: '',
-    assignee: 'Steelsoft',
-    completed: false,
-    location: '',
-    description: '',
-    date: this.selectedDate
-  };
-  protected newGeneralPending: Omit<GeneralPending, 'id'> = {
-    title: '',
-    assignee: 'Steelsoft',
-    description: '',
-    date: this.toIsoDate(new Date())
-  };
-  protected newFinancialEntry: Omit<FinancialEntry, 'id'> = {
-    title: '',
-    type: 'income',
-    amount: 0,
-    assignee: 'Steelsoft',
-    description: '',
-    date: this.toIsoDate(new Date())
-  };
+  protected newActivity: Omit<Activity, 'id'> = this.buildEmptyActivity();
+  protected newGeneralPending: Omit<GeneralPending, 'id'> = this.buildEmptyGeneralPending();
+  protected newFinancialEntry: Omit<FinancialEntry, 'id'> = this.buildEmptyFinancialEntry();
 
   ngOnInit(): void {
-    this.loadRemoteData();
+    const publicSlug = this.getPublicSlugFromLocation();
+
+    if (publicSlug) {
+      this.publicProfileSlug = publicSlug;
+      this.isPublicProfileMode = true;
+      this.loadPublicProfile(publicSlug);
+      return;
+    }
+
+    this.loadSession();
+  }
+
+  protected get assigneeOptions(): string[] {
+    return this.currentUser ? [this.currentUser.name] : [];
+  }
+
+  protected get isAuthenticated(): boolean {
+    return this.currentUser !== null;
+  }
+
+  protected get showPrivateWorkspace(): boolean {
+    return this.isAuthenticated && !this.isPublicProfileMode;
+  }
+
+  protected get activeProfileName(): string {
+    return this.publicProfileUser?.name ?? this.currentUser?.name ?? 'Agenda';
+  }
+
+  protected get currentPublicUrl(): string {
+    return this.currentUser?.publicUrl ?? '';
+  }
+
+  protected setAuthMode(mode: 'login' | 'register'): void {
+    this.authError = '';
+    this.authMode = mode;
+  }
+
+  protected toggleProfileVisibility(): void {
+    if (!this.currentUser) {
+      return;
+    }
+
+    this.isUpdatingProfileVisibility = true;
+    this.agendaApi.updateProfileVisibility(!this.currentUser.profilePublic).subscribe({
+      next: (session) => {
+        this.isUpdatingProfileVisibility = false;
+        this.applySession(session);
+      },
+      error: (error) => {
+        this.isUpdatingProfileVisibility = false;
+        this.authError = error?.error?.message ?? 'No fue posible actualizar la visibilidad del perfil.';
+      }
+    });
+  }
+
+  protected login(): void {
+    const username = this.loginForm.username.trim().toLowerCase();
+    const password = this.loginForm.password;
+
+    if (!username || !password) {
+      this.authError = 'Ingresa tu usuario y tu contrasena.';
+      return;
+    }
+
+    this.isSubmittingAuth = true;
+    this.authError = '';
+    this.agendaApi.login(username, password).subscribe({
+      next: (session) => {
+        this.isSubmittingAuth = false;
+        this.loginForm.password = '';
+        this.handleAuthenticatedSession(session);
+      },
+      error: (error) => {
+        this.isSubmittingAuth = false;
+        this.authError = error?.error?.message ?? 'No fue posible iniciar sesion.';
+      }
+    });
+  }
+
+  protected register(): void {
+    const name = this.registerForm.name.trim();
+    const username = this.registerForm.username.trim().toLowerCase();
+    const password = this.registerForm.password;
+
+    if (!name || !username || !password) {
+      this.authError = 'Completa nombre, usuario y contrasena.';
+      return;
+    }
+
+    this.isSubmittingAuth = true;
+    this.authError = '';
+    this.agendaApi.register(name, username, password).subscribe({
+      next: (session) => {
+        this.isSubmittingAuth = false;
+        this.registerForm.password = '';
+        this.handleAuthenticatedSession(session);
+      },
+      error: (error) => {
+        this.isSubmittingAuth = false;
+        this.authError = error?.error?.message ?? 'No fue posible crear el usuario.';
+      }
+    });
+  }
+
+  protected logout(): void {
+    this.agendaApi.logout().subscribe({
+      next: () => {
+        this.currentUser = null;
+        this.activities = [];
+        this.generalPendings = [];
+        this.financialEntries = [];
+        this.authMode = 'login';
+        this.authError = '';
+        this.closeAllPanels();
+        this.resetActivityForm();
+        this.resetGeneralPendingForm();
+        this.resetFinancialEntryForm();
+      }
+    });
   }
 
   protected setViewMode(mode: ViewMode): void {
@@ -171,6 +296,7 @@ export class AppComponent implements OnInit {
       startTime,
       endTime,
       assignee,
+      visibility: this.newActivity.visibility,
       completed: this.newActivity.completed,
       location,
       description,
@@ -234,6 +360,7 @@ export class AppComponent implements OnInit {
       startTime: activity.startTime,
       endTime: activity.endTime,
       assignee: activity.assignee,
+      visibility: activity.visibility,
       completed: activity.completed,
       location: activity.location,
       description: activity.description,
@@ -597,6 +724,44 @@ export class AppComponent implements OnInit {
     return this.activities.filter((activity) => activity.date === isoDate);
   }
 
+  private loadSession(): void {
+    this.isAuthLoading = true;
+    this.agendaApi.getSessionStatus().subscribe({
+      next: (session) => {
+        this.isAuthLoading = false;
+        this.applySession(session);
+
+        if (session.authenticated) {
+          this.loadRemoteData();
+        }
+      },
+      error: () => {
+        this.isAuthLoading = false;
+        this.authError = 'No fue posible validar la sesion.';
+      }
+    });
+  }
+
+  private loadPublicProfile(username: string): void {
+    this.isAuthLoading = true;
+    this.publicProfileState = 'loading';
+    this.agendaApi.getPublicProfile(username).subscribe({
+      next: (profile) => {
+        this.isAuthLoading = false;
+        this.applyPublicProfile(profile);
+      },
+      error: (error) => {
+        this.isAuthLoading = false;
+        if (error?.status === 404) {
+          this.publicProfileState = 'not-found';
+          return;
+        }
+
+        this.publicProfileState = 'disabled';
+      }
+    });
+  }
+
   private loadRemoteData(): void {
     forkJoin({
       activities: this.agendaApi.getActivities().pipe(catchError(() => of([] as Activity[]))),
@@ -620,7 +785,8 @@ export class AppComponent implements OnInit {
       title: activity.title,
       startTime: activity.startTime,
       endTime: activity.endTime,
-      assignee: activity.assignee,
+      assignee: this.getCurrentAssignee(),
+      visibility: activity.visibility,
       completed: activity.completed,
       location: activity.location,
       description: activity.description,
@@ -630,38 +796,17 @@ export class AppComponent implements OnInit {
 
   private resetActivityForm(): void {
     this.editingActivityId = null;
-    this.newActivity = {
-      title: '',
-      startTime: '',
-      endTime: '',
-      assignee: 'Steelsoft',
-      completed: false,
-      location: '',
-      description: '',
-      date: this.selectedDate
-    };
+    this.newActivity = this.buildEmptyActivity();
   }
 
   private resetGeneralPendingForm(): void {
     this.editingGeneralPendingId = null;
-    this.newGeneralPending = {
-      title: '',
-      assignee: 'Steelsoft',
-      description: '',
-      date: this.toIsoDate(new Date())
-    };
+    this.newGeneralPending = this.buildEmptyGeneralPending();
   }
 
   private resetFinancialEntryForm(): void {
     this.editingFinancialEntryId = null;
-    this.newFinancialEntry = {
-      title: '',
-      type: 'income',
-      amount: 0,
-      assignee: 'Steelsoft',
-      description: '',
-      date: this.toIsoDate(new Date())
-    };
+    this.newFinancialEntry = this.buildEmptyFinancialEntry();
   }
 
   private loadFinancialEntries(): void {
@@ -674,6 +819,117 @@ export class AppComponent implements OnInit {
 
   private loadFinancialEntriesRequest() {
     return this.agendaApi.getFinancialEntries().pipe(catchError(() => of([] as FinancialEntry[])));
+  }
+
+  private handleAuthenticatedSession(session: AuthSession): void {
+    this.applySession(session);
+    this.closeAllPanels();
+    this.loadRemoteData();
+  }
+
+  private applySession(session: AuthSession): void {
+    this.currentUser = session.user;
+    this.canRegister = session.canRegister;
+    this.authError = '';
+
+    if (this.currentUser) {
+      this.syncAssigneeFields(this.currentUser.name);
+      return;
+    }
+
+    this.authMode = 'login';
+  }
+
+  private applyPublicProfile(profile: PublicProfile): void {
+    this.publicProfileUser = profile.user;
+    this.generalPendings = [];
+    this.financialEntries = [];
+    this.activities = profile.activities.sort((left, right) => this.compareActivities(left, right));
+
+    if (!profile.found) {
+      this.publicProfileState = 'not-found';
+      return;
+    }
+
+    this.publicProfileState = profile.profileEnabled ? 'ready' : 'disabled';
+
+    if (profile.activities.length > 0) {
+      this.selectDate(profile.activities[0].date);
+    }
+  }
+
+  private syncAssigneeFields(assignee: string): void {
+    this.newActivity.assignee = assignee;
+    this.newGeneralPending.assignee = assignee;
+    this.newFinancialEntry.assignee = assignee;
+  }
+
+  private closeAllPanels(): void {
+    this.isActivityPanelOpen = false;
+    this.isPendingPanelOpen = false;
+    this.isFinancePanelOpen = false;
+  }
+
+  private getCurrentAssignee(): string {
+    return this.currentUser?.name ?? '';
+  }
+
+  private getPublicSlugFromLocation(): string {
+    const pathSegments = window.location.pathname
+      .split('/')
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+
+    if (pathSegments.length !== 1) {
+      return '';
+    }
+
+    const [candidate] = pathSegments;
+    const normalizedCandidate = candidate.toLowerCase();
+
+    if (
+      normalizedCandidate === 'api' ||
+      normalizedCandidate.includes('.') ||
+      normalizedCandidate.startsWith('_karma_')
+    ) {
+      return '';
+    }
+
+    return decodeURIComponent(normalizedCandidate);
+  }
+
+  private buildEmptyActivity(): Omit<Activity, 'id'> {
+    return {
+      title: '',
+      startTime: '',
+      endTime: '',
+      assignee: this.getCurrentAssignee(),
+      visibility: 'private',
+      completed: false,
+      location: '',
+      description: '',
+      date: this.selectedDate
+    };
+  }
+
+  private buildEmptyGeneralPending(): Omit<GeneralPending, 'id'> {
+    return {
+      title: '',
+      assignee: this.getCurrentAssignee(),
+      description: '',
+      date: this.toIsoDate(new Date())
+    };
+  }
+
+  private buildEmptyFinancialEntry(): Omit<FinancialEntry, 'id'> {
+    return {
+      title: '',
+      type: 'income',
+      amount: 0,
+      assignee: this.getCurrentAssignee(),
+      description: '',
+      date: this.toIsoDate(new Date())
+    };
   }
 
   private startOfMonth(date: Date): Date {

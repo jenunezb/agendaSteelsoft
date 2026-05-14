@@ -25,6 +25,11 @@
     linear-gradient(180deg, #fffdf8 0%, #f5f1e7 100%);
 }
 
+.auth-layout {
+  display: grid;
+  place-items: center;
+}
+
 .panel {
   border-radius: 24px;
   padding: 18px;
@@ -63,6 +68,80 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
+}
+
+.session-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-summary strong,
+.session-summary small {
+  display: block;
+}
+
+.session-summary small {
+  color: var(--muted);
+}
+
+.auth-panel {
+  width: min(460px, 100%);
+  display: grid;
+  gap: 18px;
+}
+
+.auth-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.auth-switch button,
+.auth-form button {
+  background: var(--black);
+  color: #ffffff;
+  padding: 10px 14px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+}
+
+.auth-switch button.active,
+.auth-switch button:hover,
+.auth-form button:hover {
+  background: var(--gold);
+  color: var(--black);
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.auth-form span {
+  color: var(--black);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.auth-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(188, 71, 73, 0.12);
+  color: #8b1e20;
+  font-weight: 700;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .board {
@@ -282,6 +361,12 @@ button {
   font-size: 0.92rem;
 }
 
+.public-url {
+  display: block;
+  color: var(--muted);
+  word-break: break-all;
+}
+
 .assignee-badge {
   display: inline-flex;
   align-items: center;
@@ -294,6 +379,25 @@ button {
   text-transform: uppercase;
 }
 
+.visibility-badge {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 8px 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(10, 10, 10, 0.08);
+  color: var(--black);
+}
+
+.visibility-badge.public {
+  background: rgba(46, 160, 67, 0.16);
+  color: #1d5f2c;
+}
+
 .assignee-jhonatan {
   background: rgba(30, 144, 255, 0.16);
   color: #0c4a7c;
@@ -302,6 +406,11 @@ button {
 .assignee-julian {
   background: rgba(46, 160, 67, 0.16);
   color: #1d5f2c;
+}
+
+.assignee-cristian {
+  background: rgba(139, 92, 246, 0.16);
+  color: #5b21b6;
 }
 
 .assignee-steelsoft {
@@ -729,6 +838,10 @@ button {
   border-top: 0;
   max-height: calc(100vh - 220px);
   overflow: auto;
+}
+
+.public-modal-list {
+  max-height: calc(100vh - 180px);
 }
 
 .close-button {

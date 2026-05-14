@@ -36,6 +36,18 @@ ng build
 
 This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
+## Personal agenda and login
+
+The app now uses PHP sessions so each user sees only their own agenda, pending items, and financial entries.
+
+- Any visitor can create a user account from the registration screen.
+- Existing users can log in with their username and password.
+- Each user can enable a public profile URL like `/julian`.
+- Only activities marked as public are exposed on the public profile.
+- Pending items and financial entries remain private.
+- Existing records that already match the logged-in user's name in `assignee` are automatically linked to that user on login.
+- The API creates the `users` table and the `user_id` columns automatically when it connects to MySQL.
+
 ## Running unit tests
 
 To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:

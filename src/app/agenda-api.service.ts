@@ -1,7 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { Activity, FinancialEntry, GeneralPending } from './app.models';
+import {
+  Activity,
+  AuthSession,
+  FinancialEntry,
+  GeneralPending,
+  PublicProfile
+} from './app.models';
 
 type RawFinancialEntry = Partial<FinancialEntry> & {
   entry_type?: FinancialEntry['type'];
@@ -17,6 +23,44 @@ export class AgendaApiService {
 
   getActivities(): Observable<Activity[]> {
     return this.http.get<Activity[]>(`${this.baseUrl}/activities.php`);
+  }
+
+  getSessionStatus(): Observable<AuthSession> {
+    return this.http.get<AuthSession>(`${this.baseUrl}/auth.php`);
+  }
+
+  getPublicProfile(username: string): Observable<PublicProfile> {
+    return this.http.get<PublicProfile>(
+      `${this.baseUrl}/public-profile.php?username=${encodeURIComponent(username)}`
+    );
+  }
+
+  login(username: string, password: string): Observable<AuthSession> {
+    return this.http.post<AuthSession>(`${this.baseUrl}/auth.php`, {
+      action: 'login',
+      username,
+      password
+    });
+  }
+
+  register(name: string, username: string, password: string): Observable<AuthSession> {
+    return this.http.post<AuthSession>(`${this.baseUrl}/auth.php`, {
+      action: 'register',
+      name,
+      username,
+      password
+    });
+  }
+
+  logout(): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.baseUrl}/auth.php`);
+  }
+
+  updateProfileVisibility(profilePublic: boolean): Observable<AuthSession> {
+    return this.http.put<AuthSession>(`${this.baseUrl}/auth.php`, {
+      action: 'updateProfile',
+      profilePublic
+    });
   }
 
   createActivity(activity: Omit<Activity, 'id'>): Observable<Activity> {

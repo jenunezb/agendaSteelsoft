@@ -4,6 +4,7 @@ export interface Activity {
   startTime: string;
   endTime: string;
   assignee: string;
+  visibility: 'private' | 'public';
   completed: boolean;
   location: string;
   description: string;
@@ -34,6 +35,27 @@ export interface CalendarDay {
   dayNumber: number;
   inCurrentMonth: boolean;
   isToday: boolean;
+  activities: Activity[];
+}
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  username: string;
+  profilePublic: boolean;
+  publicUrl: string;
+}
+
+export interface AuthSession {
+  authenticated: boolean;
+  user: AuthUser | null;
+  canRegister: boolean;
+}
+
+export interface PublicProfile {
+  found: boolean;
+  profileEnabled: boolean;
+  user: Pick<AuthUser, 'name' | 'username' | 'publicUrl'> | null;
   activities: Activity[];
 }
 

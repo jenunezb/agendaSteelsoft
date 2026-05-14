@@ -39,6 +39,8 @@ MODIFY COLUMN entry_date DATE NOT NULL;
    - `api/activities.php`
    - `api/pendings.php`
    - `api/financial-entries.php`
+   - `api/auth.php`
+   - `api/public-profile.php`
 
 ## 3. Subir el frontend Angular
 
@@ -52,6 +54,18 @@ npm run build
 
 Si tu build deja los archivos directamente en `dist/agenda-steelsoft/`, sube el contenido de esa carpeta.
 
+3. Configura rewrite SPA para que rutas como `https://agenda.steelsoft.com.co/julian` carguen `index.html`.
+
+En Apache puedes usar un `.htaccess` similar a este en `public_html/`:
+
+```apache
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^ index.html [L]
+```
+
 ## 4. Probar endpoints
 
 Prueba en el navegador:
@@ -59,6 +73,7 @@ Prueba en el navegador:
 - `https://steelsoft.com.co/api/activities.php`
 - `https://steelsoft.com.co/api/pendings.php`
 - `https://steelsoft.com.co/api/financial-entries.php`
+- `https://steelsoft.com.co/api/public-profile.php?username=julian`
 
 Deben responder JSON.
 

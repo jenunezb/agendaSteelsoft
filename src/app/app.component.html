@@ -1,3 +1,268 @@
+@if (isAuthLoading) {
+  <main class="layout auth-layout">
+    <section class="panel auth-panel">
+      <p class="label">Steelsoft</p>
+      <h1>Agenda personal</h1>
+      <p class="activity-launch-copy">Validando la sesion actual...</p>
+    </section>
+  </main>
+} @else if (isPublicProfileMode) {
+  <main class="layout">
+    <header class="topbar panel">
+      <div class="brand">
+        <span class="brand-mark">S</span>
+        <div>
+          <p class="label">Perfil publico</p>
+          <h1>{{ activeProfileName }}</h1>
+        </div>
+      </div>
+      @if (publicProfileUser) {
+        <div class="session-summary">
+          <div>
+            <p class="label">Usuario</p>
+            <strong>{{ publicProfileUser.username }}</strong>
+            <small>{{ publicProfileUser.publicUrl }}</small>
+          </div>
+        </div>
+      }
+    </header>
+
+    @if (publicProfileState === 'ready') {
+      <section class="board">
+        <div class="side-column">
+          <article class="panel activity-launch-panel">
+            <div class="panel-heading">
+              <h2>Agenda publica</h2>
+              <p>Estas viendo las actividades publicas de este perfil.</p>
+            </div>
+            <div class="activity-launch-content">
+              <div>
+                <p class="label">Dia seleccionado</p>
+                <h3>{{ formatFullDateLabel(selectedDate) }}</h3>
+              </div>
+              <p class="activity-launch-copy">
+                Hay {{ selectedDateActivities.length }} actividad{{ selectedDateActivities.length === 1 ? '' : 'es' }}
+                publica{{ selectedDateActivities.length === 1 ? '' : 's' }} en esta fecha.
+              </p>
+              <button type="button" (click)="openActivityPanel(selectedDate)">Ver actividades del dia</button>
+            </div>
+          </article>
+        </div>
+
+        <article class="panel calendar-panel">
+          <div class="calendar-header">
+            <div>
+              <p class="label">Visualizacion</p>
+              <h2>{{ currentPeriodLabel }}</h2>
+            </div>
+
+            <div class="calendar-controls">
+              <div class="view-switch">
+                <button type="button" [class.active]="viewMode === 'month'" (click)="setViewMode('month')">
+                  Mes
+                </button>
+                <button type="button" [class.active]="viewMode === 'week'" (click)="setViewMode('week')">
+                  Semana
+                </button>
+              </div>
+
+              <div class="month-actions">
+                <button type="button" (click)="previousPeriod()">Anterior</button>
+                <button type="button" (click)="nextPeriod()">Siguiente</button>
+              </div>
+            </div>
+          </div>
+
+          @if (viewMode === 'month') {
+            <div class="weekdays">
+              @for (dayName of weekDayNames; track dayName) {
+                <span>{{ dayName }}</span>
+              }
+            </div>
+
+            <div class="calendar-grid">
+              @for (day of calendarDays; track trackByIsoDate($index, day)) {
+                <button
+                  type="button"
+                  class="day-cell"
+                  [class.outside]="!day.inCurrentMonth"
+                  [class.selected]="selectedDate === day.isoDate"
+                  [class.today]="day.isToday"
+                  (click)="openActivityPanel(day.isoDate)"
+                >
+                  <span class="day-number">{{ day.dayNumber }}</span>
+                  <div class="mini-list">
+                    @for (activity of day.activities.slice(0, 3); track trackByActivity($index, activity)) {
+                      <span class="mini-pill" [class.completed]="activity.completed">
+                        {{ activity.startTime }} - {{ activity.title }}
+                      </span>
+                    }
+                  </div>
+                  @if (day.activities.length > 3) {
+                    <small>+{{ day.activities.length - 3 }} mas</small>
+                  }
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="week-agenda">
+              <div class="week-agenda-header">
+                <span class="slot-heading">Hora</span>
+                @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
+                  <button
+                    type="button"
+                    class="week-day-heading"
+                    [class.today]="day.isToday"
+                    [class.selected]="selectedDate === day.isoDate"
+                    (click)="openActivityPanel(day.isoDate)"
+                  >
+                    <strong>{{ formatWeekDayHeader(day) }}</strong>
+                    <small>{{ day.activities.length }} actividades</small>
+                  </button>
+                }
+              </div>
+
+              <div class="week-agenda-body">
+                <div class="week-time-column">
+                  @for (time of weeklyTimeOptions; track time) {
+                    <div class="time-slot week-time-cell">{{ formatTimeLabel(time) }}</div>
+                  }
+                </div>
+
+                <div class="week-day-columns">
+                  @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
+                    <div
+                      class="week-day-column"
+                      [class.selected]="selectedDate === day.isoDate"
+                      tabindex="0"
+                      (click)="openActivityPanel(day.isoDate)"
+                      (keydown.enter)="openActivityPanel(day.isoDate)"
+                      (keydown.space)="openActivityPanel(day.isoDate)"
+                    >
+                      <div class="week-day-grid">
+                        @for (time of weeklyTimeOptions; track time) {
+                          <span class="week-grid-cell"></span>
+                        }
+                      </div>
+
+                      <div class="week-day-activities">
+                        @for (activity of getActivitiesForWeekDay(day.isoDate); track trackByActivity($index, activity)) {
+                          <article
+                            class="slot-activity week-span-activity"
+                            [class.completed]="activity.completed"
+                            [style.top.px]="getWeekActivityTop(activity)"
+                            [style.height.px]="getWeekActivityHeight(activity)"
+                          >
+                            <div class="slot-activity-header">
+                              <strong>{{ activity.title }}</strong>
+                              @if (activity.completed) {
+                                <span class="status-badge">Finalizado</span>
+                              }
+                            </div>
+                            <span>{{ formatActivityTimeRange(activity) }}</span>
+                            @if (activity.location) {
+                              <span>{{ activity.location }}</span>
+                            }
+                          </article>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </article>
+      </section>
+    } @else {
+      <section class="panel auth-panel">
+        <h2>
+          {{ publicProfileState === 'not-found' ? 'Perfil no encontrado' : 'Perfil no disponible' }}
+        </h2>
+        <p class="activity-launch-copy">
+          @if (publicProfileState === 'not-found') {
+            No encontramos un perfil publico para `{{ publicProfileSlug }}`.
+          } @else {
+            Este usuario existe, pero su agenda publica esta desactivada.
+          }
+        </p>
+      </section>
+    }
+  </main>
+} @else if (!isAuthenticated) {
+  <main class="layout auth-layout">
+    <section class="panel auth-panel">
+      <div class="panel-heading">
+        <p class="label">Steelsoft</p>
+        <h1>Agenda personal</h1>
+        <p>
+          Inicia sesion o crea tu usuario para entrar a tu agenda personal.
+        </p>
+      </div>
+
+      <div class="auth-switch">
+        <button type="button" [class.active]="authMode === 'login'" (click)="setAuthMode('login')">
+          Iniciar sesion
+        </button>
+        <button
+          type="button"
+          [class.active]="authMode === 'register'"
+          (click)="setAuthMode('register')"
+        >
+          Crear usuario
+        </button>
+      </div>
+
+      @if (authError) {
+        <p class="auth-error">{{ authError }}</p>
+      }
+
+      @if (authMode === 'register') {
+        <form class="auth-form" (ngSubmit)="register()">
+          <label>
+            <span>Nombre</span>
+            <input type="text" name="registerName" [(ngModel)]="registerForm.name" required />
+          </label>
+
+          <label>
+            <span>Usuario</span>
+            <input type="text" name="registerUsername" [(ngModel)]="registerForm.username" required />
+          </label>
+
+          <label>
+            <span>Contrasena</span>
+            <input
+              type="password"
+              name="registerPassword"
+              [(ngModel)]="registerForm.password"
+              required
+            />
+          </label>
+
+          <button type="submit" [disabled]="isSubmittingAuth">
+            {{ isSubmittingAuth ? 'Creando usuario...' : 'Crear usuario y entrar' }}
+          </button>
+        </form>
+      } @else {
+        <form class="auth-form" (ngSubmit)="login()">
+          <label>
+            <span>Usuario</span>
+            <input type="text" name="loginUsername" [(ngModel)]="loginForm.username" required />
+          </label>
+
+          <label>
+            <span>Contrasena</span>
+            <input type="password" name="loginPassword" [(ngModel)]="loginForm.password" required />
+          </label>
+
+          <button type="submit" [disabled]="isSubmittingAuth">
+            {{ isSubmittingAuth ? 'Entrando...' : 'Entrar a mi agenda' }}
+          </button>
+        </form>
+      }
+    </section>
+  </main>
+} @else {
 <main class="layout">
   <header class="topbar panel">
     <div class="brand">
@@ -6,6 +271,14 @@
         <p class="label">Steelsoft</p>
         <h1>Agenda</h1>
       </div>
+    </div>
+    <div class="session-summary">
+      <div>
+        <p class="label">Sesion activa</p>
+        <strong>{{ currentUser?.name }}</strong>
+        <small>{{ currentUser?.username }}</small>
+      </div>
+      <button type="button" class="secondary-button" (click)="logout()">Cerrar sesion</button>
     </div>
   </header>
 
@@ -26,6 +299,22 @@
             en esta fecha.
           </p>
           <button type="button" (click)="openActivityPanel(selectedDate)">Abrir panel del dia</button>
+        </div>
+      </article>
+
+      <article class="panel pending-panel">
+        <div class="panel-heading">
+          <h2>Perfil publico</h2>
+          <p>Comparte solo las actividades marcadas como publicas desde tu URL personal.</p>
+        </div>
+        <div class="launch-summary">
+          <p class="activity-launch-copy">
+            Estado: {{ currentUser?.profilePublic ? 'Publico' : 'Privado' }}
+          </p>
+          <small class="public-url">{{ currentPublicUrl }}</small>
+          <button type="button" (click)="toggleProfileVisibility()" [disabled]="isUpdatingProfileVisibility">
+            {{ isUpdatingProfileVisibility ? 'Guardando...' : (currentUser?.profilePublic ? 'Desactivar perfil publico' : 'Activar perfil publico') }}
+          </button>
         </div>
       </article>
 
@@ -208,6 +497,41 @@
           <button type="button" class="close-button" (click)="closeActivityPanel()">Cerrar</button>
         </div>
 
+        @if (isPublicProfileMode) {
+          <div class="selected-day activity-modal-list public-modal-list">
+            <div>
+              <p class="label">Agenda publica</p>
+              <h3>{{ formatDayLabel(selectedDate) }}</h3>
+            </div>
+
+            <div class="selected-list">
+              @if (selectedDateActivities.length) {
+                @for (activity of selectedDateActivities; track trackByActivity($index, activity)) {
+                  <article class="activity-card" [class.completed]="activity.completed">
+                    <div>
+                      <span class="visibility-badge public">Publica</span>
+                      <div class="activity-card-header">
+                        <strong>{{ activity.title }}</strong>
+                        @if (activity.completed) {
+                          <span class="status-badge">Finalizado</span>
+                        }
+                      </div>
+                      <p class="activity-time">{{ formatActivityTimeRange(activity) }}</p>
+                      @if (activity.location) {
+                        <p class="activity-location">{{ activity.location }}</p>
+                      }
+                      @if (activity.description) {
+                        <p>{{ activity.description }}</p>
+                      }
+                    </div>
+                  </article>
+                }
+              } @else {
+                <p class="empty-state">No hay actividades publicas registradas para este dia.</p>
+              }
+            </div>
+          </div>
+        } @else {
         <div class="activity-modal-body">
           <form class="activity-form" (ngSubmit)="addActivity()">
             <label>
@@ -252,6 +576,14 @@
                 @for (assignee of assigneeOptions; track assignee) {
                   <option [value]="assignee">{{ assignee }}</option>
                 }
+              </select>
+            </label>
+
+            <label>
+              <span>Visibilidad</span>
+              <select name="visibility" [(ngModel)]="newActivity.visibility" required>
+                <option value="private">Privada</option>
+                <option value="public">Publica</option>
               </select>
             </label>
 
@@ -301,6 +633,9 @@
                       <span class="assignee-badge" [class]="getAssigneeClassName(activity.assignee)">
                         {{ activity.assignee }}
                       </span>
+                      <span class="visibility-badge" [class.public]="activity.visibility === 'public'">
+                        {{ activity.visibility === 'public' ? 'Publica' : 'Privada' }}
+                      </span>
                       <div class="activity-card-header">
                         <strong>{{ activity.title }}</strong>
                         @if (activity.completed) {
@@ -331,11 +666,12 @@
             </div>
           </div>
         </div>
+        }
       </section>
     </div>
   }
 
-  @if (isPendingPanelOpen) {
+  @if (isPendingPanelOpen && !isPublicProfileMode) {
     <div class="activity-overlay" (click)="closePendingPanel()">
       <section class="activity-modal panel" (click)="$event.stopPropagation()">
         <div class="activity-modal-header">
@@ -435,7 +771,7 @@
     </div>
   }
 
-  @if (isFinancePanelOpen) {
+  @if (isFinancePanelOpen && !isPublicProfileMode) {
     <div class="activity-overlay" (click)="closeFinancePanel()">
       <section class="activity-modal panel" (click)="$event.stopPropagation()">
         <div class="activity-modal-header">
@@ -561,4 +897,5 @@
       </section>
     </div>
   }
-</main>
+  </main>
+}

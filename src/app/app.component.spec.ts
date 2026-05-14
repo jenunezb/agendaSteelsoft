@@ -8,6 +8,12 @@ describe('AppComponent', () => {
 
   beforeEach(async () => {
     agendaApiSpy = jasmine.createSpyObj<AgendaApiService>('AgendaApiService', [
+      'getSessionStatus',
+      'getPublicProfile',
+      'login',
+      'register',
+      'logout',
+      'updateProfileVisibility',
       'getActivities',
       'createActivity',
       'updateActivity',
@@ -22,6 +28,71 @@ describe('AppComponent', () => {
       'deleteFinancialEntry'
     ]);
 
+    agendaApiSpy.getSessionStatus.and.returnValue(
+      of({
+        authenticated: true,
+        user: {
+          id: 1,
+          name: 'Cristian',
+          username: 'cristian',
+          profilePublic: false,
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian'
+        },
+        canRegister: false
+      })
+    );
+    agendaApiSpy.getPublicProfile.and.returnValue(
+      of({
+        found: true,
+        profileEnabled: true,
+        user: {
+          name: 'Cristian',
+          username: 'cristian',
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian'
+        },
+        activities: []
+      })
+    );
+    agendaApiSpy.login.and.returnValue(
+      of({
+        authenticated: true,
+        user: {
+          id: 1,
+          name: 'Cristian',
+          username: 'cristian',
+          profilePublic: false,
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian'
+        },
+        canRegister: false
+      })
+    );
+    agendaApiSpy.register.and.returnValue(
+      of({
+        authenticated: true,
+        user: {
+          id: 1,
+          name: 'Cristian',
+          username: 'cristian',
+          profilePublic: false,
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian'
+        },
+        canRegister: false
+      })
+    );
+    agendaApiSpy.logout.and.returnValue(of({ success: true }));
+    agendaApiSpy.updateProfileVisibility.and.returnValue(
+      of({
+        authenticated: true,
+        user: {
+          id: 1,
+          name: 'Cristian',
+          username: 'cristian',
+          profilePublic: true,
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian'
+        },
+        canRegister: false
+      })
+    );
     agendaApiSpy.getActivities.and.returnValue(of([]));
     agendaApiSpy.getGeneralPendings.and.returnValue(of([]));
     agendaApiSpy.getFinancialEntries.and.returnValue(of([]));
@@ -74,6 +145,7 @@ describe('AppComponent', () => {
           startTime: '09:00',
           endTime: '09:30',
           assignee: 'Steelsoft',
+          visibility: 'private',
           completed: false,
           location: '',
           description: '',
@@ -162,6 +234,7 @@ describe('AppComponent', () => {
         startTime: string;
         endTime: string;
         assignee: string;
+        visibility: 'private' | 'public';
         completed: boolean;
         location: string;
         description: string;
@@ -173,12 +246,13 @@ describe('AppComponent', () => {
         startTime: string;
         endTime: string;
         assignee: string;
+        visibility: 'private' | 'public';
         completed: boolean;
         location: string;
         description: string;
         date: string;
       }) => void;
-      newActivity: { title: string; startTime: string; endTime: string };
+      newActivity: { title: string; startTime: string; endTime: string; visibility: 'private' | 'public' };
       editingActivityId: number | null;
       isActivityPanelOpen: boolean;
     };
@@ -190,6 +264,7 @@ describe('AppComponent', () => {
         startTime: '11:00',
         endTime: '11:30',
         assignee: 'Julian',
+        visibility: 'private',
         completed: false,
         location: 'Oficina',
         description: 'Presentacion',
@@ -253,6 +328,7 @@ describe('AppComponent', () => {
         startTime: string;
         endTime: string;
         assignee: string;
+        visibility: 'private' | 'public';
         completed: boolean;
         location: string;
         description: string;
@@ -268,6 +344,7 @@ describe('AppComponent', () => {
         startTime: '09:30',
         endTime: '10:00',
         assignee: 'Julian',
+        visibility: 'private',
         completed: false,
         location: '',
         description: '',
