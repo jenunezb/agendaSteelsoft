@@ -9,6 +9,7 @@ export interface Activity {
   location: string;
   description: string;
   date: string;
+  reminderMinutes: number | null;
 }
 
 export interface GeneralPending {
@@ -44,6 +45,8 @@ export interface AuthUser {
   username: string;
   profilePublic: boolean;
   publicUrl: string;
+  whatsappNumber: string;
+  whatsappNotificationsEnabled: boolean;
 }
 
 export interface AuthSession {

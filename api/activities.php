@@ -10,7 +10,7 @@ $user = requireAuthenticatedUser();
 
 if ($method === 'GET') {
     $statement = $pdo->prepare(
-        'SELECT id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date
+        'SELECT id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes
          FROM activities
          WHERE user_id = :user_id
          ORDER BY activity_date, start_time, end_time, title'
@@ -29,6 +29,7 @@ if ($method === 'GET') {
             'location' => $row['location'] ?? '',
             'description' => $row['description'] ?? '',
             'date' => $row['activity_date'],
+            'reminderMinutes' => isset($row['reminder_minutes']) ? (int) $row['reminder_minutes'] : null,
         ];
     }, $statement->fetchAll());
 
@@ -38,10 +39,11 @@ if ($method === 'GET') {
 $payload = getPayload();
 
 if ($method === 'POST') {
+    $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
     $statement = $pdo->prepare(
         'INSERT INTO activities
-        (user_id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date)
-        VALUES (:user_id, :title, :start_time, :end_time, :assignee, :is_public, :completed, :location, :description, :activity_date)'
+        (user_id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes, reminder_sent_at)
+        VALUES (:user_id, :title, :start_time, :end_time, :assignee, :is_public, :completed, :location, :description, :activity_date, :reminder_minutes, NULL)'
     );
 
     $statement->execute([
@@ -55,6 +57,7 @@ if ($method === 'POST') {
         ':location' => trim((string) ($payload['location'] ?? '')),
         ':description' => trim((string) ($payload['description'] ?? '')),
         ':activity_date' => (string) ($payload['date'] ?? ''),
+        ':reminder_minutes' => $reminderMinutes,
     ]);
 
     jsonResponse([
@@ -68,11 +71,13 @@ if ($method === 'POST') {
         'location' => trim((string) ($payload['location'] ?? '')),
         'description' => trim((string) ($payload['description'] ?? '')),
         'date' => (string) ($payload['date'] ?? ''),
+        'reminderMinutes' => $reminderMinutes,
     ], 201);
 }
 
 if ($method === 'PUT') {
     $id = getRequiredId();
+    $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
 
     $statement = $pdo->prepare(
         'UPDATE activities
@@ -84,7 +89,9 @@ if ($method === 'PUT') {
              completed = :completed,
              location = :location,
              description = :description,
-             activity_date = :activity_date
+             activity_date = :activity_date,
+             reminder_minutes = :reminder_minutes,
+             reminder_sent_at = NULL
          WHERE id = :id
            AND user_id = :user_id'
     );
@@ -101,6 +108,7 @@ if ($method === 'PUT') {
         ':location' => trim((string) ($payload['location'] ?? '')),
         ':description' => trim((string) ($payload['description'] ?? '')),
         ':activity_date' => (string) ($payload['date'] ?? ''),
+        ':reminder_minutes' => $reminderMinutes,
     ]);
 
     if ($statement->rowCount() === 0) {
@@ -118,6 +126,7 @@ if ($method === 'PUT') {
         'location' => trim((string) ($payload['location'] ?? '')),
         'description' => trim((string) ($payload['description'] ?? '')),
         'date' => (string) ($payload['date'] ?? ''),
+        'reminderMinutes' => $reminderMinutes,
     ]);
 }
 

@@ -104,6 +104,20 @@ function ensureSchema(PDO $pdo, string $databaseName): void
     ensureColumnExists(
         $pdo,
         $databaseName,
+        'users',
+        'whatsapp_number',
+        'ALTER TABLE users ADD COLUMN whatsapp_number VARCHAR(20) NOT NULL DEFAULT "" AFTER profile_public'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'users',
+        'whatsapp_notifications_enabled',
+        'ALTER TABLE users ADD COLUMN whatsapp_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER whatsapp_number'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
         'activities',
         'user_id',
         'ALTER TABLE activities ADD COLUMN user_id INT UNSIGNED NULL AFTER id'
@@ -114,6 +128,20 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'activities',
         'is_public',
         'ALTER TABLE activities ADD COLUMN is_public TINYINT(1) NOT NULL DEFAULT 0 AFTER assignee'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'activities',
+        'reminder_minutes',
+        'ALTER TABLE activities ADD COLUMN reminder_minutes SMALLINT UNSIGNED NULL AFTER description'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'activities',
+        'reminder_sent_at',
+        'ALTER TABLE activities ADD COLUMN reminder_sent_at DATETIME NULL AFTER reminder_minutes'
     );
     ensureColumnExists(
         $pdo,
@@ -194,6 +222,8 @@ function getAuthenticatedUser(): ?array
     $statement = getConnection()->prepare(
         'SELECT id, name, username
                 , profile_public
+                , whatsapp_number
+                , whatsapp_notifications_enabled
          FROM users
          WHERE id = :id'
     );
@@ -211,6 +241,8 @@ function getAuthenticatedUser(): ?array
         'username' => $user['username'],
         'profilePublic' => !empty($user['profile_public']),
         'publicUrl' => buildPublicProfileUrl((string) $user['username']),
+        'whatsappNumber' => (string) ($user['whatsapp_number'] ?? ''),
+        'whatsappNotificationsEnabled' => !empty($user['whatsapp_notifications_enabled']),
     ];
 }
 
@@ -233,7 +265,7 @@ function hasUsers(PDO $pdo): bool
 function findUserByUsername(PDO $pdo, string $username): ?array
 {
     $statement = $pdo->prepare(
-        'SELECT id, name, username, password_hash, profile_public
+        'SELECT id, name, username, password_hash, profile_public, whatsapp_number, whatsapp_notifications_enabled
          FROM users
          WHERE username = :username'
     );
@@ -274,4 +306,32 @@ function claimLegacyRecordsForUser(PDO $pdo, array $user): void
          SET user_id = :user_id
          WHERE user_id IS NULL AND assignee = :assignee'
     )->execute($params);
+}
+
+function normalizeWhatsappNumber(string $value): string
+{
+    $normalizedValue = preg_replace('/\D+/', '', $value) ?? '';
+    return trim($normalizedValue);
+}
+
+function normalizeReminderMinutes(mixed $value): ?int
+{
+    $normalizedValue = (int) $value;
+    $allowedValues = [5, 15, 30, 60];
+
+    return in_array($normalizedValue, $allowedValues, true) ? $normalizedValue : null;
+}
+
+function getWhatsappConfig(): array
+{
+    $config = require __DIR__ . '/config.php';
+
+    return [
+        'access_token' => (string) getenv('WHATSAPP_ACCESS_TOKEN') ?: (string) ($config['whatsapp_access_token'] ?? ''),
+        'phone_number_id' => (string) getenv('WHATSAPP_PHONE_NUMBER_ID') ?: (string) ($config['whatsapp_phone_number_id'] ?? ''),
+        'template_name' => (string) getenv('WHATSAPP_TEMPLATE_NAME') ?: (string) ($config['whatsapp_template_name'] ?? ''),
+        'template_language' => (string) getenv('WHATSAPP_TEMPLATE_LANGUAGE') ?: (string) ($config['whatsapp_template_language'] ?? 'es_CO'),
+        'graph_version' => (string) getenv('WHATSAPP_GRAPH_VERSION') ?: (string) ($config['whatsapp_graph_version'] ?? 'v23.0'),
+        'cron_secret' => (string) getenv('WHATSAPP_CRON_SECRET') ?: (string) ($config['whatsapp_cron_secret'] ?? ''),
+    ];
 }

@@ -320,6 +320,45 @@
 
       <article class="panel pending-panel">
         <div class="panel-heading">
+          <h2>WhatsApp</h2>
+          <p>Recibe avisos automaticos antes del evento segun la opcion elegida en cada actividad.</p>
+        </div>
+        <form class="pending-form" (ngSubmit)="saveNotificationSettings()">
+          <label>
+            <span>Numero con indicativo</span>
+            <input
+              type="text"
+              name="whatsappNumber"
+              [(ngModel)]="notificationSettingsForm.whatsappNumber"
+              placeholder="Ej. 573001234567"
+            />
+          </label>
+
+          <label class="checkbox-field">
+            <input
+              type="checkbox"
+              name="whatsappNotificationsEnabled"
+              [(ngModel)]="notificationSettingsForm.whatsappNotificationsEnabled"
+            />
+            <span>Activar notificaciones por WhatsApp</span>
+          </label>
+
+          @if (notificationSettingsError) {
+            <p class="auth-error">{{ notificationSettingsError }}</p>
+          }
+
+          @if (notificationSettingsMessage) {
+            <p class="success-message">{{ notificationSettingsMessage }}</p>
+          }
+
+          <button type="submit" [disabled]="isUpdatingNotificationSettings">
+            {{ isUpdatingNotificationSettings ? 'Guardando...' : 'Guardar WhatsApp' }}
+          </button>
+        </form>
+      </article>
+
+      <article class="panel pending-panel">
+        <div class="panel-heading">
           <h2>Pendientes generales</h2>
           <p>Actividades pendientes con fecha de registro.</p>
         </div>
@@ -607,6 +646,15 @@
               ></textarea>
             </label>
 
+            <label>
+              <span>Recordatorio por WhatsApp</span>
+              <select name="reminderMinutes" [(ngModel)]="newActivity.reminderMinutes">
+                @for (option of reminderOptions; track option.label) {
+                  <option [ngValue]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </label>
+
             <div class="form-actions">
               <button type="submit">
                 {{ isEditingActivity ? 'Guardar cambios' : 'Agregar actividad' }}
@@ -643,6 +691,7 @@
                         }
                       </div>
                       <p class="activity-time">{{ formatActivityTimeRange(activity) }}</p>
+                      <p class="activity-reminder">WhatsApp: {{ getReminderLabel(activity.reminderMinutes) }}</p>
                       @if (activity.location) {
                         <p class="activity-location">{{ activity.location }}</p>
                       }

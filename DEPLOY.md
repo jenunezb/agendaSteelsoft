@@ -28,6 +28,14 @@ WHERE entry_date IS NULL;
 
 ALTER TABLE financial_entries
 MODIFY COLUMN entry_date DATE NOT NULL;
+
+ALTER TABLE users
+ADD COLUMN whatsapp_number VARCHAR(20) NOT NULL DEFAULT '',
+ADD COLUMN whatsapp_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0;
+
+ALTER TABLE activities
+ADD COLUMN reminder_minutes SMALLINT UNSIGNED NULL,
+ADD COLUMN reminder_sent_at DATETIME NULL;
 ```
 
 ## 2. Subir el backend PHP
@@ -41,6 +49,15 @@ MODIFY COLUMN entry_date DATE NOT NULL;
    - `api/financial-entries.php`
    - `api/auth.php`
    - `api/public-profile.php`
+   - `api/send-whatsapp-reminders.php`
+
+3. Configura estas variables en el hosting o agrégalas de forma segura al arreglo de `api/config.php`:
+   - `whatsapp_access_token`
+   - `whatsapp_phone_number_id`
+   - `whatsapp_template_name`
+   - `whatsapp_template_language` opcional, por defecto `es_CO`
+   - `whatsapp_graph_version` opcional, por defecto `v23.0`
+   - `whatsapp_cron_secret` recomendado para proteger la URL del cron
 
 ## 3. Subir el frontend Angular
 
@@ -77,6 +94,41 @@ Prueba en el navegador:
 
 Deben responder JSON.
 
-## 5. Nota importante
+Para probar el disparador de recordatorios por URL:
+
+- `https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO`
+
+Para previsualizar el payload sin enviar:
+
+- `https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO&dry_run=1`
+
+Para enviar una prueba manual de una actividad puntual:
+
+- `https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO&activity_id=123&force=1`
+
+## 5. Configurar el cron de WhatsApp
+
+Ejecuta el script cada minuto. Dos opciones comunes:
+
+1. Cron por URL:
+
+```text
+https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO
+```
+
+2. Cron por PHP CLI:
+
+```bash
+php public_html/api/send-whatsapp-reminders.php
+```
+
+El template aprobado en Meta debe aceptar 4 variables con estos nombres:
+
+1. `nombre_usuario`
+2. `titulo_evento`
+3. `fecha_hora_evento`
+4. `tiempo_restante`
+
+## 6. Nota importante
 
 El archivo `api/config.php` contiene credenciales reales de base de datos. No lo publiques en un repositorio publico sin protegerlo antes.

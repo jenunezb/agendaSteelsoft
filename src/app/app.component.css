@@ -137,6 +137,15 @@ h1 {
   font-weight: 700;
 }
 
+.success-message {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(46, 160, 67, 0.12);
+  color: #1d5f2c;
+  font-weight: 700;
+}
+
 button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
@@ -253,6 +262,18 @@ button:disabled {
 .pending-form label {
   display: grid;
   gap: 6px;
+}
+
+.checkbox-field {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+  padding: 0;
 }
 
 .activity-form span,
@@ -447,6 +468,11 @@ button {
 
 .activity-time {
   color: var(--gold-deep);
+  font-weight: 700;
+}
+
+.activity-reminder {
+  color: #1d5f2c;
   font-weight: 700;
 }
 

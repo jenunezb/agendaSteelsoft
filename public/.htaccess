@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# Leave existing files and directories alone.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Do not rewrite API requests.
+RewriteRule ^api/ - [L]
+
+# Send profile and app routes to Angular.
+RewriteRule ^ index.html [L]

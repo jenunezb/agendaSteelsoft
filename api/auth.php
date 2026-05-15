@@ -36,30 +36,49 @@ if ($method === 'PUT') {
     $payload = getPayload();
     $action = (string) ($payload['action'] ?? '');
 
-    if ($action !== 'updateProfile') {
+    if ($action !== 'updateProfile' && $action !== 'updateNotifications') {
         jsonResponse(['message' => 'Accion no permitida.'], 422);
     }
 
-    $profilePublic = !empty($payload['profilePublic']) ? 1 : 0;
-    $statement = $pdo->prepare(
-        'UPDATE users
-         SET profile_public = :profile_public
-         WHERE id = :id'
-    );
-    $statement->execute([
-        ':profile_public' => $profilePublic,
-        ':id' => $user['id'],
-    ]);
+    if ($action === 'updateProfile') {
+        $profilePublic = !empty($payload['profilePublic']) ? 1 : 0;
+        $statement = $pdo->prepare(
+            'UPDATE users
+             SET profile_public = :profile_public
+             WHERE id = :id'
+        );
+        $statement->execute([
+            ':profile_public' => $profilePublic,
+            ':id' => $user['id'],
+        ]);
+    }
+
+    if ($action === 'updateNotifications') {
+        $whatsappNumber = normalizeWhatsappNumber((string) ($payload['whatsappNumber'] ?? ''));
+        $whatsappNotificationsEnabled = !empty($payload['whatsappNotificationsEnabled']) ? 1 : 0;
+
+        if ($whatsappNotificationsEnabled && $whatsappNumber === '') {
+            jsonResponse(['message' => 'Debes indicar un numero de WhatsApp para activar notificaciones.'], 422);
+        }
+
+        $statement = $pdo->prepare(
+            'UPDATE users
+             SET whatsapp_number = :whatsapp_number,
+                 whatsapp_notifications_enabled = :whatsapp_notifications_enabled
+             WHERE id = :id'
+        );
+        $statement->execute([
+            ':whatsapp_number' => $whatsappNumber,
+            ':whatsapp_notifications_enabled' => $whatsappNotificationsEnabled,
+            ':id' => $user['id'],
+        ]);
+    }
+
+    $refreshedUser = getAuthenticatedUser();
 
     jsonResponse([
-        'authenticated' => true,
-        'user' => [
-            'id' => $user['id'],
-            'name' => $user['name'],
-            'username' => $user['username'],
-            'profilePublic' => (bool) $profilePublic,
-            'publicUrl' => buildPublicProfileUrl($user['username']),
-        ],
+        'authenticated' => $refreshedUser !== null,
+        'user' => $refreshedUser,
         'canRegister' => true,
     ]);
 }
@@ -88,6 +107,8 @@ if ($action === 'login') {
         'username' => $user['username'],
         'profilePublic' => !empty($user['profile_public']),
         'publicUrl' => buildPublicProfileUrl((string) $user['username']),
+        'whatsappNumber' => (string) ($user['whatsapp_number'] ?? ''),
+        'whatsappNotificationsEnabled' => !empty($user['whatsapp_notifications_enabled']),
     ];
 
     claimLegacyRecordsForUser($pdo, $authenticatedUser);
@@ -133,6 +154,8 @@ if ($action === 'register') {
             'username' => $username,
             'profilePublic' => false,
             'publicUrl' => buildPublicProfileUrl($username),
+            'whatsappNumber' => '',
+            'whatsappNotificationsEnabled' => false,
         ],
         'canRegister' => true,
     ], 201);

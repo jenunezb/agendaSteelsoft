@@ -25,6 +25,13 @@ type ViewMode = 'month' | 'week';
 })
 export class AppComponent implements OnInit {
   private readonly agendaApi = inject(AgendaApiService);
+  protected readonly reminderOptions = [
+    { value: null, label: 'Sin notificacion' },
+    { value: 60, label: '1 hora antes' },
+    { value: 30, label: '30 minutos antes' },
+    { value: 15, label: '15 minutos antes' },
+    { value: 5, label: '5 minutos antes' }
+  ];
   protected readonly weekDayNames = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
   protected readonly fullWeekDayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
   protected readonly monthNames = [
@@ -60,6 +67,9 @@ export class AppComponent implements OnInit {
   protected publicProfileSlug = '';
   protected publicProfileState: 'loading' | 'ready' | 'not-found' | 'disabled' = 'loading';
   protected isUpdatingProfileVisibility = false;
+  protected isUpdatingNotificationSettings = false;
+  protected notificationSettingsMessage = '';
+  protected notificationSettingsError = '';
   protected loginForm = {
     username: '',
     password: ''
@@ -68,6 +78,10 @@ export class AppComponent implements OnInit {
     name: 'Cristian',
     username: 'cristian',
     password: ''
+  };
+  protected notificationSettingsForm = {
+    whatsappNumber: '',
+    whatsappNotificationsEnabled: false
   };
   protected isActivityPanelOpen = false;
   protected isPendingPanelOpen = false;
@@ -135,6 +149,37 @@ export class AppComponent implements OnInit {
       error: (error) => {
         this.isUpdatingProfileVisibility = false;
         this.authError = error?.error?.message ?? 'No fue posible actualizar la visibilidad del perfil.';
+      }
+    });
+  }
+
+  protected saveNotificationSettings(): void {
+    if (!this.currentUser) {
+      return;
+    }
+
+    const whatsappNumber = this.notificationSettingsForm.whatsappNumber.trim();
+    const whatsappNotificationsEnabled = this.notificationSettingsForm.whatsappNotificationsEnabled;
+
+    if (whatsappNotificationsEnabled && !whatsappNumber) {
+      this.notificationSettingsError = 'Ingresa el numero de WhatsApp para activar notificaciones.';
+      this.notificationSettingsMessage = '';
+      return;
+    }
+
+    this.isUpdatingNotificationSettings = true;
+    this.notificationSettingsError = '';
+    this.notificationSettingsMessage = '';
+    this.agendaApi.updateNotificationSettings(whatsappNumber, whatsappNotificationsEnabled).subscribe({
+      next: (session) => {
+        this.isUpdatingNotificationSettings = false;
+        this.applySession(session);
+        this.notificationSettingsMessage = 'Configuracion de WhatsApp actualizada.';
+      },
+      error: (error) => {
+        this.isUpdatingNotificationSettings = false;
+        this.notificationSettingsError =
+          error?.error?.message ?? 'No fue posible guardar la configuracion de WhatsApp.';
       }
     });
   }
@@ -300,7 +345,8 @@ export class AppComponent implements OnInit {
       completed: this.newActivity.completed,
       location,
       description,
-      date: this.newActivity.date
+      date: this.newActivity.date,
+      reminderMinutes: this.newActivity.reminderMinutes
     };
 
     const request =
@@ -364,7 +410,8 @@ export class AppComponent implements OnInit {
       completed: activity.completed,
       location: activity.location,
       description: activity.description,
-      date: activity.date
+      date: activity.date,
+      reminderMinutes: activity.reminderMinutes
     };
     this.selectDate(activity.date);
   }
@@ -699,6 +746,10 @@ export class AppComponent implements OnInit {
     return `${this.formatTimeLabel(activity.startTime)} - ${this.formatTimeLabel(activity.endTime)}`;
   }
 
+  protected getReminderLabel(reminderMinutes: number | null): string {
+    return this.reminderOptions.find((option) => option.value === reminderMinutes)?.label ?? 'Sin notificacion';
+  }
+
   protected getAssigneeClassName(assignee: string): string {
     return `assignee-${assignee.toLowerCase()}`;
   }
@@ -790,7 +841,8 @@ export class AppComponent implements OnInit {
       completed: activity.completed,
       location: activity.location,
       description: activity.description,
-      date: activity.date
+      date: activity.date,
+      reminderMinutes: activity.reminderMinutes
     };
   }
 
@@ -833,10 +885,18 @@ export class AppComponent implements OnInit {
     this.authError = '';
 
     if (this.currentUser) {
+      this.notificationSettingsForm = {
+        whatsappNumber: this.currentUser.whatsappNumber,
+        whatsappNotificationsEnabled: this.currentUser.whatsappNotificationsEnabled
+      };
       this.syncAssigneeFields(this.currentUser.name);
       return;
     }
 
+    this.notificationSettingsForm = {
+      whatsappNumber: '',
+      whatsappNotificationsEnabled: false
+    };
     this.authMode = 'login';
   }
 
@@ -908,7 +968,8 @@ export class AppComponent implements OnInit {
       completed: false,
       location: '',
       description: '',
-      date: this.selectedDate
+      date: this.selectedDate,
+      reminderMinutes: null
     };
   }
 

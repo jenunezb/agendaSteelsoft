@@ -4,10 +4,26 @@ import { Observable, map } from 'rxjs';
 import {
   Activity,
   AuthSession,
+  AuthUser,
   FinancialEntry,
   GeneralPending,
   PublicProfile
 } from './app.models';
+
+type RawActivity = Partial<Activity> & {
+  reminder_minutes?: number | string | null;
+};
+
+type RawAuthUser = Partial<AuthUser> & {
+  profile_public?: boolean | number;
+  public_url?: string;
+  whatsapp_number?: string | null;
+  whatsapp_notifications_enabled?: boolean | number;
+};
+
+type RawAuthSession = Omit<AuthSession, 'user'> & {
+  user: RawAuthUser | null;
+};
 
 type RawFinancialEntry = Partial<FinancialEntry> & {
   entry_type?: FinancialEntry['type'];
@@ -22,11 +38,15 @@ export class AgendaApiService {
   private readonly baseUrl = '/api';
 
   getActivities(): Observable<Activity[]> {
-    return this.http.get<Activity[]>(`${this.baseUrl}/activities.php`);
+    return this.http
+      .get<RawActivity[]>(`${this.baseUrl}/activities.php`)
+      .pipe(map((activities) => activities.map((activity) => this.normalizeActivity(activity))));
   }
 
   getSessionStatus(): Observable<AuthSession> {
-    return this.http.get<AuthSession>(`${this.baseUrl}/auth.php`);
+    return this.http
+      .get<RawAuthSession>(`${this.baseUrl}/auth.php`)
+      .pipe(map((session) => this.normalizeAuthSession(session)));
   }
 
   getPublicProfile(username: string): Observable<PublicProfile> {
@@ -36,20 +56,24 @@ export class AgendaApiService {
   }
 
   login(username: string, password: string): Observable<AuthSession> {
-    return this.http.post<AuthSession>(`${this.baseUrl}/auth.php`, {
-      action: 'login',
-      username,
-      password
-    });
+    return this.http
+      .post<RawAuthSession>(`${this.baseUrl}/auth.php`, {
+        action: 'login',
+        username,
+        password
+      })
+      .pipe(map((session) => this.normalizeAuthSession(session)));
   }
 
   register(name: string, username: string, password: string): Observable<AuthSession> {
-    return this.http.post<AuthSession>(`${this.baseUrl}/auth.php`, {
-      action: 'register',
-      name,
-      username,
-      password
-    });
+    return this.http
+      .post<RawAuthSession>(`${this.baseUrl}/auth.php`, {
+        action: 'register',
+        name,
+        username,
+        password
+      })
+      .pipe(map((session) => this.normalizeAuthSession(session)));
   }
 
   logout(): Observable<{ success: boolean }> {
@@ -57,18 +81,37 @@ export class AgendaApiService {
   }
 
   updateProfileVisibility(profilePublic: boolean): Observable<AuthSession> {
-    return this.http.put<AuthSession>(`${this.baseUrl}/auth.php`, {
-      action: 'updateProfile',
-      profilePublic
-    });
+    return this.http
+      .put<RawAuthSession>(`${this.baseUrl}/auth.php`, {
+        action: 'updateProfile',
+        profilePublic
+      })
+      .pipe(map((session) => this.normalizeAuthSession(session)));
+  }
+
+  updateNotificationSettings(
+    whatsappNumber: string,
+    whatsappNotificationsEnabled: boolean
+  ): Observable<AuthSession> {
+    return this.http
+      .put<RawAuthSession>(`${this.baseUrl}/auth.php`, {
+        action: 'updateNotifications',
+        whatsappNumber,
+        whatsappNotificationsEnabled
+      })
+      .pipe(map((session) => this.normalizeAuthSession(session)));
   }
 
   createActivity(activity: Omit<Activity, 'id'>): Observable<Activity> {
-    return this.http.post<Activity>(`${this.baseUrl}/activities.php`, activity);
+    return this.http
+      .post<RawActivity>(`${this.baseUrl}/activities.php`, activity)
+      .pipe(map((savedActivity) => this.normalizeActivity(savedActivity)));
   }
 
   updateActivity(id: number, activity: Omit<Activity, 'id'>): Observable<Activity> {
-    return this.http.put<Activity>(`${this.baseUrl}/activities.php?id=${id}`, activity);
+    return this.http
+      .put<RawActivity>(`${this.baseUrl}/activities.php?id=${id}`, activity)
+      .pipe(map((savedActivity) => this.normalizeActivity(savedActivity)));
   }
 
   deleteActivity(id: number): Observable<{ success: boolean }> {
@@ -153,6 +196,51 @@ export class AgendaApiService {
       assignee: entry.assignee?.trim() ?? '',
       description: entry.description ?? '',
       date: this.normalizeApiDate(entry.date ?? entry.entry_date)
+    };
+  }
+
+  private normalizeReminderMinutes(value: number | string | null | undefined): number | null {
+    const normalizedValue = Number(value);
+    return [5, 15, 30, 60].includes(normalizedValue) ? normalizedValue : null;
+  }
+
+  private normalizeActivity(activity: RawActivity): Activity {
+    return {
+      id: Number(activity.id) || 0,
+      title: activity.title?.trim() ?? '',
+      startTime: activity.startTime?.trim() ?? '',
+      endTime: activity.endTime?.trim() ?? '',
+      assignee: activity.assignee?.trim() ?? '',
+      visibility: activity.visibility === 'public' ? 'public' : 'private',
+      completed: Boolean(activity.completed),
+      location: activity.location?.trim() ?? '',
+      description: activity.description ?? '',
+      date: this.normalizeApiDate(activity.date),
+      reminderMinutes: this.normalizeReminderMinutes(
+        activity.reminderMinutes ?? activity.reminder_minutes
+      )
+    };
+  }
+
+  private normalizeAuthSession(session: RawAuthSession): AuthSession {
+    return {
+      authenticated: Boolean(session.authenticated),
+      canRegister: Boolean(session.canRegister),
+      user: session.user ? this.normalizeAuthUser(session.user) : null
+    };
+  }
+
+  private normalizeAuthUser(user: RawAuthUser): AuthUser {
+    return {
+      id: Number(user.id) || 0,
+      name: user.name?.trim() ?? '',
+      username: user.username?.trim() ?? '',
+      profilePublic: Boolean(user.profilePublic ?? user.profile_public),
+      publicUrl: user.publicUrl?.trim() ?? user.public_url?.trim() ?? '',
+      whatsappNumber: user.whatsappNumber?.trim() ?? user.whatsapp_number?.trim() ?? '',
+      whatsappNotificationsEnabled: Boolean(
+        user.whatsappNotificationsEnabled ?? user.whatsapp_notifications_enabled
+      )
     };
   }
 }

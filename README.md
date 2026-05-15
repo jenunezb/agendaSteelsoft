@@ -48,6 +48,33 @@ The app now uses PHP sessions so each user sees only their own agenda, pending i
 - Existing records that already match the logged-in user's name in `assignee` are automatically linked to that user on login.
 - The API creates the `users` table and the `user_id` columns automatically when it connects to MySQL.
 
+## WhatsApp reminders
+
+Activities can now store an optional reminder per event. Each user can register their WhatsApp number in the sidebar and enable notifications. Available lead times are:
+
+- 1 hour before
+- 30 minutes before
+- 15 minutes before
+- 5 minutes before
+
+The backend includes [api/send-whatsapp-reminders.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/api/send-whatsapp-reminders.php), which is designed to be executed by cron every minute.
+
+Required WhatsApp Cloud API settings:
+
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_TEMPLATE_NAME`
+- `WHATSAPP_TEMPLATE_LANGUAGE` optional, default `es_CO`
+- `WHATSAPP_GRAPH_VERSION` optional, default `v23.0`
+- `WHATSAPP_CRON_SECRET` recommended if you trigger the script by URL
+
+Important: the script sends a WhatsApp template message, so the template must already exist and be approved in Meta. The current implementation sends four named body parameters: `nombre_usuario`, `titulo_evento`, `fecha_hora_evento`, `tiempo_restante`.
+
+Helpful test modes:
+
+- `?key=TU_SECRETO&dry_run=1` returns the payload preview without sending
+- `?key=TU_SECRETO&activity_id=123&force=1` sends a manual test for a specific activity
+
 ## Running unit tests
 
 To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:

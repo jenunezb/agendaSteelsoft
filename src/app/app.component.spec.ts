@@ -14,6 +14,7 @@ describe('AppComponent', () => {
       'register',
       'logout',
       'updateProfileVisibility',
+      'updateNotificationSettings',
       'getActivities',
       'createActivity',
       'updateActivity',
@@ -36,7 +37,9 @@ describe('AppComponent', () => {
           name: 'Cristian',
           username: 'cristian',
           profilePublic: false,
-          publicUrl: 'https://agenda.steelsoft.com.co/cristian'
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian',
+          whatsappNumber: '',
+          whatsappNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -61,7 +64,9 @@ describe('AppComponent', () => {
           name: 'Cristian',
           username: 'cristian',
           profilePublic: false,
-          publicUrl: 'https://agenda.steelsoft.com.co/cristian'
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian',
+          whatsappNumber: '',
+          whatsappNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -74,7 +79,9 @@ describe('AppComponent', () => {
           name: 'Cristian',
           username: 'cristian',
           profilePublic: false,
-          publicUrl: 'https://agenda.steelsoft.com.co/cristian'
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian',
+          whatsappNumber: '',
+          whatsappNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -88,7 +95,24 @@ describe('AppComponent', () => {
           name: 'Cristian',
           username: 'cristian',
           profilePublic: true,
-          publicUrl: 'https://agenda.steelsoft.com.co/cristian'
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian',
+          whatsappNumber: '',
+          whatsappNotificationsEnabled: false
+        },
+        canRegister: false
+      })
+    );
+    agendaApiSpy.updateNotificationSettings.and.returnValue(
+      of({
+        authenticated: true,
+        user: {
+          id: 1,
+          name: 'Cristian',
+          username: 'cristian',
+          profilePublic: false,
+          publicUrl: 'https://agenda.steelsoft.com.co/cristian',
+          whatsappNumber: '573001234567',
+          whatsappNotificationsEnabled: true
         },
         canRegister: false
       })
@@ -149,7 +173,8 @@ describe('AppComponent', () => {
           completed: false,
           location: '',
           description: '',
-          date: '2026-05-05'
+          date: '2026-05-05',
+          reminderMinutes: 15
         }
       ])
     );
@@ -239,6 +264,7 @@ describe('AppComponent', () => {
         location: string;
         description: string;
         date: string;
+        reminderMinutes: number | null;
       }>;
       editActivity: (activity: {
         id: number;
@@ -251,8 +277,15 @@ describe('AppComponent', () => {
         location: string;
         description: string;
         date: string;
+        reminderMinutes: number | null;
       }) => void;
-      newActivity: { title: string; startTime: string; endTime: string; visibility: 'private' | 'public' };
+      newActivity: {
+        title: string;
+        startTime: string;
+        endTime: string;
+        visibility: 'private' | 'public';
+        reminderMinutes: number | null;
+      };
       editingActivityId: number | null;
       isActivityPanelOpen: boolean;
     };
@@ -268,7 +301,8 @@ describe('AppComponent', () => {
         completed: false,
         location: 'Oficina',
         description: 'Presentacion',
-        date: '2026-05-05'
+        date: '2026-05-05',
+        reminderMinutes: 30
       }
     ];
 
@@ -279,6 +313,7 @@ describe('AppComponent', () => {
     expect(app.newActivity.title).toBe('Demo cliente');
     expect(app.newActivity.startTime).toBe('11:00');
     expect(app.newActivity.endTime).toBe('11:30');
+    expect(app.newActivity.reminderMinutes).toBe(30);
   });
 
   it('should open the activity panel for the selected date', () => {
@@ -333,6 +368,7 @@ describe('AppComponent', () => {
         location: string;
         description: string;
         date: string;
+        reminderMinutes: number | null;
       }>;
       getActivitiesForWeekHourSlot: (isoDate: string, time: string) => Array<{ id: number }>;
     };
@@ -348,7 +384,8 @@ describe('AppComponent', () => {
         completed: false,
         location: '',
         description: '',
-        date: '2026-05-05'
+        date: '2026-05-05',
+        reminderMinutes: 5
       }
     ];
 
