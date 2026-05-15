@@ -9,6 +9,7 @@ $isCli = PHP_SAPI === 'cli';
 $activityId = isset($_GET['activity_id']) ? (int) $_GET['activity_id'] : 0;
 $forceSend = !empty($_GET['force']);
 $dryRun = !empty($_GET['dry_run']);
+$testNumber = normalizeWhatsappNumber((string) ($_GET['test_number'] ?? ''));
 
 if (!$isCli) {
     $providedSecret = (string) ($_GET['key'] ?? '');
@@ -35,6 +36,20 @@ if (
 }
 
 $pdo = getConnection();
+$activities = [];
+
+if ($testNumber !== '') {
+    $activities[] = [
+        'id' => 0,
+        'title' => 'Prueba de WhatsApp',
+        'start_time' => '09:00:00',
+        'activity_date' => date('Y-m-d'),
+        'location' => '',
+        'reminder_minutes' => 5,
+        'whatsapp_number' => $testNumber,
+        'user_name' => 'Steelsoft',
+    ];
+} else {
 $query = 'SELECT
     activities.id,
     activities.title,
@@ -67,7 +82,8 @@ $query .= ' ORDER BY activities.activity_date, activities.start_time';
 $statement = $pdo->prepare($query);
 $statement->execute($params);
 
-$activities = $statement->fetchAll();
+    $activities = $statement->fetchAll();
+}
 $sentCount = 0;
 $errors = [];
 $preview = [];
@@ -111,7 +127,7 @@ foreach ($activities as $activity) {
 
 jsonResponse([
     'success' => true,
-    'mode' => $dryRun ? 'dry-run' : ($activityId > 0 ? 'manual-test' : 'cron'),
+    'mode' => $dryRun ? 'dry-run' : ($testNumber !== '' ? 'direct-test' : ($activityId > 0 ? 'manual-test' : 'cron')),
     'processed' => count($activities),
     'sent' => $sentCount,
     'errors' => $errors,

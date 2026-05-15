@@ -191,75 +191,131 @@
   </main>
 } @else if (!isAuthenticated) {
   <main class="layout auth-layout">
-    <section class="panel auth-panel">
-      <div class="panel-heading">
-        <p class="label">Steelsoft</p>
-        <h1>Agenda personal</h1>
-        <p>
-          Inicia sesion o crea tu usuario para entrar a tu agenda personal.
-        </p>
-      </div>
+    <section class="panel auth-panel auth-shell">
+      <article class="auth-card">
+        <div class="panel-heading">
+          <p class="label">Steelsoft</p>
+          <h1>Agenda personal</h1>
+          <p>
+            Inicia sesion o crea tu usuario para entrar a tu agenda personal.
+          </p>
+        </div>
 
-      <div class="auth-switch">
-        <button type="button" [class.active]="authMode === 'login'" (click)="setAuthMode('login')">
-          Iniciar sesion
-        </button>
-        <button
-          type="button"
-          [class.active]="authMode === 'register'"
-          (click)="setAuthMode('register')"
-        >
-          Crear usuario
-        </button>
-      </div>
-
-      @if (authError) {
-        <p class="auth-error">{{ authError }}</p>
-      }
-
-      @if (authMode === 'register') {
-        <form class="auth-form" (ngSubmit)="register()">
-          <label>
-            <span>Nombre</span>
-            <input type="text" name="registerName" [(ngModel)]="registerForm.name" required />
-          </label>
-
-          <label>
-            <span>Usuario</span>
-            <input type="text" name="registerUsername" [(ngModel)]="registerForm.username" required />
-          </label>
-
-          <label>
-            <span>Contrasena</span>
-            <input
-              type="password"
-              name="registerPassword"
-              [(ngModel)]="registerForm.password"
-              required
-            />
-          </label>
-
-          <button type="submit" [disabled]="isSubmittingAuth">
-            {{ isSubmittingAuth ? 'Creando usuario...' : 'Crear usuario y entrar' }}
+        <div class="auth-switch">
+          <button type="button" [class.active]="authMode === 'login'" (click)="setAuthMode('login')">
+            Iniciar sesion
           </button>
-        </form>
-      } @else {
-        <form class="auth-form" (ngSubmit)="login()">
-          <label>
-            <span>Usuario</span>
-            <input type="text" name="loginUsername" [(ngModel)]="loginForm.username" required />
-          </label>
-
-          <label>
-            <span>Contrasena</span>
-            <input type="password" name="loginPassword" [(ngModel)]="loginForm.password" required />
-          </label>
-
-          <button type="submit" [disabled]="isSubmittingAuth">
-            {{ isSubmittingAuth ? 'Entrando...' : 'Entrar a mi agenda' }}
+          <button
+            type="button"
+            [class.active]="authMode === 'register'"
+            (click)="setAuthMode('register')"
+          >
+            Crear usuario
           </button>
-        </form>
-      }
+        </div>
+
+        @if (authError) {
+          <p class="auth-error">{{ authError }}</p>
+        }
+
+        @if (authMode === 'register') {
+          <form class="auth-form" (ngSubmit)="register()">
+            <label>
+              <span>Nombre</span>
+              <input type="text" name="registerName" [(ngModel)]="registerForm.name" required />
+            </label>
+
+            <label>
+              <span>Usuario</span>
+              <input type="text" name="registerUsername" [(ngModel)]="registerForm.username" required />
+            </label>
+
+            <label>
+              <span>Contrasena</span>
+              <input
+                type="password"
+                name="registerPassword"
+                [(ngModel)]="registerForm.password"
+                required
+              />
+            </label>
+
+            <button type="submit" [disabled]="isSubmittingAuth">
+              {{ isSubmittingAuth ? 'Creando usuario...' : 'Crear usuario y entrar' }}
+            </button>
+          </form>
+        } @else {
+          <form class="auth-form" (ngSubmit)="login()">
+            <label>
+              <span>Usuario</span>
+              <input type="text" name="loginUsername" [(ngModel)]="loginForm.username" required />
+            </label>
+
+            <label>
+              <span>Contrasena</span>
+              <input type="password" name="loginPassword" [(ngModel)]="loginForm.password" required />
+            </label>
+
+            <button type="submit" [disabled]="isSubmittingAuth">
+              {{ isSubmittingAuth ? 'Entrando...' : 'Entrar a mi agenda' }}
+            </button>
+          </form>
+        }
+      </article>
+
+      <article class="privacy-card">
+        <div class="panel-heading">
+          <p class="label">Privacidad</p>
+          <h2>Politica de privacidad</h2>
+          <p>
+            Steelsoft Agenda trata la informacion necesaria para prestar el servicio de agenda,
+            organizacion personal y recordatorios operativos por WhatsApp.
+          </p>
+        </div>
+
+        <div class="privacy-content">
+          <section>
+            <h3>Datos que recopilamos</h3>
+            <p>
+              Nombre, usuario, contrasena cifrada, numero de WhatsApp y los eventos, pendientes,
+              notas y configuraciones creadas por cada usuario.
+            </p>
+          </section>
+
+          <section>
+            <h3>Para que usamos los datos</h3>
+            <p>
+              Para autenticar el acceso, guardar la agenda personal, mostrar actividades, gestionar
+              pendientes y enviar recordatorios antes de un evento cuando el usuario active esa opcion.
+            </p>
+          </section>
+
+          <section>
+            <h3>Uso de WhatsApp</h3>
+            <p>
+              Los mensajes se usan unicamente para avisos operativos relacionados con eventos creados
+              por el propio usuario. No utilizamos este canal para spam ni mensajes no solicitados.
+            </p>
+          </section>
+
+          <section>
+            <h3>Perfiles publicos y control del usuario</h3>
+            <p>
+              Solo las actividades marcadas como publicas pueden aparecer en el enlace publico del
+              perfil. Cada usuario puede actualizar sus datos, activar o desactivar recordatorios y
+              administrar su informacion desde la plataforma.
+            </p>
+          </section>
+
+          <section>
+            <h3>Contacto</h3>
+            <p>
+              Para consultas sobre privacidad, actualizacion o eliminacion de datos puedes escribir a
+              <a href="mailto:prhoteuz@gmail.com">prhoteuz&#64;gmail.com</a>.
+            </p>
+          </section>
+        </div>
+      </article>
     </section>
   </main>
 } @else {

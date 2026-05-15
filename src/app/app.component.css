@@ -91,6 +91,56 @@ h1 {
   gap: 18px;
 }
 
+.auth-shell {
+  width: min(980px, 100%);
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.auth-card,
+.privacy-card {
+  display: grid;
+  gap: 18px;
+}
+
+.privacy-card {
+  padding-left: 8px;
+}
+
+.privacy-content {
+  display: grid;
+  gap: 14px;
+}
+
+.privacy-content section {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fffefb, #f7f1de);
+  border: 1px solid rgba(242, 183, 5, 0.2);
+}
+
+.privacy-content h3,
+.privacy-content p {
+  margin: 0;
+}
+
+.privacy-content h3 {
+  color: var(--black);
+  font-size: 0.98rem;
+}
+
+.privacy-content p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.privacy-content a {
+  color: var(--gold-deep);
+  font-weight: 700;
+}
+
 .auth-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -880,6 +930,14 @@ button {
 @media (max-width: 1100px) {
   .board {
     grid-template-columns: 1fr;
+  }
+
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .privacy-card {
+    padding-left: 0;
   }
 
   .activity-modal-body {
