@@ -9,6 +9,7 @@ $isCli = PHP_SAPI === 'cli';
 $activityId = isset($_GET['activity_id']) ? (int) $_GET['activity_id'] : 0;
 $forceSend = !empty($_GET['force']);
 $dryRun = !empty($_GET['dry_run']);
+$inspect = !empty($_GET['inspect']);
 $testChatId = normalizeTelegramChatId((string) ($_GET['test_chat_id'] ?? ''));
 
 if (!$isCli) {
@@ -27,6 +28,40 @@ if ($config['bot_token'] === '') {
             'bot_token' => true,
         ],
     ], 422);
+}
+
+if ($inspect) {
+    $pdo = getConnection();
+    $serverNow = date('Y-m-d H:i:s');
+    $dbNow = (string) $pdo->query('SELECT NOW()')->fetchColumn();
+    $statement = $pdo->query(
+        'SELECT
+            activities.id,
+            activities.title,
+            activities.activity_date,
+            activities.start_time,
+            activities.completed,
+            activities.reminder_minutes,
+            activities.reminder_sent_at,
+            users.name AS user_name,
+            users.telegram_chat_id,
+            users.telegram_notifications_enabled,
+            TIMESTAMP(activities.activity_date, activities.start_time) AS event_at,
+            DATE_SUB(TIMESTAMP(activities.activity_date, activities.start_time), INTERVAL activities.reminder_minutes MINUTE) AS reminder_at
+         FROM activities
+         INNER JOIN users ON users.id = activities.user_id
+         ORDER BY activities.activity_date DESC, activities.start_time DESC
+         LIMIT 10'
+    );
+
+    jsonResponse([
+        'success' => true,
+        'mode' => 'inspect',
+        'php_timezone' => date_default_timezone_get(),
+        'php_now' => $serverNow,
+        'db_now' => $dbNow,
+        'activities' => $statement->fetchAll(),
+    ]);
 }
 
 $activities = [];

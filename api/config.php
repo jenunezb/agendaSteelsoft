@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'app_timezone' => 'America/Bogota',
     'db_host' => 'localhost',
     'db_name' => 'u873298580_agenda',
     'db_user' => 'u873298580_administrador',

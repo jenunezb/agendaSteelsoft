@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+date_default_timezone_set((string) ((require __DIR__ . '/config.php')['app_timezone'] ?? 'America/Bogota'));
+
 session_start();
 
 header('Content-Type: application/json; charset=utf-8');
@@ -66,9 +68,23 @@ function getConnection(): PDO
         ]
     );
 
+    $pdo->exec(sprintf("SET time_zone = '%s'", getMysqlTimezoneOffset()));
+
     ensureSchema($pdo, $config['db_name']);
 
     return $pdo;
+}
+
+function getMysqlTimezoneOffset(): string
+{
+    $timezone = new DateTimeZone(date_default_timezone_get());
+    $offsetSeconds = $timezone->getOffset(new DateTimeImmutable('now', $timezone));
+    $sign = $offsetSeconds >= 0 ? '+' : '-';
+    $offsetSeconds = abs($offsetSeconds);
+    $hours = str_pad((string) intdiv($offsetSeconds, 3600), 2, '0', STR_PAD_LEFT);
+    $minutes = str_pad((string) intdiv($offsetSeconds % 3600, 60), 2, '0', STR_PAD_LEFT);
+
+    return sprintf('%s%s:%s', $sign, $hours, $minutes);
 }
 
 function getRequiredId(): int
