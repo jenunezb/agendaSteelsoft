@@ -19,6 +19,8 @@ type RawAuthUser = Partial<AuthUser> & {
   public_url?: string;
   whatsapp_number?: string | null;
   whatsapp_notifications_enabled?: boolean | number;
+  telegram_chat_id?: string | null;
+  telegram_notifications_enabled?: boolean | number;
 };
 
 type RawAuthSession = Omit<AuthSession, 'user'> & {
@@ -90,14 +92,14 @@ export class AgendaApiService {
   }
 
   updateNotificationSettings(
-    whatsappNumber: string,
-    whatsappNotificationsEnabled: boolean
+    telegramChatId: string,
+    telegramNotificationsEnabled: boolean
   ): Observable<AuthSession> {
     return this.http
       .put<RawAuthSession>(`${this.baseUrl}/auth.php`, {
         action: 'updateNotifications',
-        whatsappNumber,
-        whatsappNotificationsEnabled
+        telegramChatId,
+        telegramNotificationsEnabled
       })
       .pipe(map((session) => this.normalizeAuthSession(session)));
   }
@@ -200,8 +202,16 @@ export class AgendaApiService {
   }
 
   private normalizeReminderMinutes(value: number | string | null | undefined): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
     const normalizedValue = Number(value);
-    return [5, 15, 30, 60].includes(normalizedValue) ? normalizedValue : null;
+    if (!Number.isFinite(normalizedValue)) {
+      return null;
+    }
+
+    return normalizedValue >= 1 && normalizedValue <= 1440 ? normalizedValue : null;
   }
 
   private normalizeActivity(activity: RawActivity): Activity {
@@ -240,6 +250,10 @@ export class AgendaApiService {
       whatsappNumber: user.whatsappNumber?.trim() ?? user.whatsapp_number?.trim() ?? '',
       whatsappNotificationsEnabled: Boolean(
         user.whatsappNotificationsEnabled ?? user.whatsapp_notifications_enabled
+      ),
+      telegramChatId: user.telegramChatId?.trim() ?? user.telegram_chat_id?.trim() ?? '',
+      telegramNotificationsEnabled: Boolean(
+        user.telegramNotificationsEnabled ?? user.telegram_notifications_enabled
       )
     };
   }

@@ -47,6 +47,8 @@ export interface AuthUser {
   publicUrl: string;
   whatsappNumber: string;
   whatsappNotificationsEnabled: boolean;
+  telegramChatId: string;
+  telegramNotificationsEnabled: boolean;
 }
 
 export interface AuthSession {

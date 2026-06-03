@@ -21,22 +21,24 @@ if (!$isCli) {
 }
 
 if (
-    $config['access_token'] === ''
-    || $config['phone_number_id'] === ''
+    ($config['provider'] === 'meta' && ($config['access_token'] === '' || $config['phone_number_id'] === ''))
+    || ($config['provider'] === '360dialog' && $config['dialog_api_key'] === '')
     || $config['template_name'] === ''
 ) {
     jsonResponse([
         'message' => 'Falta configurar WhatsApp Cloud API.',
         'missing' => [
-            'access_token' => $config['access_token'] === '',
-            'phone_number_id' => $config['phone_number_id'] === '',
+            'provider' => $config['provider'],
+            'access_token' => $config['provider'] === 'meta' && $config['access_token'] === '',
+            'phone_number_id' => $config['provider'] === 'meta' && $config['phone_number_id'] === '',
+            '360dialog_api_key' => $config['provider'] === '360dialog' && $config['dialog_api_key'] === '',
             'template_name' => $config['template_name'] === '',
         ],
     ], 422);
 }
 
-$pdo = getConnection();
 $activities = [];
+$pdo = null;
 
 if ($testNumber !== '') {
     $activities[] = [
@@ -50,6 +52,7 @@ if ($testNumber !== '') {
         'user_name' => 'Steelsoft',
     ];
 } else {
+    $pdo = getConnection();
 $query = 'SELECT
     activities.id,
     activities.title,
@@ -137,20 +140,13 @@ jsonResponse([
 function sendWhatsappReminder(array $config, array $activity): array
 {
     $payload = buildWhatsappPayloadPreview($config, $activity);
-    $endpoint = sprintf(
-        'https://graph.facebook.com/%s/%s/messages',
-        $config['graph_version'],
-        $config['phone_number_id']
-    );
+    [$endpoint, $headers] = buildWhatsappTransport($config);
 
     $ch = curl_init($endpoint);
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $config['access_token'],
-            'Content-Type: application/json',
-        ],
+        CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
         CURLOPT_TIMEOUT => 30,
     ]);
@@ -180,6 +176,33 @@ function sendWhatsappReminder(array $config, array $activity): array
         'success' => true,
         'message' => 'ok',
         'response' => $rawResponse,
+    ];
+}
+
+function buildWhatsappTransport(array $config): array
+{
+    if (($config['provider'] ?? 'meta') === '360dialog') {
+        $baseUrl = rtrim((string) ($config['dialog_base_url'] ?? 'https://waba-v2.360dialog.io'), '/');
+
+        return [
+            $baseUrl . '/messages',
+            [
+                'D360-API-KEY: ' . $config['dialog_api_key'],
+                'Content-Type: application/json',
+            ],
+        ];
+    }
+
+    return [
+        sprintf(
+            'https://graph.facebook.com/%s/%s/messages',
+            $config['graph_version'],
+            $config['phone_number_id']
+        ),
+        [
+            'Authorization: Bearer ' . $config['access_token'],
+            'Content-Type: application/json',
+        ],
     ];
 }
 

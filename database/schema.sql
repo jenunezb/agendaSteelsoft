@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
   profile_public TINYINT(1) NOT NULL DEFAULT 0,
   whatsapp_number VARCHAR(20) NOT NULL DEFAULT '',
   whatsapp_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  telegram_chat_id VARCHAR(30) NOT NULL DEFAULT '',
+  telegram_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

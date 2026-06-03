@@ -39,7 +39,9 @@ describe('AppComponent', () => {
           profilePublic: false,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '',
-          whatsappNotificationsEnabled: false
+          whatsappNotificationsEnabled: false,
+          telegramChatId: '',
+          telegramNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -66,7 +68,9 @@ describe('AppComponent', () => {
           profilePublic: false,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '',
-          whatsappNotificationsEnabled: false
+          whatsappNotificationsEnabled: false,
+          telegramChatId: '',
+          telegramNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -81,7 +85,9 @@ describe('AppComponent', () => {
           profilePublic: false,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '',
-          whatsappNotificationsEnabled: false
+          whatsappNotificationsEnabled: false,
+          telegramChatId: '',
+          telegramNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -97,7 +103,9 @@ describe('AppComponent', () => {
           profilePublic: true,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '',
-          whatsappNotificationsEnabled: false
+          whatsappNotificationsEnabled: false,
+          telegramChatId: '',
+          telegramNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -112,7 +120,9 @@ describe('AppComponent', () => {
           profilePublic: false,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '573001234567',
-          whatsappNotificationsEnabled: true
+          whatsappNotificationsEnabled: true,
+          telegramChatId: '123456789',
+          telegramNotificationsEnabled: true
         },
         canRegister: false
       })

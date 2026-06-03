@@ -61,6 +61,7 @@ The backend includes [api/send-whatsapp-reminders.php](/c:/Users/Julian/Document
 
 Required WhatsApp Cloud API settings:
 
+- `WHATSAPP_PROVIDER` optional, use `meta` or `360dialog`, default `meta`
 - `WHATSAPP_ACCESS_TOKEN`
 - `WHATSAPP_PHONE_NUMBER_ID`
 - `WHATSAPP_TEMPLATE_NAME`
@@ -68,6 +69,9 @@ Required WhatsApp Cloud API settings:
 - `WHATSAPP_TEMPLATE_PARAMETER_FORMAT` optional, use `named` or `positional`, default `named`
 - `WHATSAPP_GRAPH_VERSION` optional, default `v23.0`
 - `WHATSAPP_CRON_SECRET` recommended if you trigger the script by URL
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN` required for Meta to verify the webhook endpoint
+- `WHATSAPP_360DIALOG_API_KEY` required when `WHATSAPP_PROVIDER=360dialog`
+- `WHATSAPP_360DIALOG_BASE_URL` optional, default `https://waba-v2.360dialog.io`
 
 Important: the script sends a WhatsApp template message, so the template must already exist and be approved in Meta. Do not leave `hello_world` configured for production reminders. The implementation supports two body parameter formats:
 
@@ -79,6 +83,39 @@ Helpful test modes:
 - `?key=TU_SECRETO&dry_run=1` returns the payload preview without sending
 - `?key=TU_SECRETO&test_number=573001234567` sends a direct test to a specific number
 - `?key=TU_SECRETO&activity_id=123&force=1` sends a manual test for a specific activity
+
+Webhook setup:
+
+- Point Meta's callback URL to [api/whatsapp-webhook.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/api/whatsapp-webhook.php)
+- Use the same value in Meta's verify token field and `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+- Incoming `POST` events are logged to `api/logs/whatsapp-webhook.log` during setup
+
+360dialog notes:
+
+- The Messaging API base URL is `https://waba-v2.360dialog.io`
+- Send the API key in the `D360-API-KEY` header
+- The current reminder payload remains compatible because 360dialog accepts WhatsApp template payloads on `POST /messages`
+
+## Telegram reminders
+
+The backend also supports free reminders through Telegram bots. Each user can save a Telegram `chat_id` in the sidebar and enable notifications for their events.
+
+Required Telegram settings:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_BOT_USERNAME` optional, useful for onboarding instructions
+- `TELEGRAM_CRON_SECRET` recommended if you trigger the script by URL
+
+Helpful test modes:
+
+- `api/send-telegram-reminders.php?key=TU_SECRETO&dry_run=1` previews the outgoing payload
+- `api/send-telegram-reminders.php?key=TU_SECRETO&test_chat_id=123456789` sends a direct test to a Telegram chat
+- `api/send-telegram-reminders.php?key=TU_SECRETO&activity_id=123&force=1` sends a manual test for a specific activity
+
+Telegram Bot API references:
+
+- `sendMessage`: https://core.telegram.org/bots/api/#sendmessage
+- `getUpdates`: https://core.telegram.org/bots/api/#getupdates
 
 ## Running unit tests
 

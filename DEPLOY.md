@@ -50,8 +50,10 @@ ADD COLUMN reminder_sent_at DATETIME NULL;
    - `api/auth.php`
    - `api/public-profile.php`
    - `api/send-whatsapp-reminders.php`
+   - `api/whatsapp-webhook.php`
 
 3. Configura estas variables en el hosting o agrégalas de forma segura al arreglo de `api/config.php`:
+   - `whatsapp_provider` opcional, `meta` o `360dialog`, por defecto `meta`
    - `whatsapp_access_token`
    - `whatsapp_phone_number_id`
    - `whatsapp_template_name`
@@ -59,6 +61,9 @@ ADD COLUMN reminder_sent_at DATETIME NULL;
    - `whatsapp_template_parameter_format` opcional, `named` o `positional`, por defecto `named`
    - `whatsapp_graph_version` opcional, por defecto `v23.0`
    - `whatsapp_cron_secret` recomendado para proteger la URL del cron
+   - `whatsapp_webhook_verify_token` recomendado para validar el webhook de Meta
+   - `whatsapp_360dialog_api_key` requerido si `whatsapp_provider = 360dialog`
+   - `whatsapp_360dialog_base_url` opcional, por defecto `https://waba-v2.360dialog.io`
 
 ## 3. Subir el frontend Angular
 
@@ -111,6 +116,10 @@ Para enviar una prueba manual de una actividad puntual:
 
 - `https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO&activity_id=123&force=1`
 
+Para verificar el webhook de WhatsApp en Meta:
+
+- `https://agenda.steelsoft.com.co/api/whatsapp-webhook.php`
+
 ## 5. Configurar el cron de WhatsApp
 
 Ejecuta el script cada minuto. Dos opciones comunes:
@@ -136,6 +145,44 @@ Si el template en Meta usa variables con nombre, debe aceptar 4 parametros con e
 
 Si el template usa variables posicionales (`{{1}}` a `{{4}}`), configura `whatsapp_template_parameter_format = positional` y respeta ese mismo orden.
 
-## 6. Nota importante
+## 6. Configurar el webhook de WhatsApp
+
+En `developers.facebook.com`, dentro de la app de WhatsApp:
+
+1. Usa como `URL de devolucion de llamada`:
+
+```text
+https://agenda.steelsoft.com.co/api/whatsapp-webhook.php
+```
+
+2. Usa como `Token de verificacion` el mismo valor que guardes en `WHATSAPP_WEBHOOK_VERIFY_TOKEN` o en `api/config.php` como:
+
+```php
+'whatsapp_webhook_verify_token' => 'TU_TOKEN_LARGO_Y_PRIVADO',
+```
+
+3. Despues de `Verificar y guardar`, suscribe al menos el campo `messages`.
+
+4. Los eventos entrantes quedaran registrados temporalmente en `api/logs/whatsapp-webhook.log`.
+
+## 7. Nota importante
 
 El archivo `api/config.php` contiene credenciales reales de base de datos. No lo publiques en un repositorio publico sin protegerlo antes.
+
+## 8. Configurar Telegram
+
+1. Crea un bot en Telegram usando `@BotFather`.
+2. Guarda en `api/config.php` o en variables de entorno:
+   - `telegram_bot_token`
+   - `telegram_bot_username` opcional
+   - `telegram_cron_secret`
+3. Sube `api/send-telegram-reminders.php`.
+4. Haz que cada usuario le escriba primero al bot y luego pegue su `chat_id` en la agenda.
+
+Para probar por URL:
+
+- `https://agenda.steelsoft.com.co/api/send-telegram-reminders.php?key=TU_SECRETO&test_chat_id=123456789`
+
+Para cron por URL:
+
+- `https://agenda.steelsoft.com.co/api/send-telegram-reminders.php?key=TU_SECRETO`

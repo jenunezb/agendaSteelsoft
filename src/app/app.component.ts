@@ -30,7 +30,9 @@ export class AppComponent implements OnInit {
     { value: 60, label: '1 hora antes' },
     { value: 30, label: '30 minutos antes' },
     { value: 15, label: '15 minutos antes' },
-    { value: 5, label: '5 minutos antes' }
+    { value: 5, label: '5 minutos antes' },
+    { value: 2, label: '2 minutos antes' },
+    { value: 1, label: '1 minuto antes' }
   ];
   protected readonly weekDayNames = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
   protected readonly fullWeekDayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
@@ -81,8 +83,8 @@ export class AppComponent implements OnInit {
     password: ''
   };
   protected notificationSettingsForm = {
-    whatsappNumber: '',
-    whatsappNotificationsEnabled: false
+    telegramChatId: '',
+    telegramNotificationsEnabled: false
   };
   protected isActivityPanelOpen = false;
   protected isPendingPanelOpen = false;
@@ -167,11 +169,11 @@ export class AppComponent implements OnInit {
       return;
     }
 
-    const whatsappNumber = this.notificationSettingsForm.whatsappNumber.trim();
-    const whatsappNotificationsEnabled = this.notificationSettingsForm.whatsappNotificationsEnabled;
+    const telegramChatId = this.notificationSettingsForm.telegramChatId.trim();
+    const telegramNotificationsEnabled = this.notificationSettingsForm.telegramNotificationsEnabled;
 
-    if (whatsappNotificationsEnabled && !whatsappNumber) {
-      this.notificationSettingsError = 'Ingresa el numero de WhatsApp para activar notificaciones.';
+    if (telegramNotificationsEnabled && !telegramChatId) {
+      this.notificationSettingsError = 'Ingresa el chat ID de Telegram para activar notificaciones.';
       this.notificationSettingsMessage = '';
       return;
     }
@@ -179,16 +181,16 @@ export class AppComponent implements OnInit {
     this.isUpdatingNotificationSettings = true;
     this.notificationSettingsError = '';
     this.notificationSettingsMessage = '';
-    this.agendaApi.updateNotificationSettings(whatsappNumber, whatsappNotificationsEnabled).subscribe({
+    this.agendaApi.updateNotificationSettings(telegramChatId, telegramNotificationsEnabled).subscribe({
       next: (session) => {
         this.isUpdatingNotificationSettings = false;
         this.applySession(session);
-        this.notificationSettingsMessage = 'Configuracion de WhatsApp actualizada.';
+        this.notificationSettingsMessage = 'Configuracion de Telegram actualizada.';
       },
       error: (error) => {
         this.isUpdatingNotificationSettings = false;
         this.notificationSettingsError =
-          error?.error?.message ?? 'No fue posible guardar la configuracion de WhatsApp.';
+          error?.error?.message ?? 'No fue posible guardar la configuracion de Telegram.';
       }
     });
   }
@@ -756,7 +758,14 @@ export class AppComponent implements OnInit {
   }
 
   protected getReminderLabel(reminderMinutes: number | null): string {
-    return this.reminderOptions.find((option) => option.value === reminderMinutes)?.label ?? 'Sin notificacion';
+    if (reminderMinutes === null) {
+      return 'Sin notificacion';
+    }
+
+    return (
+      this.reminderOptions.find((option) => option.value === reminderMinutes)?.label ??
+      `${reminderMinutes} minuto${reminderMinutes === 1 ? '' : 's'} antes`
+    );
   }
 
   protected getAssigneeClassName(assignee: string): string {
@@ -895,16 +904,16 @@ export class AppComponent implements OnInit {
 
     if (this.currentUser) {
       this.notificationSettingsForm = {
-        whatsappNumber: this.currentUser.whatsappNumber,
-        whatsappNotificationsEnabled: this.currentUser.whatsappNotificationsEnabled
+        telegramChatId: this.currentUser.telegramChatId,
+        telegramNotificationsEnabled: this.currentUser.telegramNotificationsEnabled
       };
       this.syncAssigneeFields(this.currentUser.name);
       return;
     }
 
     this.notificationSettingsForm = {
-      whatsappNumber: '',
-      whatsappNotificationsEnabled: false
+      telegramChatId: '',
+      telegramNotificationsEnabled: false
     };
     this.authMode = 'login';
   }

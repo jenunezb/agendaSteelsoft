@@ -14,7 +14,9 @@ header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+if ($requestMethod === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
@@ -114,6 +116,20 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'users',
         'whatsapp_notifications_enabled',
         'ALTER TABLE users ADD COLUMN whatsapp_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER whatsapp_number'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'users',
+        'telegram_chat_id',
+        'ALTER TABLE users ADD COLUMN telegram_chat_id VARCHAR(30) NOT NULL DEFAULT "" AFTER whatsapp_notifications_enabled'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'users',
+        'telegram_notifications_enabled',
+        'ALTER TABLE users ADD COLUMN telegram_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER telegram_chat_id'
     );
     ensureColumnExists(
         $pdo,
@@ -224,6 +240,8 @@ function getAuthenticatedUser(): ?array
                 , profile_public
                 , whatsapp_number
                 , whatsapp_notifications_enabled
+                , telegram_chat_id
+                , telegram_notifications_enabled
          FROM users
          WHERE id = :id'
     );
@@ -243,6 +261,8 @@ function getAuthenticatedUser(): ?array
         'publicUrl' => buildPublicProfileUrl((string) $user['username']),
         'whatsappNumber' => (string) ($user['whatsapp_number'] ?? ''),
         'whatsappNotificationsEnabled' => !empty($user['whatsapp_notifications_enabled']),
+        'telegramChatId' => (string) ($user['telegram_chat_id'] ?? ''),
+        'telegramNotificationsEnabled' => !empty($user['telegram_notifications_enabled']),
     ];
 }
 
@@ -265,7 +285,7 @@ function hasUsers(PDO $pdo): bool
 function findUserByUsername(PDO $pdo, string $username): ?array
 {
     $statement = $pdo->prepare(
-        'SELECT id, name, username, password_hash, profile_public, whatsapp_number, whatsapp_notifications_enabled
+        'SELECT id, name, username, password_hash, profile_public, whatsapp_number, whatsapp_notifications_enabled, telegram_chat_id, telegram_notifications_enabled
          FROM users
          WHERE username = :username'
     );
@@ -316,10 +336,23 @@ function normalizeWhatsappNumber(string $value): string
 
 function normalizeReminderMinutes(mixed $value): ?int
 {
-    $normalizedValue = (int) $value;
-    $allowedValues = [5, 15, 30, 60];
+    if ($value === null || $value === '') {
+        return null;
+    }
 
-    return in_array($normalizedValue, $allowedValues, true) ? $normalizedValue : null;
+    $normalizedValue = (int) $value;
+
+    if ($normalizedValue < 1 || $normalizedValue > 1440) {
+        return null;
+    }
+
+    return $normalizedValue;
+}
+
+function normalizeTelegramChatId(string $value): string
+{
+    $normalizedValue = preg_replace('/[^0-9-]+/', '', $value) ?? '';
+    return trim($normalizedValue);
 }
 
 function getWhatsappConfig(): array
@@ -327,12 +360,19 @@ function getWhatsappConfig(): array
     $config = require __DIR__ . '/config.php';
     $templateParameterFormat = (string) getenv('WHATSAPP_TEMPLATE_PARAMETER_FORMAT') ?: (string) ($config['whatsapp_template_parameter_format'] ?? 'named');
     $templateParameterFormat = strtolower(trim($templateParameterFormat));
+    $provider = (string) getenv('WHATSAPP_PROVIDER') ?: (string) ($config['whatsapp_provider'] ?? 'meta');
+    $provider = strtolower(trim($provider));
 
     if (!in_array($templateParameterFormat, ['named', 'positional'], true)) {
         $templateParameterFormat = 'named';
     }
 
+    if (!in_array($provider, ['meta', '360dialog'], true)) {
+        $provider = 'meta';
+    }
+
     return [
+        'provider' => $provider,
         'access_token' => (string) getenv('WHATSAPP_ACCESS_TOKEN') ?: (string) ($config['whatsapp_access_token'] ?? ''),
         'phone_number_id' => (string) getenv('WHATSAPP_PHONE_NUMBER_ID') ?: (string) ($config['whatsapp_phone_number_id'] ?? ''),
         'template_name' => (string) getenv('WHATSAPP_TEMPLATE_NAME') ?: (string) ($config['whatsapp_template_name'] ?? ''),
@@ -340,5 +380,18 @@ function getWhatsappConfig(): array
         'template_parameter_format' => $templateParameterFormat,
         'graph_version' => (string) getenv('WHATSAPP_GRAPH_VERSION') ?: (string) ($config['whatsapp_graph_version'] ?? 'v23.0'),
         'cron_secret' => (string) getenv('WHATSAPP_CRON_SECRET') ?: (string) ($config['whatsapp_cron_secret'] ?? ''),
+        'dialog_api_key' => (string) getenv('WHATSAPP_360DIALOG_API_KEY') ?: (string) ($config['whatsapp_360dialog_api_key'] ?? ''),
+        'dialog_base_url' => (string) getenv('WHATSAPP_360DIALOG_BASE_URL') ?: (string) ($config['whatsapp_360dialog_base_url'] ?? 'https://waba-v2.360dialog.io'),
+    ];
+}
+
+function getTelegramConfig(): array
+{
+    $config = require __DIR__ . '/config.php';
+
+    return [
+        'bot_token' => (string) getenv('TELEGRAM_BOT_TOKEN') ?: (string) ($config['telegram_bot_token'] ?? ''),
+        'bot_username' => (string) getenv('TELEGRAM_BOT_USERNAME') ?: (string) ($config['telegram_bot_username'] ?? ''),
+        'cron_secret' => (string) getenv('TELEGRAM_CRON_SECRET') ?: (string) ($config['telegram_cron_secret'] ?? ''),
     ];
 }

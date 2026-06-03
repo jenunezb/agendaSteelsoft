@@ -224,7 +224,7 @@
             <p>Pendientes, notas y responsables en el mismo flujo de trabajo.</p>
           </article>
           <article class="hero-feature">
-            <strong>Recordatorios por WhatsApp</strong>
+            <strong>Recordatorios por Telegram</strong>
             <p>Prepara avisos automáticos y reduce olvidos o ausencias.</p>
           </article>
         </div>
@@ -335,7 +335,7 @@
             <h2>Politica de privacidad</h2>
             <p>
               Steelsoft Agenda trata la informacion necesaria para prestar el servicio de agenda,
-              organizacion personal y recordatorios operativos por WhatsApp.
+              organizacion personal y recordatorios operativos por Telegram.
             </p>
           </div>
           <button type="button" class="close-button" (click)="closePrivacyModal()">Cerrar</button>
@@ -345,7 +345,7 @@
           <section>
             <h3>Datos que recopilamos</h3>
             <p>
-              Nombre, usuario, contrasena cifrada, numero de WhatsApp y los eventos, pendientes,
+              Nombre, usuario, contrasena cifrada, chat ID de Telegram y los eventos, pendientes,
               notas y configuraciones creadas por cada usuario.
             </p>
           </section>
@@ -359,7 +359,7 @@
           </section>
 
           <section>
-            <h3>Uso de WhatsApp</h3>
+            <h3>Uso de Telegram</h3>
             <p>
               Los mensajes se usan unicamente para avisos operativos relacionados con eventos creados
               por el propio usuario. No utilizamos este canal para spam ni mensajes no solicitados.
@@ -444,27 +444,31 @@
 
       <article class="panel pending-panel">
         <div class="panel-heading">
-          <h2>WhatsApp</h2>
+          <h2>Telegram</h2>
           <p>Recibe avisos automaticos antes del evento segun la opcion elegida en cada actividad.</p>
         </div>
         <form class="pending-form" (ngSubmit)="saveNotificationSettings()">
           <label>
-            <span>Numero con indicativo</span>
+            <span>Chat ID</span>
             <input
               type="text"
-              name="whatsappNumber"
-              [(ngModel)]="notificationSettingsForm.whatsappNumber"
-              placeholder="Ej. 573001234567"
+              name="telegramChatId"
+              [(ngModel)]="notificationSettingsForm.telegramChatId"
+              placeholder="Ej. 123456789"
             />
           </label>
+
+          <p class="activity-launch-copy">
+            Escribele primero a tu bot en Telegram y luego pega aqui el `chat_id` de esa conversacion.
+          </p>
 
           <label class="checkbox-field">
             <input
               type="checkbox"
-              name="whatsappNotificationsEnabled"
-              [(ngModel)]="notificationSettingsForm.whatsappNotificationsEnabled"
+              name="telegramNotificationsEnabled"
+              [(ngModel)]="notificationSettingsForm.telegramNotificationsEnabled"
             />
-            <span>Activar notificaciones por WhatsApp</span>
+            <span>Activar notificaciones por Telegram</span>
           </label>
 
           @if (notificationSettingsError) {
@@ -476,7 +480,7 @@
           }
 
           <button type="submit" [disabled]="isUpdatingNotificationSettings">
-            {{ isUpdatingNotificationSettings ? 'Guardando...' : 'Guardar WhatsApp' }}
+            {{ isUpdatingNotificationSettings ? 'Guardando...' : 'Guardar Telegram' }}
           </button>
         </form>
       </article>
@@ -771,12 +775,26 @@
             </label>
 
             <label>
-              <span>Recordatorio por WhatsApp</span>
+              <span>Recordatorio por Telegram</span>
               <select name="reminderMinutes" [(ngModel)]="newActivity.reminderMinutes">
                 @for (option of reminderOptions; track option.label) {
                   <option [ngValue]="option.value">{{ option.label }}</option>
                 }
               </select>
+            </label>
+
+            <label>
+              <span>O minutos personalizados</span>
+              <input
+                type="number"
+                min="1"
+                max="1440"
+                step="1"
+                name="customReminderMinutes"
+                [ngModel]="newActivity.reminderMinutes"
+                (ngModelChange)="newActivity.reminderMinutes = $event === '' ? null : +$event"
+                placeholder="Ej. 1, 2 o 10"
+              />
             </label>
 
             <div class="form-actions">
@@ -815,7 +833,7 @@
                         }
                       </div>
                       <p class="activity-time">{{ formatActivityTimeRange(activity) }}</p>
-                      <p class="activity-reminder">WhatsApp: {{ getReminderLabel(activity.reminderMinutes) }}</p>
+                      <p class="activity-reminder">Telegram: {{ getReminderLabel(activity.reminderMinutes) }}</p>
                       @if (activity.location) {
                         <p class="activity-location">{{ activity.location }}</p>
                       }
