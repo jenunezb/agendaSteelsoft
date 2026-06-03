@@ -164,6 +164,7 @@ function sendWhatsappReminder(array $config, array $activity): array
         return [
             'success' => false,
             'message' => $curlError !== '' ? $curlError : 'No hubo respuesta de WhatsApp.',
+            'response' => $rawResponse,
         ];
     }
 
@@ -171,10 +172,15 @@ function sendWhatsappReminder(array $config, array $activity): array
         return [
             'success' => false,
             'message' => sprintf('WhatsApp devolvio HTTP %d: %s', $statusCode, $rawResponse),
+            'response' => $rawResponse,
         ];
     }
 
-    return ['success' => true, 'message' => 'ok'];
+    return [
+        'success' => true,
+        'message' => 'ok',
+        'response' => $rawResponse,
+    ];
 }
 
 function buildWhatsappPayloadPreview(array $config, array $activity): array
@@ -217,32 +223,47 @@ function buildWhatsappPayloadPreview(array $config, array $activity): array
             'components' => [
                 [
                     'type' => 'body',
-                    'parameters' => [
-                        [
-                            'type' => 'text',
-                            'parameter_name' => 'nombre_usuario',
-                            'text' => (string) $activity['user_name'],
-                        ],
-                        [
-                            'type' => 'text',
-                            'parameter_name' => 'titulo_evento',
-                            'text' => (string) $activity['title'],
-                        ],
-                        [
-                            'type' => 'text',
-                            'parameter_name' => 'fecha_hora_evento',
-                            'text' => $dateTimeText,
-                        ],
-                        [
-                            'type' => 'text',
-                            'parameter_name' => 'tiempo_restante',
-                            'text' => $remainingText,
-                        ],
-                    ],
+                    'parameters' => buildTemplateParameters($config, $activity, $dateTimeText, $remainingText),
                 ],
             ],
         ],
     ];
+}
+
+function buildTemplateParameters(
+    array $config,
+    array $activity,
+    string $dateTimeText,
+    string $remainingText
+): array {
+    $values = [
+        'nombre_usuario' => (string) $activity['user_name'],
+        'titulo_evento' => (string) $activity['title'],
+        'fecha_hora_evento' => $dateTimeText,
+        'tiempo_restante' => $remainingText,
+    ];
+
+    if (($config['template_parameter_format'] ?? 'named') === 'positional') {
+        return array_map(
+            static fn (string $value): array => [
+                'type' => 'text',
+                'text' => $value,
+            ],
+            array_values($values)
+        );
+    }
+
+    $parameters = [];
+
+    foreach ($values as $parameterName => $value) {
+        $parameters[] = [
+            'type' => 'text',
+            'parameter_name' => $parameterName,
+            'text' => $value,
+        ];
+    }
+
+    return $parameters;
 }
 
 function buildRemainingText(int $reminderMinutes): string

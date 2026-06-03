@@ -191,13 +191,59 @@
   </main>
 } @else if (!isAuthenticated) {
   <main class="layout auth-layout">
-    <section class="panel auth-panel auth-shell">
-      <article class="auth-card">
-        <div class="panel-heading">
-          <p class="label">Steelsoft</p>
-          <h1>Agenda personal</h1>
+    <section class="landing-shell">
+      <article class="landing-hero panel">
+        <div class="hero-brand-row">
+          <div class="hero-logo-frame">
+            <img
+              class="hero-logo"
+              src="/steelsoft-wordmark.png"
+              alt="Steelsoft"
+            />
+          </div>
+          <span class="hero-badge">Agenda profesional para negocios y equipos</span>
+        </div>
+
+        <div class="hero-copy">
+          <p class="hero-eyebrow">Organiza mejor tu tiempo y tu atención</p>
+          <h1>Una agenda clara para coordinar citas, tareas y disponibilidad sin desorden.</h1>
+          <p class="hero-description">
+            Steelsoft Agenda centraliza actividades, responsables, horarios y recordatorios en una sola
+            vista. Está pensada para negocios y equipos que quieren trabajar con más orden hoy y quedar
+            listos para abrir autoagendamiento a sus clientes más adelante.
+          </p>
+        </div>
+
+        <div class="hero-feature-list">
+          <article class="hero-feature">
+            <strong>Calendario simple</strong>
+            <p>Vista mensual y semanal para entender la carga del equipo rápido.</p>
+          </article>
+          <article class="hero-feature">
+            <strong>Seguimiento operativo</strong>
+            <p>Pendientes, notas y responsables en el mismo flujo de trabajo.</p>
+          </article>
+          <article class="hero-feature">
+            <strong>Recordatorios por WhatsApp</strong>
+            <p>Prepara avisos automáticos y reduce olvidos o ausencias.</p>
+          </article>
+        </div>
+
+        <div class="hero-note">
+          <p class="label">Proxima etapa</p>
           <p>
-            Inicia sesion o crea tu usuario para entrar a tu agenda personal.
+            La base queda preparada para evolucionar a reservas públicas y mensajes de confirmación para
+            clientes potenciales.
+          </p>
+        </div>
+      </article>
+
+      <section class="panel auth-panel landing-auth">
+        <div class="panel-heading">
+          <p class="label">Acceso</p>
+          <h2>{{ authMode === 'register' ? 'Crea tu espacio de trabajo' : 'Entra a tu agenda' }}</h2>
+          <p>
+            Empieza a ordenar citas, disponibilidad, tareas y recordatorios desde una sola plataforma.
           </p>
         </div>
 
@@ -261,16 +307,38 @@
             </button>
           </form>
         }
-      </article>
 
-      <article class="privacy-card">
-        <div class="panel-heading">
-          <p class="label">Privacidad</p>
-          <h2>Politica de privacidad</h2>
+        <div class="auth-highlight">
+          <strong>Pronto para clientes potenciales</strong>
           <p>
-            Steelsoft Agenda trata la informacion necesaria para prestar el servicio de agenda,
-            organizacion personal y recordatorios operativos por WhatsApp.
+            Hoy puedes organizar tu operacion. Muy pronto podras abrir espacios de autoagendamiento y
+            confirmacion automatica para tus clientes.
           </p>
+        </div>
+
+        <div class="auth-meta">
+          <button type="button" class="text-link-button" (click)="openPrivacyModal()">
+            Politica de privacidad
+          </button>
+          <span>Contacto: <a href="mailto:prhoteuz@gmail.com">prhoteuz&#64;gmail.com</a></span>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  @if (isPrivacyModalOpen) {
+    <div class="activity-overlay" (click)="closePrivacyModal()">
+      <section class="privacy-modal panel" (click)="$event.stopPropagation()">
+        <div class="activity-modal-header">
+          <div>
+            <p class="label">Privacidad</p>
+            <h2>Politica de privacidad</h2>
+            <p>
+              Steelsoft Agenda trata la informacion necesaria para prestar el servicio de agenda,
+              organizacion personal y recordatorios operativos por WhatsApp.
+            </p>
+          </div>
+          <button type="button" class="close-button" (click)="closePrivacyModal()">Cerrar</button>
         </div>
 
         <div class="privacy-content">
@@ -315,9 +383,9 @@
             </p>
           </section>
         </div>
-      </article>
-    </section>
-  </main>
+      </section>
+    </div>
+  }
 } @else {
 <main class="layout">
   <header class="topbar panel">

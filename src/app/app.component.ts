@@ -66,6 +66,7 @@ export class AppComponent implements OnInit {
   protected isPublicProfileMode = false;
   protected publicProfileSlug = '';
   protected publicProfileState: 'loading' | 'ready' | 'not-found' | 'disabled' = 'loading';
+  protected isPrivacyModalOpen = false;
   protected isUpdatingProfileVisibility = false;
   protected isUpdatingNotificationSettings = false;
   protected notificationSettingsMessage = '';
@@ -133,6 +134,14 @@ export class AppComponent implements OnInit {
   protected setAuthMode(mode: 'login' | 'register'): void {
     this.authError = '';
     this.authMode = mode;
+  }
+
+  protected openPrivacyModal(): void {
+    this.isPrivacyModalOpen = true;
+  }
+
+  protected closePrivacyModal(): void {
+    this.isPrivacyModalOpen = false;
   }
 
   protected toggleProfileVisibility(): void {

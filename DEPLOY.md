@@ -56,6 +56,7 @@ ADD COLUMN reminder_sent_at DATETIME NULL;
    - `whatsapp_phone_number_id`
    - `whatsapp_template_name`
    - `whatsapp_template_language` opcional, por defecto `es_CO`
+   - `whatsapp_template_parameter_format` opcional, `named` o `positional`, por defecto `named`
    - `whatsapp_graph_version` opcional, por defecto `v23.0`
    - `whatsapp_cron_secret` recomendado para proteger la URL del cron
 
@@ -102,6 +103,10 @@ Para previsualizar el payload sin enviar:
 
 - `https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO&dry_run=1`
 
+Para enviar una prueba directa a un numero:
+
+- `https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO&test_number=573001234567`
+
 Para enviar una prueba manual de una actividad puntual:
 
 - `https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO&activity_id=123&force=1`
@@ -122,12 +127,14 @@ https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO
 php public_html/api/send-whatsapp-reminders.php
 ```
 
-El template aprobado en Meta debe aceptar 4 variables con estos nombres:
+Si el template en Meta usa variables con nombre, debe aceptar 4 parametros con estos nombres:
 
 1. `nombre_usuario`
 2. `titulo_evento`
 3. `fecha_hora_evento`
 4. `tiempo_restante`
+
+Si el template usa variables posicionales (`{{1}}` a `{{4}}`), configura `whatsapp_template_parameter_format = positional` y respeta ese mismo orden.
 
 ## 6. Nota importante
 

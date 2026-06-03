@@ -325,12 +325,19 @@ function normalizeReminderMinutes(mixed $value): ?int
 function getWhatsappConfig(): array
 {
     $config = require __DIR__ . '/config.php';
+    $templateParameterFormat = (string) getenv('WHATSAPP_TEMPLATE_PARAMETER_FORMAT') ?: (string) ($config['whatsapp_template_parameter_format'] ?? 'named');
+    $templateParameterFormat = strtolower(trim($templateParameterFormat));
+
+    if (!in_array($templateParameterFormat, ['named', 'positional'], true)) {
+        $templateParameterFormat = 'named';
+    }
 
     return [
         'access_token' => (string) getenv('WHATSAPP_ACCESS_TOKEN') ?: (string) ($config['whatsapp_access_token'] ?? ''),
         'phone_number_id' => (string) getenv('WHATSAPP_PHONE_NUMBER_ID') ?: (string) ($config['whatsapp_phone_number_id'] ?? ''),
         'template_name' => (string) getenv('WHATSAPP_TEMPLATE_NAME') ?: (string) ($config['whatsapp_template_name'] ?? ''),
         'template_language' => (string) getenv('WHATSAPP_TEMPLATE_LANGUAGE') ?: (string) ($config['whatsapp_template_language'] ?? 'es_CO'),
+        'template_parameter_format' => $templateParameterFormat,
         'graph_version' => (string) getenv('WHATSAPP_GRAPH_VERSION') ?: (string) ($config['whatsapp_graph_version'] ?? 'v23.0'),
         'cron_secret' => (string) getenv('WHATSAPP_CRON_SECRET') ?: (string) ($config['whatsapp_cron_secret'] ?? ''),
     ];

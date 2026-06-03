@@ -65,14 +65,19 @@ Required WhatsApp Cloud API settings:
 - `WHATSAPP_PHONE_NUMBER_ID`
 - `WHATSAPP_TEMPLATE_NAME`
 - `WHATSAPP_TEMPLATE_LANGUAGE` optional, default `es_CO`
+- `WHATSAPP_TEMPLATE_PARAMETER_FORMAT` optional, use `named` or `positional`, default `named`
 - `WHATSAPP_GRAPH_VERSION` optional, default `v23.0`
 - `WHATSAPP_CRON_SECRET` recommended if you trigger the script by URL
 
-Important: the script sends a WhatsApp template message, so the template must already exist and be approved in Meta. The current implementation sends four named body parameters: `nombre_usuario`, `titulo_evento`, `fecha_hora_evento`, `tiempo_restante`.
+Important: the script sends a WhatsApp template message, so the template must already exist and be approved in Meta. Do not leave `hello_world` configured for production reminders. The implementation supports two body parameter formats:
+
+- `named`: `nombre_usuario`, `titulo_evento`, `fecha_hora_evento`, `tiempo_restante`
+- `positional`: the same four values in that order, for templates using `{{1}}`, `{{2}}`, `{{3}}`, `{{4}}`
 
 Helpful test modes:
 
 - `?key=TU_SECRETO&dry_run=1` returns the payload preview without sending
+- `?key=TU_SECRETO&test_number=573001234567` sends a direct test to a specific number
 - `?key=TU_SECRETO&activity_id=123&force=1` sends a manual test for a specific activity
 
 ## Running unit tests
