@@ -17,7 +17,7 @@ if ($username === '') {
 }
 
 $statement = $pdo->prepare(
-    'SELECT id, name, username, profile_public
+    'SELECT id, name, username, profile_public, whatsapp_number
      FROM users
      WHERE username = :username'
 );
@@ -41,6 +41,8 @@ if (empty($user['profile_public'])) {
             'name' => $user['name'],
             'username' => $user['username'],
             'publicUrl' => buildPublicProfileUrl((string) $user['username']),
+            'whatsappNumber' => '',
+            'whatsappContactUrl' => '',
         ],
         'activities' => [],
     ]);
@@ -77,6 +79,11 @@ jsonResponse([
         'name' => $user['name'],
         'username' => $user['username'],
         'publicUrl' => buildPublicProfileUrl((string) $user['username']),
+        'whatsappNumber' => (string) ($user['whatsapp_number'] ?? ''),
+        'whatsappContactUrl' => buildWhatsappClickUrl(
+            (string) ($user['whatsapp_number'] ?? ''),
+            sprintf('Hola %s, quiero consultar disponibilidad en tu agenda.', $user['name'])
+        ),
     ],
     'activities' => $activities,
 ]);

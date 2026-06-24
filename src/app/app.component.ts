@@ -59,7 +59,7 @@ export class AppComponent implements OnInit {
   protected currentMonth = this.startOfMonth(new Date());
   protected selectedDate = this.toIsoDate(this.normalizeCalendarDate(new Date()));
   protected currentUser: AuthUser | null = null;
-  protected publicProfileUser: Pick<AuthUser, 'name' | 'username' | 'publicUrl'> | null = null;
+  protected publicProfileUser: PublicProfile['user'] = null;
   protected canRegister = false;
   protected authMode: 'login' | 'register' = 'login';
   protected authError = '';
@@ -83,8 +83,14 @@ export class AppComponent implements OnInit {
     password: ''
   };
   protected notificationSettingsForm = {
+    whatsappNumber: '',
+    whatsappNotificationsEnabled: false,
     telegramChatId: '',
     telegramNotificationsEnabled: false
+  };
+  protected financeFilters = {
+    startDate: '',
+    endDate: ''
   };
   protected isActivityPanelOpen = false;
   protected isPendingPanelOpen = false;
@@ -169,8 +175,16 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    const whatsappNumber = this.notificationSettingsForm.whatsappNumber.trim();
+    const whatsappNotificationsEnabled = this.notificationSettingsForm.whatsappNotificationsEnabled;
     const telegramChatId = this.notificationSettingsForm.telegramChatId.trim();
     const telegramNotificationsEnabled = this.notificationSettingsForm.telegramNotificationsEnabled;
+
+    if (whatsappNotificationsEnabled && !whatsappNumber) {
+      this.notificationSettingsError = 'Ingresa el numero de WhatsApp para activar notificaciones.';
+      this.notificationSettingsMessage = '';
+      return;
+    }
 
     if (telegramNotificationsEnabled && !telegramChatId) {
       this.notificationSettingsError = 'Ingresa el chat ID de Telegram para activar notificaciones.';
@@ -181,18 +195,25 @@ export class AppComponent implements OnInit {
     this.isUpdatingNotificationSettings = true;
     this.notificationSettingsError = '';
     this.notificationSettingsMessage = '';
-    this.agendaApi.updateNotificationSettings(telegramChatId, telegramNotificationsEnabled).subscribe({
-      next: (session) => {
-        this.isUpdatingNotificationSettings = false;
-        this.applySession(session);
-        this.notificationSettingsMessage = 'Configuracion de Telegram actualizada.';
-      },
-      error: (error) => {
-        this.isUpdatingNotificationSettings = false;
-        this.notificationSettingsError =
-          error?.error?.message ?? 'No fue posible guardar la configuracion de Telegram.';
-      }
-    });
+    this.agendaApi
+      .updateNotificationSettings(
+        whatsappNumber,
+        whatsappNotificationsEnabled,
+        telegramChatId,
+        telegramNotificationsEnabled
+      )
+      .subscribe({
+        next: (session) => {
+          this.isUpdatingNotificationSettings = false;
+          this.applySession(session);
+          this.notificationSettingsMessage = 'Canales de notificacion actualizados.';
+        },
+        error: (error) => {
+          this.isUpdatingNotificationSettings = false;
+          this.notificationSettingsError =
+            error?.error?.message ?? 'No fue posible guardar la configuracion de notificaciones.';
+        }
+      });
   }
 
   protected login(): void {
@@ -515,6 +536,9 @@ export class AppComponent implements OnInit {
     const assignee = this.newFinancialEntry.assignee;
     const description = this.newFinancialEntry.description.trim();
     const date = this.newFinancialEntry.date;
+    const participationPercentage = this.normalizeParticipationPercentageInput(
+      this.newFinancialEntry.participationPercentage
+    );
 
     if (!title || !type || !assignee || !date || !Number.isFinite(amount) || amount <= 0) {
       return;
@@ -527,19 +551,32 @@ export class AppComponent implements OnInit {
       amount,
       assignee,
       description,
-      date
+      date,
+      participationPercentage,
+      participantAmount: this.calculateParticipantAmount(amount, participationPercentage)
     };
 
     const request =
       this.editingFinancialEntryId === null
-        ? this.agendaApi.createFinancialEntry({ title, type, amount, assignee, description, date })
+        ? this.agendaApi.createFinancialEntry({
+            title,
+            type,
+            amount,
+            assignee,
+            description,
+            date,
+            participationPercentage,
+            participantAmount: entry.participantAmount
+          })
         : this.agendaApi.updateFinancialEntry(this.editingFinancialEntryId, {
             title,
             type,
             amount,
             assignee,
             description,
-            date
+            date,
+            participationPercentage,
+            participantAmount: entry.participantAmount
           });
 
     request.subscribe((savedEntry) => {
@@ -563,7 +600,9 @@ export class AppComponent implements OnInit {
       amount: entry.amount,
       assignee: entry.assignee,
       description: entry.description,
-      date: entry.date
+      date: entry.date,
+      participationPercentage: entry.participationPercentage,
+      participantAmount: entry.participantAmount
     };
   }
 
@@ -583,6 +622,50 @@ export class AppComponent implements OnInit {
 
   protected get currentMonthLabel(): string {
     return `${this.monthNames[this.currentMonth.getMonth()]} ${this.currentMonth.getFullYear()}`;
+  }
+
+  protected get filteredFinancialEntries(): FinancialEntry[] {
+    return this.financialEntries.filter((entry) => {
+      if (this.financeFilters.startDate && entry.date < this.financeFilters.startDate) {
+        return false;
+      }
+
+      if (this.financeFilters.endDate && entry.date > this.financeFilters.endDate) {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  protected get financialReportSummary(): {
+    income: number;
+    expense: number;
+    net: number;
+    participantTotal: number;
+    entryCount: number;
+  } {
+    return this.filteredFinancialEntries.reduce(
+      (summary, entry) => {
+        if (entry.type === 'income') {
+          summary.income += entry.amount;
+        } else {
+          summary.expense += entry.amount;
+        }
+
+        summary.participantTotal += entry.participantAmount;
+        summary.entryCount += 1;
+        summary.net = summary.income - summary.expense;
+        return summary;
+      },
+      {
+        income: 0,
+        expense: 0,
+        net: 0,
+        participantTotal: 0,
+        entryCount: 0
+      }
+    );
   }
 
   protected get currentPeriodLabel(): string {
@@ -776,6 +859,21 @@ export class AppComponent implements OnInit {
     return type === 'income' ? 'Ingreso' : 'Egreso';
   }
 
+  protected clearFinanceFilters(): void {
+    this.financeFilters = {
+      startDate: '',
+      endDate: ''
+    };
+  }
+
+  protected formatParticipationLabel(entry: FinancialEntry): string {
+    if (entry.participationPercentage === null) {
+      return 'Sin porcentaje';
+    }
+
+    return `${entry.participationPercentage}% = ${this.formatCurrency(entry.participantAmount)}`;
+  }
+
   protected formatCurrency(amount: number): string {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -904,6 +1002,8 @@ export class AppComponent implements OnInit {
 
     if (this.currentUser) {
       this.notificationSettingsForm = {
+        whatsappNumber: this.currentUser.whatsappNumber,
+        whatsappNotificationsEnabled: this.currentUser.whatsappNotificationsEnabled,
         telegramChatId: this.currentUser.telegramChatId,
         telegramNotificationsEnabled: this.currentUser.telegramNotificationsEnabled
       };
@@ -912,6 +1012,8 @@ export class AppComponent implements OnInit {
     }
 
     this.notificationSettingsForm = {
+      whatsappNumber: '',
+      whatsappNotificationsEnabled: false,
       telegramChatId: '',
       telegramNotificationsEnabled: false
     };
@@ -1007,7 +1109,9 @@ export class AppComponent implements OnInit {
       amount: 0,
       assignee: this.getCurrentAssignee(),
       description: '',
-      date: this.toIsoDate(new Date())
+      date: this.toIsoDate(new Date()),
+      participationPercentage: null,
+      participantAmount: 0
     };
   }
 
@@ -1132,5 +1236,26 @@ export class AppComponent implements OnInit {
     return `${left.type}|${left.title}|${left.amount}|${left.assignee}`.localeCompare(
       `${right.type}|${right.title}|${right.amount}|${right.assignee}`
     );
+  }
+
+  private normalizeParticipationPercentageInput(value: number | null): number | null {
+    if (value === null || !Number.isFinite(Number(value))) {
+      return null;
+    }
+
+    const normalizedValue = Number(value);
+    if (normalizedValue < 0 || normalizedValue > 100) {
+      return null;
+    }
+
+    return normalizedValue;
+  }
+
+  private calculateParticipantAmount(amount: number, participationPercentage: number | null): number {
+    if (participationPercentage === null) {
+      return 0;
+    }
+
+    return Math.round(amount * (participationPercentage / 100));
   }
 }

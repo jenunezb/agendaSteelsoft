@@ -189,6 +189,13 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'user_id',
         'ALTER TABLE financial_entries ADD COLUMN user_id INT UNSIGNED NULL AFTER id'
     );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'financial_entries',
+        'participation_percentage',
+        'ALTER TABLE financial_entries ADD COLUMN participation_percentage DECIMAL(5,2) NULL AFTER amount'
+    );
 
     ensureIndexExists($pdo, $databaseName, 'activities', 'idx_activities_user_date', 'CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time)');
     ensureIndexExists($pdo, $databaseName, 'general_pendings', 'idx_general_pendings_user_date', 'CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pending_date)');
@@ -348,6 +355,23 @@ function normalizeWhatsappNumber(string $value): string
 {
     $normalizedValue = preg_replace('/\D+/', '', $value) ?? '';
     return trim($normalizedValue);
+}
+
+function buildWhatsappClickUrl(string $number, string $message = ''): string
+{
+    $normalizedNumber = normalizeWhatsappNumber($number);
+
+    if ($normalizedNumber === '') {
+        return '';
+    }
+
+    $query = ['phone' => $normalizedNumber];
+
+    if ($message !== '') {
+        $query['text'] = $message;
+    }
+
+    return 'https://wa.me/?' . http_build_query($query);
 }
 
 function normalizeReminderMinutes(mixed $value): ?int

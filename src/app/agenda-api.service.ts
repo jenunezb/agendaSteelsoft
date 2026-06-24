@@ -30,6 +30,8 @@ type RawAuthSession = Omit<AuthSession, 'user'> & {
 type RawFinancialEntry = Partial<FinancialEntry> & {
   entry_type?: FinancialEntry['type'];
   entry_date?: string;
+  participation_percentage?: number | string | null;
+  participant_amount?: number | string | null;
 };
 
 @Injectable({
@@ -92,12 +94,16 @@ export class AgendaApiService {
   }
 
   updateNotificationSettings(
+    whatsappNumber: string,
+    whatsappNotificationsEnabled: boolean,
     telegramChatId: string,
     telegramNotificationsEnabled: boolean
   ): Observable<AuthSession> {
     return this.http
       .put<RawAuthSession>(`${this.baseUrl}/auth.php`, {
         action: 'updateNotifications',
+        whatsappNumber,
+        whatsappNotificationsEnabled,
         telegramChatId,
         telegramNotificationsEnabled
       })
@@ -197,8 +203,27 @@ export class AgendaApiService {
       amount: Number(entry.amount) || 0,
       assignee: entry.assignee?.trim() ?? '',
       description: entry.description ?? '',
-      date: this.normalizeApiDate(entry.date ?? entry.entry_date)
+      date: this.normalizeApiDate(entry.date ?? entry.entry_date),
+      participationPercentage: this.normalizeParticipationPercentage(
+        entry.participationPercentage ?? entry.participation_percentage
+      ),
+      participantAmount: Number(entry.participantAmount ?? entry.participant_amount) || 0
     };
+  }
+
+  private normalizeParticipationPercentage(
+    value: number | string | null | undefined
+  ): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    const normalizedValue = Number(value);
+    if (!Number.isFinite(normalizedValue)) {
+      return null;
+    }
+
+    return normalizedValue >= 0 && normalizedValue <= 100 ? normalizedValue : null;
   }
 
   private normalizeReminderMinutes(value: number | string | null | undefined): number | null {

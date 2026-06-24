@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS financial_entries (
   title VARCHAR(255) NOT NULL,
   entry_type ENUM('income', 'expense') NOT NULL DEFAULT 'income',
   amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  participation_percentage DECIMAL(5,2) NULL,
   assignee VARCHAR(100) NOT NULL,
   description TEXT NOT NULL,
   entry_date DATE NOT NULL,

@@ -45,6 +45,11 @@
                 publica{{ selectedDateActivities.length === 1 ? '' : 's' }} en esta fecha.
               </p>
               <button type="button" (click)="openActivityPanel(selectedDate)">Ver actividades del dia</button>
+              @if (publicProfileUser?.whatsappContactUrl) {
+                <a class="contact-link-button" [href]="publicProfileUser?.whatsappContactUrl" target="_blank" rel="noreferrer">
+                  Reservar o consultar por WhatsApp
+                </a>
+              }
             </div>
           </article>
         </div>
@@ -444,10 +449,29 @@
 
       <article class="panel pending-panel">
         <div class="panel-heading">
-          <h2>Telegram</h2>
-          <p>Recibe avisos automaticos antes del evento segun la opcion elegida en cada actividad.</p>
+          <h2>Notificaciones</h2>
+          <p>Configura WhatsApp y Telegram para recibir recordatorios automaticos antes de cada cita.</p>
         </div>
         <form class="pending-form" (ngSubmit)="saveNotificationSettings()">
+          <label>
+            <span>WhatsApp</span>
+            <input
+              type="text"
+              name="whatsappNumber"
+              [(ngModel)]="notificationSettingsForm.whatsappNumber"
+              placeholder="Ej. 573001234567"
+            />
+          </label>
+
+          <label class="checkbox-field">
+            <input
+              type="checkbox"
+              name="whatsappNotificationsEnabled"
+              [(ngModel)]="notificationSettingsForm.whatsappNotificationsEnabled"
+            />
+            <span>Activar notificaciones por WhatsApp</span>
+          </label>
+
           <label>
             <span>Chat ID</span>
             <input
@@ -480,7 +504,7 @@
           }
 
           <button type="submit" [disabled]="isUpdatingNotificationSettings">
-            {{ isUpdatingNotificationSettings ? 'Guardando...' : 'Guardar Telegram' }}
+            {{ isUpdatingNotificationSettings ? 'Guardando...' : 'Guardar canales' }}
           </button>
         </form>
       </article>
@@ -1017,6 +1041,19 @@
             </label>
 
             <label>
+              <span>Participacion o comision (%)</span>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                name="financialParticipationPercentage"
+                [(ngModel)]="newFinancialEntry.participationPercentage"
+                placeholder="Ej. 40"
+              />
+            </label>
+
+            <label>
               <span>Asignado a</span>
               <select name="financialAssignee" [(ngModel)]="newFinancialEntry.assignee" required>
                 @for (assignee of assigneeOptions; track assignee) {
@@ -1049,13 +1086,48 @@
 
           <div class="selected-day activity-modal-list">
             <div>
-              <p class="label">Listado</p>
-              <h3>Movimientos</h3>
+              <p class="label">Reporte</p>
+              <h3>Movimientos por fecha</h3>
+            </div>
+
+            <div class="finance-report-grid">
+              <label>
+                <span>Desde</span>
+                <input type="date" name="financeFilterStartDate" [(ngModel)]="financeFilters.startDate" />
+              </label>
+
+              <label>
+                <span>Hasta</span>
+                <input type="date" name="financeFilterEndDate" [(ngModel)]="financeFilters.endDate" />
+              </label>
+
+              <button type="button" class="secondary-button" (click)="clearFinanceFilters()">
+                Limpiar filtro
+              </button>
+            </div>
+
+            <div class="finance-summary-grid">
+              <article class="finance-summary-card">
+                <span>Ingresos</span>
+                <strong>{{ formatCurrency(financialReportSummary.income) }}</strong>
+              </article>
+              <article class="finance-summary-card expense">
+                <span>Egresos</span>
+                <strong>{{ formatCurrency(financialReportSummary.expense) }}</strong>
+              </article>
+              <article class="finance-summary-card">
+                <span>Balance</span>
+                <strong>{{ formatCurrency(financialReportSummary.net) }}</strong>
+              </article>
+              <article class="finance-summary-card">
+                <span>Participacion</span>
+                <strong>{{ formatCurrency(financialReportSummary.participantTotal) }}</strong>
+              </article>
             </div>
 
             <div class="pending-list">
-              @if (financialEntries.length) {
-                @for (entry of financialEntries; track trackByFinancialEntry($index, entry)) {
+              @if (filteredFinancialEntries.length) {
+                @for (entry of filteredFinancialEntries; track trackByFinancialEntry($index, entry)) {
                   <article class="pending-card finance-card" [class.expense]="entry.type === 'expense'">
                     <div>
                       <div class="finance-card-header">
@@ -1069,6 +1141,7 @@
                       <strong>{{ entry.title }}</strong>
                       <p class="entry-date">{{ formatFullDateLabel(entry.date) }}</p>
                       <p class="finance-amount">{{ formatCurrency(entry.amount) }}</p>
+                      <p class="activity-launch-copy">Participacion: {{ formatParticipationLabel(entry) }}</p>
                       @if (entry.description) {
                         <p>{{ entry.description }}</p>
                       }
@@ -1080,7 +1153,7 @@
                   </article>
                 }
               } @else {
-                <p class="empty-state">No hay ingresos o egresos registrados.</p>
+                <p class="empty-state">No hay movimientos para el rango seleccionado.</p>
               }
             </div>
           </div>

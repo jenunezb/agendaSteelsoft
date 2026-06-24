@@ -28,6 +28,8 @@ export interface FinancialEntry {
   assignee: string;
   description: string;
   date: string;
+  participationPercentage: number | null;
+  participantAmount: number;
 }
 
 export interface CalendarDay {
@@ -60,7 +62,12 @@ export interface AuthSession {
 export interface PublicProfile {
   found: boolean;
   profileEnabled: boolean;
-  user: Pick<AuthUser, 'name' | 'username' | 'publicUrl'> | null;
+  user:
+    | (Pick<AuthUser, 'name' | 'username' | 'publicUrl'> & {
+        whatsappNumber?: string;
+        whatsappContactUrl?: string;
+      })
+    | null;
   activities: Activity[];
 }
 

@@ -445,6 +445,19 @@ button:disabled {
   gap: 12px;
 }
 
+.contact-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #1d5f2c;
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .launch-summary {
   display: grid;
   gap: 12px;
@@ -829,6 +842,47 @@ button {
   color: var(--black);
   font-size: 1rem;
   font-weight: 700;
+}
+
+.finance-report-grid,
+.finance-summary-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.finance-report-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+}
+
+.finance-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.finance-summary-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fcfffb, #eef9ef);
+  border: 1px solid rgba(46, 160, 67, 0.18);
+}
+
+.finance-summary-card.expense {
+  background: linear-gradient(180deg, #fffdfc, #fceaea);
+  border-color: rgba(188, 71, 73, 0.18);
+}
+
+.finance-summary-card span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.finance-summary-card strong {
+  font-size: 1rem;
 }
 
 .calendar-header {
@@ -1232,6 +1286,11 @@ button {
     order: -1;
     max-height: none;
     overflow: visible;
+  }
+
+  .finance-report-grid,
+  .finance-summary-grid {
+    grid-template-columns: 1fr;
   }
 
   .week-agenda {
