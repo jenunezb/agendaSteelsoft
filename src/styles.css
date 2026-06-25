@@ -146,21 +146,14 @@ body {
 }
 
 .auth-layout .auth-standalone {
-  display: grid;
-  place-items: center;
-}
-
-.auth-layout .auth-standalone > :not(.landing-auth) {
-  display: none;
-}
-
-.auth-layout .auth-standalone .landing-auth {
   width: 100%;
   min-height: auto;
   padding: 0;
   border: 0;
   box-shadow: none;
   background: transparent;
+  display: grid;
+  place-items: center;
 }
 
 .auth-layout .landing-hero {
