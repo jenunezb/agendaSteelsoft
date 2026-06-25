@@ -37,12 +37,13 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(150) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   company_role VARCHAR(40) NOT NULL DEFAULT 'owner',
+  professional_id INT UNSIGNED NULL,
   is_system_admin TINYINT(1) NOT NULL DEFAULT 0,
   email_verified_at DATETIME NULL,
   verification_token_hash VARCHAR(255) NULL,
   verification_token_expires_at DATETIME NULL,
   verification_sent_at DATETIME NULL,
-  profile_public TINYINT(1) NOT NULL DEFAULT 0,
+  profile_public TINYINT(1) NOT NULL DEFAULT 1,
   whatsapp_number VARCHAR(20) NOT NULL DEFAULT '',
   whatsapp_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0,
   telegram_chat_id VARCHAR(30) NOT NULL DEFAULT '',
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS professionals (
   name VARCHAR(120) NOT NULL,
   email VARCHAR(150) NOT NULL DEFAULT '',
   phone VARCHAR(30) NOT NULL DEFAULT '',
+  linked_user_id INT UNSIGNED NULL,
   active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -127,3 +129,14 @@ CREATE TABLE IF NOT EXISTS financial_entries (
 );
 
 CREATE UNIQUE INDEX idx_users_email_unique ON users (email);
+CREATE INDEX idx_users_company ON users (company_id);
+CREATE INDEX idx_users_professional ON users (professional_id);
+CREATE INDEX idx_professionals_company_active ON professionals (company_id, active, name);
+CREATE INDEX idx_professionals_linked_user ON professionals (linked_user_id);
+CREATE INDEX idx_company_subscriptions_company ON company_subscriptions (company_id, status);
+CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time);
+CREATE INDEX idx_activities_company_date ON activities (company_id, activity_date, start_time);
+CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pending_date);
+CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date);
+CREATE INDEX idx_financial_entries_user_date ON financial_entries (user_id, entry_date);
+CREATE INDEX idx_financial_entries_company_date ON financial_entries (company_id, entry_date);

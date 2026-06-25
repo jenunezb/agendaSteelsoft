@@ -168,6 +168,9 @@ export class AppComponent implements OnInit {
     if (authRouteMode) {
       this.authRouteMode = authRouteMode;
       this.authMode = authRouteMode;
+      this.isAuthLoading = false;
+      this.loadSession(false);
+      return;
     }
 
     const publicSlug = this.getPublicSlugFromLocation();
@@ -1280,8 +1283,11 @@ export class AppComponent implements OnInit {
     return this.activities.filter((activity) => activity.date === isoDate);
   }
 
-  private loadSession(): void {
-    this.isAuthLoading = true;
+  private loadSession(showLoader = true): void {
+    if (showLoader) {
+      this.isAuthLoading = true;
+    }
+
     this.agendaApi.getSessionStatus().subscribe({
       next: (session) => {
         this.isAuthLoading = false;
@@ -1293,7 +1299,10 @@ export class AppComponent implements OnInit {
       },
       error: () => {
         this.isAuthLoading = false;
-        this.authError = 'No fue posible validar la sesion.';
+
+        if (showLoader) {
+          this.authError = 'No fue posible validar la sesion.';
+        }
       }
     });
   }
