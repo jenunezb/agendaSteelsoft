@@ -545,6 +545,125 @@
           <h2>Panel maestro de cuentas registradas</h2>
           <p>Desde aqui puedes revisar las empresas y personas independientes registradas.</p>
         </div>
+        <div class="superadmin-tabs">
+          <button
+            type="button"
+            class="superadmin-tab"
+            [class.active]="superAdminTab === 'overview'"
+            (click)="superAdminTab = 'overview'"
+          >
+            Resumen
+          </button>
+          <button
+            type="button"
+            class="superadmin-tab"
+            [class.active]="superAdminTab === 'accounts'"
+            (click)="superAdminTab = 'accounts'"
+          >
+            Cuentas registradas
+          </button>
+        </div>
+
+        @if (superAdminTab === 'overview') {
+          <div class="enterprise-kpi-grid superadmin-overview">
+            <article class="enterprise-kpi-card">
+              <span>Cuentas registradas</span>
+              <strong>{{ systemAccounts.length }}</strong>
+              <small>Incluye empresas, independientes y la cuenta del sistema.</small>
+            </article>
+            <article class="enterprise-kpi-card">
+              <span>Correos verificados</span>
+              <strong>{{ verifiedSystemAccountsCount }}</strong>
+              <small>Usuarios habilitados para iniciar sesion.</small>
+            </article>
+            <article class="enterprise-kpi-card">
+              <span>Administrador</span>
+              <strong>{{ currentUser?.email }}</strong>
+              <small>Recibe notificaciones de nuevos registros.</small>
+            </article>
+          </div>
+        } @else {
+          <article class="panel superadmin-table-panel">
+            <div class="superadmin-table-heading">
+              <div class="panel-heading">
+                <p class="label">Empresas e independientes</p>
+                <h2>Listado de cuentas registradas</h2>
+                <p>Vista centralizada del estado de cada cuenta dentro de la plataforma.</p>
+              </div>
+              <button type="button" class="secondary-button" (click)="reloadSystemAccounts()" [disabled]="isLoadingSystemAccounts">
+                {{ isLoadingSystemAccounts ? 'Actualizando...' : 'Actualizar tabla' }}
+              </button>
+            </div>
+
+            @if (companySettingsError) {
+              <p class="auth-error">{{ companySettingsError }}</p>
+            }
+
+            <div class="superadmin-table-wrap">
+              <table class="superadmin-table">
+                <thead>
+                  <tr>
+                    <th>Cuenta</th>
+                    <th>Tipo</th>
+                    <th>Verificacion</th>
+                    <th>Plan</th>
+                    <th>Cupos</th>
+                    <th>Estado</th>
+                    <th>Registro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (account of systemAccounts; track account.userId) {
+                    <tr>
+                      <td>
+                        <div class="superadmin-account-cell">
+                          <strong>{{ account.companyName || account.ownerName }}</strong>
+                          <div class="superadmin-account-meta">
+                            <span>{{ account.ownerName }} · {{ account.ownerEmail }}</span>
+                            <span>Usuario: {{ account.username }}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="superadmin-status-stack">
+                          <span class="status-chip">{{ account.isSystemAdmin ? 'System admin' : (account.accountType === 'business' ? 'Empresa' : 'Independiente') }}</span>
+                          @if (account.companySlug) {
+                            <small>{{ account.companySlug }}</small>
+                          }
+                        </div>
+                      </td>
+                      <td>
+                        <span class="status-chip" [class.active]="account.emailVerified">
+                          {{ account.emailVerified ? 'Verificado' : 'Pendiente' }}
+                        </span>
+                      </td>
+                      <td>
+                        <div class="superadmin-status-stack">
+                          <strong>{{ account.planName || 'Sin plan' }}</strong>
+                          <small>{{ account.planCode || 'N/A' }}</small>
+                        </div>
+                      </td>
+                      <td>{{ account.activeProfessionals }}/{{ account.professionalLimit || 0 }}</td>
+                      <td>
+                        <div class="superadmin-status-stack">
+                          <span class="status-chip" [class.active]="account.companyStatus === 'active'">
+                            {{ account.companyStatus || 'active' }}
+                          </span>
+                          <small>{{ account.subscriptionStatus || 'active' }}</small>
+                        </div>
+                      </td>
+                      <td>{{ account.createdAt | date:'dd/MM/yyyy' }}</td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="7">Aun no hay cuentas registradas.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </article>
+        }
       </article>
     </section>
   } @else {
