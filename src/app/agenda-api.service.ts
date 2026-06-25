@@ -5,16 +5,31 @@ import {
   Activity,
   AuthSession,
   AuthUser,
+  CompanyContext,
+  CompanyProfessional,
+  SystemAccountSummary,
   FinancialEntry,
   GeneralPending,
   PublicProfile
 } from './app.models';
+
+type RawCompanyProfessional = Partial<CompanyProfessional> & {
+  linked_user_id?: number | null;
+  email_verified?: boolean | number;
+};
 
 type RawActivity = Partial<Activity> & {
   reminder_minutes?: number | string | null;
 };
 
 type RawAuthUser = Partial<AuthUser> & {
+  email_verified?: boolean | number;
+  is_system_admin?: boolean | number;
+  email?: string;
+  account_type?: 'business' | 'independent';
+  company_id?: number;
+  company_role?: string;
+  professional_id?: number;
   profile_public?: boolean | number;
   public_url?: string;
   whatsapp_number?: string | null;
@@ -54,9 +69,18 @@ export class AgendaApiService {
   }
 
   getPublicProfile(username: string): Observable<PublicProfile> {
-    return this.http.get<PublicProfile>(
-      `${this.baseUrl}/public-profile.php?username=${encodeURIComponent(username)}`
-    );
+    return this.http
+      .get<PublicProfile>(`${this.baseUrl}/public-profile.php?username=${encodeURIComponent(username)}`)
+      .pipe(
+        map((profile) => ({
+          ...profile,
+          activities: (profile.activities ?? []).map((activity) => this.normalizeActivity(activity)),
+          professionals: (profile.professionals ?? []).map((professional) => ({
+            id: Number(professional.id) || 0,
+            name: professional.name?.trim() ?? ''
+          }))
+        }))
+      );
   }
 
   login(username: string, password: string): Observable<AuthSession> {
@@ -76,6 +100,22 @@ export class AgendaApiService {
         name,
         username,
         password
+      })
+      .pipe(map((session) => this.normalizeAuthSession(session)));
+  }
+
+  registerAccount(payload: {
+    name: string;
+    username: string;
+    email: string;
+    password: string;
+    companyName: string;
+    accountType: 'business' | 'independent';
+  }): Observable<AuthSession> {
+    return this.http
+      .post<RawAuthSession>(`${this.baseUrl}/auth.php`, {
+        action: 'register',
+        ...payload
       })
       .pipe(map((session) => this.normalizeAuthSession(session)));
   }
@@ -170,6 +210,80 @@ export class AgendaApiService {
     return this.http.delete<{ success: boolean }>(`${this.baseUrl}/financial-entries.php?id=${id}`);
   }
 
+  getCompanyContext(): Observable<CompanyContext> {
+    return this.http.get<CompanyContext>(`${this.baseUrl}/company.php`);
+  }
+
+  updateCompany(
+    company: Pick<CompanyContext['company'], 'name' | 'status'>
+  ): Observable<CompanyContext> {
+    return this.http.put<CompanyContext>(`${this.baseUrl}/company.php`, {
+      action: 'updateCompany',
+      ...company
+    });
+  }
+
+  updateSubscription(
+    subscription: Pick<
+      CompanyContext['subscription'],
+      'planName' | 'planCode' | 'status' | 'monthlyPrice' | 'professionalLimit' | 'renewalDay'
+    >
+  ): Observable<CompanyContext> {
+    return this.http.put<CompanyContext>(`${this.baseUrl}/company.php`, {
+      action: 'updateSubscription',
+      ...subscription
+    });
+  }
+
+  createProfessional(
+    professional: Omit<CompanyProfessional, 'id'>
+  ): Observable<CompanyProfessional> {
+    return this.http
+      .post<RawCompanyProfessional>(`${this.baseUrl}/professionals.php`, professional)
+      .pipe(map((savedProfessional) => this.normalizeCompanyProfessional(savedProfessional)));
+  }
+
+  updateProfessional(
+    id: number,
+    professional: Omit<CompanyProfessional, 'id'>
+  ): Observable<CompanyProfessional> {
+    return this.http
+      .put<RawCompanyProfessional>(`${this.baseUrl}/professionals.php?id=${id}`, professional)
+      .pipe(map((savedProfessional) => this.normalizeCompanyProfessional(savedProfessional)));
+  }
+
+  deleteProfessional(id: number): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.baseUrl}/professionals.php?id=${id}`);
+  }
+
+  verifyEmail(token: string): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(`${this.baseUrl}/auth.php`, {
+      action: 'verifyEmail',
+      token
+    });
+  }
+
+  getSystemAccounts(): Observable<SystemAccountSummary[]> {
+    return this.http.get<SystemAccountSummary[]>(`${this.baseUrl}/admin.php`);
+  }
+
+  createPublicBooking(payload: {
+    username: string;
+    professionalId: number;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    notes: string;
+  }): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.baseUrl}/public-bookings.php`,
+      payload
+    );
+  }
+
   private normalizeApiDate(rawDate: string | null | undefined): string {
     if (typeof rawDate !== 'string') {
       return '';
@@ -202,6 +316,7 @@ export class AgendaApiService {
       type: entry.type === 'expense' || entry.entry_type === 'expense' ? 'expense' : 'income',
       amount: Number(entry.amount) || 0,
       assignee: entry.assignee?.trim() ?? '',
+      professionalId: entry.professionalId ? Number(entry.professionalId) : null,
       description: entry.description ?? '',
       date: this.normalizeApiDate(entry.date ?? entry.entry_date),
       participationPercentage: this.normalizeParticipationPercentage(
@@ -246,6 +361,7 @@ export class AgendaApiService {
       startTime: activity.startTime?.trim() ?? '',
       endTime: activity.endTime?.trim() ?? '',
       assignee: activity.assignee?.trim() ?? '',
+      professionalId: activity.professionalId ? Number(activity.professionalId) : null,
       visibility: activity.visibility === 'public' ? 'public' : 'private',
       completed: Boolean(activity.completed),
       location: activity.location?.trim() ?? '',
@@ -261,7 +377,9 @@ export class AgendaApiService {
     return {
       authenticated: Boolean(session.authenticated),
       canRegister: Boolean(session.canRegister),
-      user: session.user ? this.normalizeAuthUser(session.user) : null
+      user: session.user ? this.normalizeAuthUser(session.user) : null,
+      requiresEmailVerification: Boolean(session.requiresEmailVerification),
+      message: typeof session.message === 'string' ? session.message : ''
     };
   }
 
@@ -270,6 +388,10 @@ export class AgendaApiService {
       id: Number(user.id) || 0,
       name: user.name?.trim() ?? '',
       username: user.username?.trim() ?? '',
+      email: user.email?.trim() ?? '',
+      emailVerified: Boolean(user.emailVerified ?? user.email_verified),
+      isSystemAdmin: Boolean(user.isSystemAdmin ?? user.is_system_admin),
+      accountType: user.accountType ?? user.account_type ?? 'business',
       profilePublic: Boolean(user.profilePublic ?? user.profile_public),
       publicUrl: user.publicUrl?.trim() ?? user.public_url?.trim() ?? '',
       whatsappNumber: user.whatsappNumber?.trim() ?? user.whatsapp_number?.trim() ?? '',
@@ -279,7 +401,27 @@ export class AgendaApiService {
       telegramChatId: user.telegramChatId?.trim() ?? user.telegram_chat_id?.trim() ?? '',
       telegramNotificationsEnabled: Boolean(
         user.telegramNotificationsEnabled ?? user.telegram_notifications_enabled
-      )
+      ),
+      companyId: Number(user.companyId ?? user.company_id) || 0,
+      companyRole: user.companyRole?.trim() ?? user.company_role?.trim() ?? '',
+      professionalId: Number(user.professionalId ?? (user as RawAuthUser & { professional_id?: number }).professional_id) || 0
+    };
+  }
+
+  private normalizeCompanyProfessional(professional: RawCompanyProfessional): CompanyProfessional {
+    return {
+      id: Number(professional.id) || 0,
+      name: professional.name?.trim() ?? '',
+      email: professional.email?.trim() ?? '',
+      phone: professional.phone?.trim() ?? '',
+      active: Boolean(professional.active),
+      linkedUserId: professional.linkedUserId
+        ? Number(professional.linkedUserId)
+        : professional.linked_user_id
+          ? Number(professional.linked_user_id)
+          : null,
+      username: professional.username?.trim() ?? '',
+      emailVerified: Boolean(professional.emailVerified ?? professional.email_verified)
     };
   }
 }

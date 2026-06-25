@@ -1,8 +1,47 @@
+CREATE TABLE IF NOT EXISTS companies (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  slug VARCHAR(170) NOT NULL UNIQUE,
+  account_type ENUM('business', 'independent') NOT NULL DEFAULT 'business',
+  status ENUM('active', 'inactive', 'suspended') NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS plans (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
+  monthly_price DECIMAL(12,2) NOT NULL DEFAULT 0,
+  professional_limit SMALLINT UNSIGNED NOT NULL DEFAULT 4,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO plans (code, name, monthly_price, professional_limit, active)
+VALUES
+  ('free', 'Plan gratuito', 0, 4, 1),
+  ('basic', 'Basico empresarial', 150000, 4, 1)
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name),
+  monthly_price = VALUES(monthly_price),
+  professional_limit = VALUES(professional_limit),
+  active = VALUES(active);
+
 CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  company_id INT UNSIGNED NULL,
   name VARCHAR(100) NOT NULL,
   username VARCHAR(100) NOT NULL UNIQUE,
+  email VARCHAR(150) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  company_role VARCHAR(40) NOT NULL DEFAULT 'owner',
+  is_system_admin TINYINT(1) NOT NULL DEFAULT 0,
+  email_verified_at DATETIME NULL,
+  verification_token_hash VARCHAR(255) NULL,
+  verification_token_expires_at DATETIME NULL,
+  verification_sent_at DATETIME NULL,
   profile_public TINYINT(1) NOT NULL DEFAULT 0,
   whatsapp_number VARCHAR(20) NOT NULL DEFAULT '',
   whatsapp_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0,
@@ -12,9 +51,37 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS company_subscriptions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  company_id INT UNSIGNED NOT NULL,
+  plan_id INT UNSIGNED NULL,
+  plan_code VARCHAR(50) NOT NULL,
+  plan_name VARCHAR(100) NOT NULL,
+  status ENUM('active', 'trial', 'suspended', 'cancelled') NOT NULL DEFAULT 'active',
+  monthly_price DECIMAL(12,2) NOT NULL DEFAULT 0,
+  professional_limit SMALLINT UNSIGNED NOT NULL DEFAULT 4,
+  started_at DATE NOT NULL,
+  renewal_day TINYINT UNSIGNED NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS professionals (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  company_id INT UNSIGNED NOT NULL,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(150) NOT NULL DEFAULT '',
+  phone VARCHAR(30) NOT NULL DEFAULT '',
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS activities (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NULL,
+  company_id INT UNSIGNED NULL,
+  professional_id INT UNSIGNED NULL,
   title VARCHAR(255) NOT NULL,
   start_time TIME NOT NULL,
   end_time TIME NOT NULL,
@@ -33,6 +100,8 @@ CREATE TABLE IF NOT EXISTS activities (
 CREATE TABLE IF NOT EXISTS general_pendings (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NULL,
+  company_id INT UNSIGNED NULL,
+  professional_id INT UNSIGNED NULL,
   title VARCHAR(255) NOT NULL,
   assignee VARCHAR(100) NOT NULL,
   description TEXT NOT NULL,
@@ -44,6 +113,8 @@ CREATE TABLE IF NOT EXISTS general_pendings (
 CREATE TABLE IF NOT EXISTS financial_entries (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NULL,
+  company_id INT UNSIGNED NULL,
+  professional_id INT UNSIGNED NULL,
   title VARCHAR(255) NOT NULL,
   entry_type ENUM('income', 'expense') NOT NULL DEFAULT 'income',
   amount DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -54,3 +125,5 @@ CREATE TABLE IF NOT EXISTS financial_entries (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+CREATE UNIQUE INDEX idx_users_email_unique ON users (email);

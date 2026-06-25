@@ -8,9 +8,12 @@ import {
   AuthSession,
   AuthUser,
   CalendarDay,
+  CompanyContext,
+  CompanyProfessional,
   FinancialEntry,
   GeneralPending,
   PublicProfile,
+  SystemAccountSummary,
   WeekGroup
 } from './app.models';
 
@@ -60,9 +63,11 @@ export class AppComponent implements OnInit {
   protected selectedDate = this.toIsoDate(this.normalizeCalendarDate(new Date()));
   protected currentUser: AuthUser | null = null;
   protected publicProfileUser: PublicProfile['user'] = null;
+  protected publicProfileProfessionals: Array<{ id: number; name: string }> = [];
   protected canRegister = false;
   protected authMode: 'login' | 'register' = 'login';
   protected authError = '';
+  protected authMessage = '';
   protected isAuthLoading = true;
   protected isSubmittingAuth = false;
   protected isPublicProfileMode = false;
@@ -73,13 +78,30 @@ export class AppComponent implements OnInit {
   protected isUpdatingNotificationSettings = false;
   protected notificationSettingsMessage = '';
   protected notificationSettingsError = '';
+  protected companyContext: CompanyContext | null = null;
+  protected companySettingsError = '';
+  protected companySettingsMessage = '';
+  protected isSavingCompanyProfile = false;
+  protected isSavingSubscription = false;
+  protected isSavingProfessional = false;
+  protected editingProfessionalId: number | null = null;
+  protected systemAccounts: SystemAccountSummary[] = [];
+  protected isLoadingSystemAccounts = false;
+  protected verificationToken = '';
+  protected authRouteMode: 'login' | 'register' | null = null;
+  protected superAdminTab: 'overview' | 'accounts' = 'overview';
+  protected companyAdminTab: 'agenda' | 'config' = 'agenda';
+  protected isSubmittingPublicBooking = false;
   protected loginForm = {
     username: '',
     password: ''
   };
   protected registerForm = {
-    name: 'Cristian',
-    username: 'cristian',
+    name: '',
+    username: '',
+    email: '',
+    companyName: '',
+    accountType: 'business' as 'business' | 'independent',
     password: ''
   };
   protected notificationSettingsForm = {
@@ -87,6 +109,34 @@ export class AppComponent implements OnInit {
     whatsappNotificationsEnabled: false,
     telegramChatId: '',
     telegramNotificationsEnabled: false
+  };
+  protected companyProfileForm = {
+    name: '',
+    status: 'active'
+  };
+  protected companySubscriptionForm = {
+    planName: 'Basico empresarial',
+    planCode: 'basic',
+    status: 'active',
+    monthlyPrice: 150000,
+    professionalLimit: 4,
+    renewalDay: new Date().getDate()
+  };
+  protected professionalForm = {
+    name: '',
+    email: '',
+    phone: '',
+    active: true
+  };
+  protected publicBookingForm = {
+    professionalId: 0,
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    notes: ''
   };
   protected financeFilters = {
     startDate: '',
@@ -107,6 +157,19 @@ export class AppComponent implements OnInit {
   protected newFinancialEntry: Omit<FinancialEntry, 'id'> = this.buildEmptyFinancialEntry();
 
   ngOnInit(): void {
+    const verificationToken = this.getVerificationTokenFromLocation();
+    if (verificationToken) {
+      this.verificationToken = verificationToken;
+      this.verifyEmailToken(verificationToken);
+      return;
+    }
+
+    const authRouteMode = this.getAuthRouteModeFromLocation();
+    if (authRouteMode) {
+      this.authRouteMode = authRouteMode;
+      this.authMode = authRouteMode;
+    }
+
     const publicSlug = this.getPublicSlugFromLocation();
 
     if (publicSlug) {
@@ -120,11 +183,39 @@ export class AppComponent implements OnInit {
   }
 
   protected get assigneeOptions(): string[] {
+    if (this.isProfessionalUser && this.currentUser?.name) {
+      return [this.currentUser.name];
+    }
+
+    const companyProfessionals = this.companyContext?.professionals
+      .filter((professional) => professional.active)
+      .map((professional) => professional.name) ?? [];
+
+    if (companyProfessionals.length > 0) {
+      return companyProfessionals;
+    }
+
     return this.currentUser ? [this.currentUser.name] : [];
   }
 
   protected get isAuthenticated(): boolean {
     return this.currentUser !== null;
+  }
+
+  protected get isAuthRoute(): boolean {
+    return this.authRouteMode !== null;
+  }
+
+  protected get isSystemAdmin(): boolean {
+    return Boolean(this.currentUser?.isSystemAdmin);
+  }
+
+  protected get isProfessionalUser(): boolean {
+    return !this.isSystemAdmin && (this.currentUser?.companyRole ?? '') === 'professional';
+  }
+
+  protected get isCompanyAdminUser(): boolean {
+    return !this.isSystemAdmin && !this.isProfessionalUser;
   }
 
   protected get showPrivateWorkspace(): boolean {
@@ -139,9 +230,48 @@ export class AppComponent implements OnInit {
     return this.currentUser?.publicUrl ?? '';
   }
 
+  protected get activeProfessionals(): CompanyProfessional[] {
+    return this.companyContext?.professionals.filter((professional) => professional.active) ?? [];
+  }
+
+  protected get companyStats() {
+    return this.companyContext?.stats ?? {
+      activeProfessionals: 0,
+      availableSlots: 0
+    };
+  }
+
+  protected get isEditingProfessional(): boolean {
+    return this.editingProfessionalId !== null;
+  }
+
+  protected get verifiedSystemAccountsCount(): number {
+    return this.systemAccounts.filter((account) => account.emailVerified).length;
+  }
+
+  protected get publicProfessionals() {
+    return this.publicProfileUser ? (this.publicProfileProfessionals ?? []) : [];
+  }
+
   protected setAuthMode(mode: 'login' | 'register'): void {
     this.authError = '';
+    this.authMessage = '';
     this.authMode = mode;
+  }
+
+  protected navigateToAuth(mode: 'login' | 'register'): void {
+    this.authRouteMode = mode;
+    this.authMode = mode;
+    this.authError = '';
+    this.authMessage = '';
+    window.history.pushState({}, '', mode === 'login' ? '/login' : '/register');
+  }
+
+  protected navigateToLanding(): void {
+    this.authRouteMode = null;
+    this.authError = '';
+    this.authMessage = '';
+    window.history.pushState({}, '', '/');
   }
 
   protected openPrivacyModal(): void {
@@ -216,6 +346,166 @@ export class AppComponent implements OnInit {
       });
   }
 
+  protected reloadSystemAccounts(): void {
+    if (!this.isSystemAdmin) {
+      return;
+    }
+
+    this.isLoadingSystemAccounts = true;
+    this.agendaApi.getSystemAccounts().subscribe({
+      next: (accounts) => {
+        this.isLoadingSystemAccounts = false;
+        this.systemAccounts = accounts;
+      },
+      error: () => {
+        this.isLoadingSystemAccounts = false;
+        this.companySettingsError = 'No fue posible cargar las cuentas registradas.';
+      }
+    });
+  }
+
+  protected saveCompanyProfile(): void {
+    const name = this.companyProfileForm.name.trim();
+
+    if (!name) {
+      this.companySettingsError = 'Ingresa el nombre de la empresa.';
+      this.companySettingsMessage = '';
+      return;
+    }
+
+    this.isSavingCompanyProfile = true;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.agendaApi
+      .updateCompany({
+        name,
+        status: this.companyProfileForm.status as CompanyContext['company']['status']
+      })
+      .subscribe({
+        next: (context) => {
+          this.isSavingCompanyProfile = false;
+          this.applyCompanyContext(context);
+          this.companySettingsMessage = 'Empresa actualizada.';
+        },
+        error: (error) => {
+          this.isSavingCompanyProfile = false;
+          this.companySettingsError = error?.error?.message ?? 'No fue posible actualizar la empresa.';
+        }
+      });
+  }
+
+  protected saveSubscription(): void {
+    this.isSavingSubscription = true;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.agendaApi
+      .updateSubscription({
+        planName: this.companySubscriptionForm.planName.trim(),
+        planCode: this.companySubscriptionForm.planCode.trim().toLowerCase(),
+        status: this.companySubscriptionForm.status as CompanyContext['subscription']['status'],
+        monthlyPrice: Number(this.companySubscriptionForm.monthlyPrice) || 0,
+        professionalLimit: Number(this.companySubscriptionForm.professionalLimit) || 4,
+        renewalDay: Number(this.companySubscriptionForm.renewalDay) || null
+      })
+      .subscribe({
+        next: (context) => {
+          this.isSavingSubscription = false;
+          this.applyCompanyContext(context);
+          this.companySettingsMessage = 'Suscripcion actualizada.';
+        },
+        error: (error) => {
+          this.isSavingSubscription = false;
+          this.companySettingsError =
+            error?.error?.message ?? 'No fue posible actualizar la suscripcion.';
+        }
+      });
+  }
+
+  protected saveProfessional(): void {
+    const professionalPayload = {
+      name: this.professionalForm.name.trim(),
+      email: this.professionalForm.email.trim(),
+      phone: this.professionalForm.phone.trim(),
+      active: this.professionalForm.active
+    };
+
+    if (!professionalPayload.name) {
+      this.companySettingsError = 'Ingresa el nombre del profesional.';
+      this.companySettingsMessage = '';
+      return;
+    }
+
+    this.isSavingProfessional = true;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+
+    const request =
+      this.editingProfessionalId === null
+        ? this.agendaApi.createProfessional(professionalPayload)
+        : this.agendaApi.updateProfessional(this.editingProfessionalId, professionalPayload);
+
+    request.subscribe({
+      next: (professional) => {
+        const wasEditing = this.editingProfessionalId !== null;
+        this.isSavingProfessional = false;
+        this.updateProfessionalCollection(professional);
+        this.resetProfessionalForm();
+        this.companySettingsMessage =
+          wasEditing
+            ? 'Profesional actualizado. Si tiene correo, se renovo su acceso y verificacion.'
+            : 'Profesional agregado. Si tiene correo, se envio su acceso para verificacion.';
+      },
+      error: (error) => {
+        this.isSavingProfessional = false;
+        this.companySettingsError =
+          error?.error?.message ?? 'No fue posible guardar el profesional.';
+      }
+    });
+  }
+
+  protected editProfessional(professional: CompanyProfessional): void {
+    this.editingProfessionalId = professional.id;
+    this.professionalForm = {
+      name: professional.name,
+      email: professional.email,
+      phone: professional.phone,
+      active: professional.active
+    };
+  }
+
+  protected cancelProfessionalEdit(): void {
+    this.resetProfessionalForm();
+  }
+
+  protected removeProfessional(professionalId: number): void {
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.agendaApi.deleteProfessional(professionalId).subscribe({
+      next: () => {
+        if (this.companyContext) {
+          this.companyContext = {
+            ...this.companyContext,
+            professionals: this.companyContext.professionals.filter(
+              (professional) => professional.id !== professionalId
+            )
+          };
+          this.recalculateCompanyStats();
+        }
+
+        if (this.editingProfessionalId === professionalId) {
+          this.resetProfessionalForm();
+        }
+
+        this.syncAssigneeFields(this.currentAssigneeFallback());
+        this.companySettingsMessage = 'Profesional eliminado.';
+      },
+      error: (error) => {
+        this.companySettingsError =
+          error?.error?.message ?? 'No fue posible eliminar el profesional.';
+      }
+    });
+  }
+
   protected login(): void {
     const username = this.loginForm.username.trim().toLowerCase();
     const password = this.loginForm.password;
@@ -227,6 +517,7 @@ export class AppComponent implements OnInit {
 
     this.isSubmittingAuth = true;
     this.authError = '';
+    this.authMessage = '';
     this.agendaApi.login(username, password).subscribe({
       next: (session) => {
         this.isSubmittingAuth = false;
@@ -243,32 +534,57 @@ export class AppComponent implements OnInit {
   protected register(): void {
     const name = this.registerForm.name.trim();
     const username = this.registerForm.username.trim().toLowerCase();
+    const email = this.registerForm.email.trim().toLowerCase();
+    const companyName = this.registerForm.companyName.trim();
+    const accountType = this.registerForm.accountType;
     const password = this.registerForm.password;
 
-    if (!name || !username || !password) {
-      this.authError = 'Completa nombre, usuario y contrasena.';
+    if (!name || !username || !email || !password) {
+      this.authError = 'Completa nombre, usuario, correo y contrasena.';
       return;
     }
 
     this.isSubmittingAuth = true;
     this.authError = '';
-    this.agendaApi.register(name, username, password).subscribe({
+    this.authMessage = '';
+    this.agendaApi
+      .registerAccount({
+        name,
+        username,
+        email,
+        companyName,
+        accountType,
+        password
+      })
+      .subscribe({
       next: (session) => {
         this.isSubmittingAuth = false;
-        this.registerForm.password = '';
-        this.handleAuthenticatedSession(session);
+        this.registerForm = {
+          name: '',
+          username: '',
+          email: '',
+          companyName: '',
+          accountType: 'business',
+          password: ''
+        };
+        this.authMode = 'login';
+        this.authRouteMode = 'login';
+        window.history.replaceState({}, '', '/login');
+        this.authMessage =
+          session.message ?? 'Registro creado. Revisa tu correo para verificar tu cuenta.';
       },
       error: (error) => {
         this.isSubmittingAuth = false;
         this.authError = error?.error?.message ?? 'No fue posible crear el usuario.';
       }
-    });
+      });
   }
 
   protected logout(): void {
     this.agendaApi.logout().subscribe({
       next: () => {
         this.currentUser = null;
+        this.companyContext = null;
         this.activities = [];
         this.generalPendings = [];
         this.financialEntries = [];
@@ -278,12 +594,70 @@ export class AppComponent implements OnInit {
         this.resetActivityForm();
         this.resetGeneralPendingForm();
         this.resetFinancialEntryForm();
+        this.resetProfessionalForm();
       }
     });
   }
 
   protected setViewMode(mode: ViewMode): void {
     this.viewMode = mode;
+  }
+
+  protected submitPublicBooking(): void {
+    const customerName = this.publicBookingForm.customerName.trim();
+    const customerEmail = this.publicBookingForm.customerEmail.trim().toLowerCase();
+    const date = this.publicBookingForm.date;
+    const startTime = this.publicBookingForm.startTime;
+    const endTime = this.publicBookingForm.endTime;
+
+    if (
+      !this.publicProfileUser ||
+      !customerName ||
+      !customerEmail ||
+      !date ||
+      !startTime ||
+      !endTime ||
+      this.publicBookingForm.professionalId <= 0
+    ) {
+      this.authError = 'Completa los datos de la reserva y selecciona un profesional.';
+      this.authMessage = '';
+      return;
+    }
+
+    this.isSubmittingPublicBooking = true;
+    this.authError = '';
+    this.authMessage = '';
+
+    this.agendaApi.createPublicBooking({
+      username: this.publicProfileUser.username,
+      professionalId: this.publicBookingForm.professionalId,
+      customerName,
+      customerEmail,
+      customerPhone: this.publicBookingForm.customerPhone.trim(),
+      date,
+      startTime,
+      endTime,
+      notes: this.publicBookingForm.notes.trim()
+    }).subscribe({
+      next: (response) => {
+        this.isSubmittingPublicBooking = false;
+        this.authMessage = response.message;
+        this.publicBookingForm = {
+          professionalId: this.publicBookingForm.professionalId,
+          customerName: '',
+          customerEmail: '',
+          customerPhone: '',
+          date: '',
+          startTime: '',
+          endTime: '',
+          notes: ''
+        };
+      },
+      error: (error) => {
+        this.isSubmittingPublicBooking = false;
+        this.authError = error?.error?.message ?? 'No fue posible registrar la reserva.';
+      }
+    });
   }
 
   protected previousPeriod(): void {
@@ -373,6 +747,7 @@ export class AppComponent implements OnInit {
       startTime,
       endTime,
       assignee,
+      professionalId: this.findProfessionalIdByName(assignee),
       visibility: this.newActivity.visibility,
       completed: this.newActivity.completed,
       location,
@@ -438,6 +813,7 @@ export class AppComponent implements OnInit {
       startTime: activity.startTime,
       endTime: activity.endTime,
       assignee: activity.assignee,
+      professionalId: activity.professionalId ?? null,
       visibility: activity.visibility,
       completed: activity.completed,
       location: activity.location,
@@ -478,16 +854,24 @@ export class AppComponent implements OnInit {
       id: this.editingGeneralPendingId ?? Date.now(),
       title,
       assignee,
+      professionalId: this.findProfessionalIdByName(assignee),
       description,
       date
     };
 
     const request =
       this.editingGeneralPendingId === null
-        ? this.agendaApi.createGeneralPending({ title, assignee, description, date })
+        ? this.agendaApi.createGeneralPending({
+            title,
+            assignee,
+            professionalId: pending.professionalId,
+            description,
+            date
+          })
         : this.agendaApi.updateGeneralPending(this.editingGeneralPendingId, {
             title,
             assignee,
+            professionalId: pending.professionalId,
             description,
             date
           });
@@ -520,6 +904,7 @@ export class AppComponent implements OnInit {
     this.newGeneralPending = {
       title: pending.title,
       assignee: pending.assignee,
+      professionalId: pending.professionalId ?? null,
       description: pending.description,
       date: pending.date
     };
@@ -550,6 +935,7 @@ export class AppComponent implements OnInit {
       type,
       amount,
       assignee,
+      professionalId: this.findProfessionalIdByName(assignee),
       description,
       date,
       participationPercentage,
@@ -563,6 +949,7 @@ export class AppComponent implements OnInit {
             type,
             amount,
             assignee,
+            professionalId: entry.professionalId,
             description,
             date,
             participationPercentage,
@@ -573,6 +960,7 @@ export class AppComponent implements OnInit {
             type,
             amount,
             assignee,
+            professionalId: entry.professionalId,
             description,
             date,
             participationPercentage,
@@ -599,6 +987,7 @@ export class AppComponent implements OnInit {
       type: entry.type,
       amount: entry.amount,
       assignee: entry.assignee,
+      professionalId: entry.professionalId ?? null,
       description: entry.description,
       date: entry.date,
       participationPercentage: entry.participationPercentage,
@@ -930,13 +1319,45 @@ export class AppComponent implements OnInit {
   }
 
   private loadRemoteData(): void {
+    if (this.isSystemAdmin) {
+      this.isLoadingSystemAccounts = true;
+      this.agendaApi.getSystemAccounts().subscribe({
+        next: (accounts) => {
+          this.systemAccounts = accounts;
+          this.isLoadingSystemAccounts = false;
+          this.activities = [];
+          this.generalPendings = [];
+          this.financialEntries = [];
+          this.companyContext = null;
+        },
+        error: () => {
+          this.isLoadingSystemAccounts = false;
+          this.companySettingsError = 'No fue posible cargar las cuentas registradas.';
+        }
+      });
+      return;
+    }
+
+    if (this.isProfessionalUser) {
+      this.agendaApi.getActivities().pipe(catchError(() => of([] as Activity[]))).subscribe((activities) => {
+        this.activities = activities.sort((left, right) => this.compareActivities(left, right));
+        this.generalPendings = [];
+        this.financialEntries = [];
+        this.companyContext = null;
+      });
+      return;
+    }
+
     forkJoin({
       activities: this.agendaApi.getActivities().pipe(catchError(() => of([] as Activity[]))),
       generalPendings: this.agendaApi
         .getGeneralPendings()
         .pipe(catchError(() => of([] as GeneralPending[]))),
-      financialEntries: this.loadFinancialEntriesRequest()
-    }).subscribe(({ activities, generalPendings, financialEntries }) => {
+      financialEntries: this.loadFinancialEntriesRequest(),
+      companyContext: this.agendaApi
+        .getCompanyContext()
+        .pipe(catchError(() => of(null as CompanyContext | null)))
+    }).subscribe(({ activities, generalPendings, financialEntries, companyContext }) => {
       this.activities = activities.sort((left, right) => this.compareActivities(left, right));
       this.generalPendings = generalPendings.sort((left, right) =>
         this.compareGeneralPendings(left, right)
@@ -944,6 +1365,10 @@ export class AppComponent implements OnInit {
       this.financialEntries = financialEntries.sort((left, right) =>
         this.compareFinancialEntries(left, right)
       );
+
+      if (companyContext) {
+        this.applyCompanyContext(companyContext);
+      }
     });
   }
 
@@ -952,7 +1377,8 @@ export class AppComponent implements OnInit {
       title: activity.title,
       startTime: activity.startTime,
       endTime: activity.endTime,
-      assignee: this.getCurrentAssignee(),
+      assignee: activity.assignee,
+      professionalId: activity.professionalId ?? this.findProfessionalIdByName(activity.assignee),
       visibility: activity.visibility,
       completed: activity.completed,
       location: activity.location,
@@ -977,6 +1403,16 @@ export class AppComponent implements OnInit {
     this.newFinancialEntry = this.buildEmptyFinancialEntry();
   }
 
+  private resetProfessionalForm(): void {
+    this.editingProfessionalId = null;
+    this.professionalForm = {
+      name: '',
+      email: '',
+      phone: '',
+      active: true
+    };
+  }
+
   private loadFinancialEntries(): void {
     this.loadFinancialEntriesRequest().subscribe((financialEntries) => {
       this.financialEntries = financialEntries.sort((left, right) =>
@@ -992,13 +1428,17 @@ export class AppComponent implements OnInit {
   private handleAuthenticatedSession(session: AuthSession): void {
     this.applySession(session);
     this.closeAllPanels();
-    this.loadRemoteData();
+
+    if (session.authenticated) {
+      this.loadRemoteData();
+    }
   }
 
   private applySession(session: AuthSession): void {
     this.currentUser = session.user;
     this.canRegister = session.canRegister;
     this.authError = '';
+    this.authMessage = session.message ?? '';
 
     if (this.currentUser) {
       this.notificationSettingsForm = {
@@ -1007,24 +1447,38 @@ export class AppComponent implements OnInit {
         telegramChatId: this.currentUser.telegramChatId,
         telegramNotificationsEnabled: this.currentUser.telegramNotificationsEnabled
       };
-      this.syncAssigneeFields(this.currentUser.name);
+      if (this.currentUser.isSystemAdmin) {
+        this.companyContext = null;
+        this.systemAccounts = [];
+      } else if (this.isProfessionalUser) {
+        this.companyContext = null;
+        this.systemAccounts = [];
+        this.syncAssigneeFields(this.currentUser.name);
+      } else {
+        this.syncAssigneeFields(this.currentUser.name);
+      }
       return;
     }
 
+    this.companyContext = null;
+    this.systemAccounts = [];
     this.notificationSettingsForm = {
       whatsappNumber: '',
       whatsappNotificationsEnabled: false,
       telegramChatId: '',
       telegramNotificationsEnabled: false
     };
+    this.resetProfessionalForm();
     this.authMode = 'login';
   }
 
   private applyPublicProfile(profile: PublicProfile): void {
     this.publicProfileUser = profile.user;
+    this.publicProfileProfessionals = profile.professionals ?? [];
     this.generalPendings = [];
     this.financialEntries = [];
     this.activities = profile.activities.sort((left, right) => this.compareActivities(left, right));
+    this.publicBookingForm.professionalId = this.publicProfileProfessionals[0]?.id ?? 0;
 
     if (!profile.found) {
       this.publicProfileState = 'not-found';
@@ -1038,10 +1492,84 @@ export class AppComponent implements OnInit {
     }
   }
 
+  private applyCompanyContext(context: CompanyContext): void {
+    this.companyContext = {
+      ...context,
+      professionals: [...context.professionals].sort((left, right) =>
+        left.name.localeCompare(right.name)
+      )
+    };
+    this.companyProfileForm = {
+      name: context.company.name,
+      status: context.company.status
+    };
+    this.companySubscriptionForm = {
+      planName: context.subscription.planName,
+      planCode: context.subscription.planCode,
+      status: context.subscription.status,
+      monthlyPrice: context.subscription.monthlyPrice,
+      professionalLimit: context.subscription.professionalLimit,
+      renewalDay: context.subscription.renewalDay ?? new Date().getDate()
+    };
+
+    if (!this.professionalForm.name && this.activeProfessionals.length > 0) {
+      this.syncAssigneeFields(this.activeProfessionals[0].name);
+    } else {
+      this.syncAssigneeFields(this.currentAssigneeFallback());
+    }
+  }
+
+  private updateProfessionalCollection(professional: CompanyProfessional): void {
+    const wasEditing = this.editingProfessionalId !== null;
+
+    if (!this.companyContext) {
+      return;
+    }
+
+    this.companyContext = {
+      ...this.companyContext,
+      professionals: (
+        wasEditing
+          ? this.companyContext.professionals.map((existingProfessional) =>
+              existingProfessional.id === professional.id ? professional : existingProfessional
+            )
+          : [...this.companyContext.professionals, professional]
+      ).sort((left, right) => left.name.localeCompare(right.name))
+    };
+    this.recalculateCompanyStats();
+    this.syncAssigneeFields(this.currentAssigneeFallback());
+  }
+
+  private recalculateCompanyStats(): void {
+    if (!this.companyContext) {
+      return;
+    }
+
+    const activeProfessionals = this.companyContext.professionals.filter(
+      (professional) => professional.active
+    ).length;
+    this.companyContext = {
+      ...this.companyContext,
+      stats: {
+        activeProfessionals,
+        availableSlots: Math.max(
+          this.companyContext.subscription.professionalLimit - activeProfessionals,
+          0
+        )
+      }
+    };
+  }
+
   private syncAssigneeFields(assignee: string): void {
-    this.newActivity.assignee = assignee;
-    this.newGeneralPending.assignee = assignee;
-    this.newFinancialEntry.assignee = assignee;
+    const normalizedAssignee = this.assigneeOptions.includes(assignee)
+      ? assignee
+      : this.currentAssigneeFallback();
+    this.newActivity.assignee = normalizedAssignee;
+    this.newActivity.professionalId = this.findProfessionalIdByName(normalizedAssignee);
+    this.newGeneralPending.assignee = normalizedAssignee;
+    this.newGeneralPending.professionalId = this.findProfessionalIdByName(normalizedAssignee);
+    this.newFinancialEntry.assignee = normalizedAssignee;
+    this.newFinancialEntry.professionalId = this.findProfessionalIdByName(normalizedAssignee);
   }
 
   private closeAllPanels(): void {
@@ -1051,7 +1579,41 @@ export class AppComponent implements OnInit {
   }
 
   private getCurrentAssignee(): string {
-    return this.currentUser?.name ?? '';
+    return this.currentAssigneeFallback();
+  }
+
+  private currentAssigneeFallback(): string {
+    return this.assigneeOptions[0] ?? this.currentUser?.name ?? '';
+  }
+
+  private findProfessionalIdByName(name: string): number | null {
+    const professional =
+      this.companyContext?.professionals.find((existingProfessional) => existingProfessional.name === name) ??
+      null;
+
+    return professional ? professional.id : null;
+  }
+
+  private verifyEmailToken(token: string): void {
+    this.isAuthLoading = true;
+    this.agendaApi.verifyEmail(token).subscribe({
+      next: (response) => {
+        this.isAuthLoading = false;
+        this.authMode = 'login';
+        this.authRouteMode = 'login';
+        this.authError = '';
+        this.authMessage = response.message;
+        this.clearVerificationTokenFromLocation('/login');
+      },
+      error: (error) => {
+        this.isAuthLoading = false;
+        this.authMode = 'login';
+        this.authRouteMode = 'login';
+        this.authMessage = '';
+        this.authError = error?.error?.message ?? 'No fue posible verificar el correo.';
+        this.clearVerificationTokenFromLocation('/login');
+      }
+    });
   }
 
   private getPublicSlugFromLocation(): string {
@@ -1069,6 +1631,8 @@ export class AppComponent implements OnInit {
 
     if (
       normalizedCandidate === 'api' ||
+      normalizedCandidate === 'login' ||
+      normalizedCandidate === 'register' ||
       normalizedCandidate.includes('.') ||
       normalizedCandidate.startsWith('_karma_')
     ) {
@@ -1078,12 +1642,40 @@ export class AppComponent implements OnInit {
     return decodeURIComponent(normalizedCandidate);
   }
 
+  private getAuthRouteModeFromLocation(): 'login' | 'register' | null {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+
+    if (path === '/login') {
+      return 'login';
+    }
+
+    if (path === '/register') {
+      return 'register';
+    }
+
+    return null;
+  }
+
+  private getVerificationTokenFromLocation(): string {
+    const searchParams = new URLSearchParams(window.location.search);
+    return searchParams.get('verify_email')?.trim() ?? '';
+  }
+
+  private clearVerificationTokenFromLocation(pathname = '/'): void {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete('verify_email');
+    currentUrl.pathname = pathname;
+    window.history.replaceState({}, document.title, currentUrl.toString());
+  }
+
   private buildEmptyActivity(): Omit<Activity, 'id'> {
+    const assignee = this.currentAssigneeFallback();
     return {
       title: '',
       startTime: '',
       endTime: '',
-      assignee: this.getCurrentAssignee(),
+      assignee,
+      professionalId: this.findProfessionalIdByName(assignee),
       visibility: 'private',
       completed: false,
       location: '',
@@ -1094,20 +1686,24 @@ export class AppComponent implements OnInit {
   }
 
   private buildEmptyGeneralPending(): Omit<GeneralPending, 'id'> {
+    const assignee = this.currentAssigneeFallback();
     return {
       title: '',
-      assignee: this.getCurrentAssignee(),
+      assignee,
+      professionalId: this.findProfessionalIdByName(assignee),
       description: '',
       date: this.toIsoDate(new Date())
     };
   }
 
   private buildEmptyFinancialEntry(): Omit<FinancialEntry, 'id'> {
+    const assignee = this.currentAssigneeFallback();
     return {
       title: '',
       type: 'income',
       amount: 0,
-      assignee: this.getCurrentAssignee(),
+      assignee,
+      professionalId: this.findProfessionalIdByName(assignee),
       description: '',
       date: this.toIsoDate(new Date()),
       participationPercentage: null,

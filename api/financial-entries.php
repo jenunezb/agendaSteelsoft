@@ -7,15 +7,20 @@ require __DIR__ . '/bootstrap.php';
 $pdo = getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuthenticatedUser();
+$companyId = requireCurrentCompanyId($user);
+
+if (isProfessionalUser($user)) {
+    jsonResponse(['message' => 'El profesional no tiene acceso a la operacion financiera.'], 403);
+}
 
 if ($method === 'GET') {
     $statement = $pdo->prepare(
-        'SELECT id, title, entry_type, amount, participation_percentage, assignee, description, entry_date
+        'SELECT id, title, entry_type, amount, participation_percentage, assignee, professional_id, description, entry_date
          FROM financial_entries
-         WHERE user_id = :user_id
+         WHERE company_id = :company_id
          ORDER BY entry_date DESC, entry_type, title, amount'
     );
-    $statement->execute([':user_id' => $user['id']]);
+    $statement->execute([':company_id' => $companyId]);
 
     $entries = array_map(static function (array $row): array {
         return [
@@ -26,6 +31,7 @@ if ($method === 'GET') {
             'participationPercentage' => $row['participation_percentage'] !== null ? (float) $row['participation_percentage'] : null,
             'participantAmount' => calculateParticipantAmount((float) $row['amount'], $row['participation_percentage']),
             'assignee' => $row['assignee'],
+            'professionalId' => isset($row['professional_id']) ? (int) $row['professional_id'] : null,
             'description' => $row['description'] ?? '',
             'date' => $row['entry_date'],
         ];
@@ -39,18 +45,26 @@ $payload = getPayload();
 if ($method === 'POST') {
     $date = (string) ($payload['date'] ?? date('Y-m-d'));
     $participationPercentage = normalizeParticipationPercentage($payload['participationPercentage'] ?? null);
+    $assignment = resolveProfessionalAssignment(
+        $pdo,
+        $companyId,
+        $payload['professionalId'] ?? null,
+        (string) ($payload['assignee'] ?? '')
+    );
     $statement = $pdo->prepare(
-        'INSERT INTO financial_entries (user_id, title, entry_type, amount, participation_percentage, assignee, description, entry_date)
-         VALUES (:user_id, :title, :entry_type, :amount, :participation_percentage, :assignee, :description, :entry_date)'
+        'INSERT INTO financial_entries (user_id, company_id, professional_id, title, entry_type, amount, participation_percentage, assignee, description, entry_date)
+         VALUES (:user_id, :company_id, :professional_id, :title, :entry_type, :amount, :participation_percentage, :assignee, :description, :entry_date)'
     );
 
     $statement->execute([
         ':user_id' => $user['id'],
+        ':company_id' => $companyId,
+        ':professional_id' => $assignment['professionalId'],
         ':title' => trim((string) ($payload['title'] ?? '')),
         ':entry_type' => (string) ($payload['type'] ?? 'income'),
         ':amount' => (float) ($payload['amount'] ?? 0),
         ':participation_percentage' => $participationPercentage,
-        ':assignee' => $user['name'],
+        ':assignee' => $assignment['assignee'],
         ':description' => trim((string) ($payload['description'] ?? '')),
         ':entry_date' => $date,
     ]);
@@ -62,7 +76,8 @@ if ($method === 'POST') {
         'amount' => (float) ($payload['amount'] ?? 0),
         'participationPercentage' => $participationPercentage,
         'participantAmount' => calculateParticipantAmount((float) ($payload['amount'] ?? 0), $participationPercentage),
-        'assignee' => $user['name'],
+        'assignee' => $assignment['assignee'],
+        'professionalId' => $assignment['professionalId'],
         'description' => trim((string) ($payload['description'] ?? '')),
         'date' => $date,
     ], 201);
@@ -72,23 +87,31 @@ if ($method === 'PUT') {
     $id = getRequiredId();
     $date = (string) ($payload['date'] ?? date('Y-m-d'));
     $participationPercentage = normalizeParticipationPercentage($payload['participationPercentage'] ?? null);
+    $assignment = resolveProfessionalAssignment(
+        $pdo,
+        $companyId,
+        $payload['professionalId'] ?? null,
+        (string) ($payload['assignee'] ?? '')
+    );
     $statement = $pdo->prepare(
         'UPDATE financial_entries
          SET title = :title, entry_type = :entry_type, amount = :amount,
              participation_percentage = :participation_percentage,
+             professional_id = :professional_id,
              assignee = :assignee, description = :description, entry_date = :entry_date
          WHERE id = :id
-           AND user_id = :user_id'
+           AND company_id = :company_id'
     );
 
     $statement->execute([
         ':id' => $id,
-        ':user_id' => $user['id'],
+        ':company_id' => $companyId,
         ':title' => trim((string) ($payload['title'] ?? '')),
         ':entry_type' => (string) ($payload['type'] ?? 'income'),
         ':amount' => (float) ($payload['amount'] ?? 0),
         ':participation_percentage' => $participationPercentage,
-        ':assignee' => $user['name'],
+        ':professional_id' => $assignment['professionalId'],
+        ':assignee' => $assignment['assignee'],
         ':description' => trim((string) ($payload['description'] ?? '')),
         ':entry_date' => $date,
     ]);
@@ -104,7 +127,8 @@ if ($method === 'PUT') {
         'amount' => (float) ($payload['amount'] ?? 0),
         'participationPercentage' => $participationPercentage,
         'participantAmount' => calculateParticipantAmount((float) ($payload['amount'] ?? 0), $participationPercentage),
-        'assignee' => $user['name'],
+        'assignee' => $assignment['assignee'],
+        'professionalId' => $assignment['professionalId'],
         'description' => trim((string) ($payload['description'] ?? '')),
         'date' => $date,
     ]);
@@ -112,10 +136,10 @@ if ($method === 'PUT') {
 
 if ($method === 'DELETE') {
     $id = getRequiredId();
-    $statement = $pdo->prepare('DELETE FROM financial_entries WHERE id = :id AND user_id = :user_id');
+    $statement = $pdo->prepare('DELETE FROM financial_entries WHERE id = :id AND company_id = :company_id');
     $statement->execute([
         ':id' => $id,
-        ':user_id' => $user['id'],
+        ':company_id' => $companyId,
     ]);
 
     if ($statement->rowCount() === 0) {

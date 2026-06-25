@@ -10,7 +10,11 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
     $user = getAuthenticatedUser();
 
-    if ($user !== null) {
+    if ($user !== null && empty($user['isSystemAdmin'])) {
+        if ((int) ($user['companyId'] ?? 0) <= 0) {
+            initializeDefaultCompanyForUser($pdo, (int) $user['id'], (string) $user['name'], (string) $user['username']);
+            $user = getAuthenticatedUser();
+        }
         claimLegacyRecordsForUser($pdo, $user);
     }
 
@@ -109,19 +113,20 @@ if ($action === 'login') {
         jsonResponse(['message' => 'Usuario o contrasena incorrectos.'], 422);
     }
 
+    if (empty($user['is_system_admin']) && empty($user['email_verified_at'])) {
+        jsonResponse([
+            'message' => 'Debes verificar tu correo electronico antes de iniciar sesion.',
+            'requiresEmailVerification' => true,
+        ], 403);
+    }
+
     $_SESSION['user_id'] = (int) $user['id'];
 
-    $authenticatedUser = [
-        'id' => (int) $user['id'],
-        'name' => $user['name'],
-        'username' => $user['username'],
-        'profilePublic' => !empty($user['profile_public']),
-        'publicUrl' => buildPublicProfileUrl((string) $user['username']),
-        'whatsappNumber' => (string) ($user['whatsapp_number'] ?? ''),
-        'whatsappNotificationsEnabled' => !empty($user['whatsapp_notifications_enabled']),
-        'telegramChatId' => (string) ($user['telegram_chat_id'] ?? ''),
-        'telegramNotificationsEnabled' => !empty($user['telegram_notifications_enabled']),
-    ];
+    if (empty($user['is_system_admin']) && (int) ($user['company_id'] ?? 0) <= 0) {
+        initializeDefaultCompanyForUser($pdo, (int) $user['id'], (string) $user['name'], (string) $user['username']);
+    }
+
+    $authenticatedUser = getAuthenticatedUser();
 
     claimLegacyRecordsForUser($pdo, $authenticatedUser);
 
@@ -135,44 +140,134 @@ if ($action === 'login') {
 if ($action === 'register') {
     $name = trim((string) ($payload['name'] ?? ''));
     $username = strtolower(trim((string) ($payload['username'] ?? '')));
+    $email = strtolower(trim((string) ($payload['email'] ?? '')));
     $password = (string) ($payload['password'] ?? '');
+    $companyName = trim((string) ($payload['companyName'] ?? ''));
+    $accountType = (string) ($payload['accountType'] ?? 'business');
 
-    if ($name === '' || $username === '' || $password === '') {
-        jsonResponse(['message' => 'Nombre, usuario y contrasena son obligatorios.'], 422);
+    if ($name === '' || $username === '' || $email === '' || $password === '') {
+        jsonResponse(['message' => 'Nombre, usuario, correo y contrasena son obligatorios.'], 422);
     }
 
     if (findUserByUsername($pdo, $username) !== null) {
         jsonResponse(['message' => 'Ese nombre de usuario ya existe.'], 422);
     }
 
-    $statement = $pdo->prepare(
-        'INSERT INTO users (name, username, password_hash)
-         VALUES (:name, :username, :password_hash)'
-    );
-    $statement->execute([
-        ':name' => $name,
-        ':username' => $username,
-        ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
-    ]);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        jsonResponse(['message' => 'Ingresa un correo electronico valido.'], 422);
+    }
 
-    $userId = (int) $pdo->lastInsertId();
-    $_SESSION['user_id'] = $userId;
+    if (findUserByEmail($pdo, $email) !== null) {
+        jsonResponse(['message' => 'Ese correo electronico ya esta registrado.'], 422);
+    }
 
-    jsonResponse([
-        'authenticated' => true,
-        'user' => [
-            'id' => $userId,
+    if (!in_array($accountType, ['business', 'independent'], true)) {
+        jsonResponse(['message' => 'Tipo de cuenta invalido.'], 422);
+    }
+
+    $resolvedCompanyName = $companyName !== ''
+        ? $companyName
+        : ($accountType === 'independent' ? $name : sprintf('Empresa de %s', $name));
+
+    $pdo->beginTransaction();
+    $userId = 0;
+    $emailDeliveryIssues = [];
+
+    try {
+        $statement = $pdo->prepare(
+            'INSERT INTO users (name, username, email, password_hash, profile_public)
+             VALUES (:name, :username, :email, :password_hash, 1)'
+        );
+        $statement->execute([
+            ':name' => $name,
+            ':username' => $username,
+            ':email' => $email,
+            ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+        ]);
+
+        $userId = (int) $pdo->lastInsertId();
+        initializeDefaultCompanyForUser($pdo, $userId, $name, $username, $resolvedCompanyName, $accountType, 'free');
+        $token = generateEmailVerificationToken($pdo, $userId);
+        $pdo->commit();
+
+        try {
+            sendVerificationEmail($email, $name, $token);
+        } catch (Throwable $exception) {
+            $emailDeliveryIssues[] = 'verification_email';
+            writeAppLog('mail', 'No fue posible enviar el correo de verificacion.', [
+                'user_id' => $userId,
+                'email' => $email,
+                'exception' => $exception->getMessage(),
+            ]);
+        }
+
+        try {
+            notifySystemAdminOfRegistration($accountType, $resolvedCompanyName, $name, $email);
+        } catch (Throwable $exception) {
+            $emailDeliveryIssues[] = 'system_admin_notification';
+            writeAppLog('mail', 'No fue posible notificar al administrador del sistema.', [
+                'user_id' => $userId,
+                'email' => $email,
+                'exception' => $exception->getMessage(),
+            ]);
+        }
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        writeAppLog('register', 'Fallo el registro de una nueva cuenta.', [
             'name' => $name,
             'username' => $username,
-            'profilePublic' => false,
-            'publicUrl' => buildPublicProfileUrl($username),
-            'whatsappNumber' => '',
-            'whatsappNotificationsEnabled' => false,
-            'telegramChatId' => '',
-            'telegramNotificationsEnabled' => false,
-        ],
+            'email' => $email,
+            'company_name' => $resolvedCompanyName,
+            'account_type' => $accountType,
+            'exception' => $exception->getMessage(),
+        ]);
+
+        jsonResponse([
+            'message' => 'No fue posible completar el registro. Revisa api/logs/app.log en el servidor.',
+        ], 500);
+    }
+
+    $responseMessage = 'Registro creado. Revisa tu correo para validar la cuenta antes de iniciar sesion.';
+
+    if (in_array('verification_email', $emailDeliveryIssues, true)) {
+        $responseMessage = 'La cuenta fue creada, pero fallo el envio del correo de verificacion. Revisa api/logs/app.log y la configuracion SMTP.';
+    } elseif (in_array('system_admin_notification', $emailDeliveryIssues, true)) {
+        $responseMessage = 'La cuenta fue creada y el correo de verificacion fue enviado, pero fallo la notificacion al administrador.';
+    }
+
+    jsonResponse([
+        'authenticated' => false,
+        'user' => null,
         'canRegister' => true,
+        'requiresEmailVerification' => true,
+        'message' => $responseMessage,
     ], 201);
+}
+
+if ($action === 'verifyEmail') {
+    $token = trim((string) ($payload['token'] ?? ''));
+
+    if ($token === '') {
+        jsonResponse(['success' => false, 'message' => 'Token de verificacion invalido.'], 422);
+    }
+
+    $verificationResult = verifyEmailToken($pdo, $token);
+
+    if ($verificationResult === null) {
+        jsonResponse(['success' => false, 'message' => 'El token de verificacion no es valido.'], 422);
+    }
+
+    if (!empty($verificationResult['expired'])) {
+        jsonResponse(['success' => false, 'message' => 'El token de verificacion ya vencio.'], 422);
+    }
+
+    jsonResponse([
+        'success' => true,
+        'message' => 'Correo verificado correctamente. Ya puedes iniciar sesion.',
+    ]);
 }
 
 jsonResponse(['message' => 'Accion no permitida.'], 422);

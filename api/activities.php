@@ -7,15 +7,32 @@ require __DIR__ . '/bootstrap.php';
 $pdo = getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuthenticatedUser();
+$companyId = requireCurrentCompanyId($user);
+$isProfessionalUser = isProfessionalUser($user);
+$professionalId = (int) ($user['professionalId'] ?? 0);
 
 if ($method === 'GET') {
-    $statement = $pdo->prepare(
-        'SELECT id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes
-         FROM activities
-         WHERE user_id = :user_id
-         ORDER BY activity_date, start_time, end_time, title'
-    );
-    $statement->execute([':user_id' => $user['id']]);
+    if ($isProfessionalUser) {
+        $statement = $pdo->prepare(
+            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes
+             FROM activities
+             WHERE company_id = :company_id
+               AND professional_id = :professional_id
+             ORDER BY activity_date, start_time, end_time, title'
+        );
+        $statement->execute([
+            ':company_id' => $companyId,
+            ':professional_id' => $professionalId,
+        ]);
+    } else {
+        $statement = $pdo->prepare(
+            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes
+             FROM activities
+             WHERE company_id = :company_id
+             ORDER BY activity_date, start_time, end_time, title'
+        );
+        $statement->execute([':company_id' => $companyId]);
+    }
 
     $activities = array_map(static function (array $row): array {
         return [
@@ -24,6 +41,7 @@ if ($method === 'GET') {
             'startTime' => substr((string) $row['start_time'], 0, 5),
             'endTime' => substr((string) $row['end_time'], 0, 5),
             'assignee' => $row['assignee'],
+            'professionalId' => isset($row['professional_id']) ? (int) $row['professional_id'] : null,
             'visibility' => !empty($row['is_public']) ? 'public' : 'private',
             'completed' => (bool) $row['completed'],
             'location' => $row['location'] ?? '',
@@ -38,20 +56,32 @@ if ($method === 'GET') {
 
 $payload = getPayload();
 
+if ($isProfessionalUser) {
+    jsonResponse(['message' => 'El profesional solo puede consultar su propio calendario.'], 403);
+}
+
 if ($method === 'POST') {
     $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
+    $assignment = resolveProfessionalAssignment(
+        $pdo,
+        $companyId,
+        $payload['professionalId'] ?? null,
+        (string) ($payload['assignee'] ?? '')
+    );
     $statement = $pdo->prepare(
         'INSERT INTO activities
-        (user_id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes, reminder_sent_at)
-        VALUES (:user_id, :title, :start_time, :end_time, :assignee, :is_public, :completed, :location, :description, :activity_date, :reminder_minutes, NULL)'
+        (user_id, company_id, professional_id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes, reminder_sent_at)
+        VALUES (:user_id, :company_id, :professional_id, :title, :start_time, :end_time, :assignee, :is_public, :completed, :location, :description, :activity_date, :reminder_minutes, NULL)'
     );
 
     $statement->execute([
         ':user_id' => $user['id'],
+        ':company_id' => $companyId,
+        ':professional_id' => $assignment['professionalId'],
         ':title' => trim((string) ($payload['title'] ?? '')),
         ':start_time' => (string) ($payload['startTime'] ?? ''),
         ':end_time' => (string) ($payload['endTime'] ?? ''),
-        ':assignee' => $user['name'],
+        ':assignee' => $assignment['assignee'],
         ':is_public' => ($payload['visibility'] ?? 'private') === 'public' ? 1 : 0,
         ':completed' => !empty($payload['completed']) ? 1 : 0,
         ':location' => trim((string) ($payload['location'] ?? '')),
@@ -65,7 +95,8 @@ if ($method === 'POST') {
         'title' => trim((string) ($payload['title'] ?? '')),
         'startTime' => (string) ($payload['startTime'] ?? ''),
         'endTime' => (string) ($payload['endTime'] ?? ''),
-        'assignee' => $user['name'],
+        'assignee' => $assignment['assignee'],
+        'professionalId' => $assignment['professionalId'],
         'visibility' => ($payload['visibility'] ?? 'private') === 'public' ? 'public' : 'private',
         'completed' => !empty($payload['completed']),
         'location' => trim((string) ($payload['location'] ?? '')),
@@ -78,12 +109,19 @@ if ($method === 'POST') {
 if ($method === 'PUT') {
     $id = getRequiredId();
     $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
+    $assignment = resolveProfessionalAssignment(
+        $pdo,
+        $companyId,
+        $payload['professionalId'] ?? null,
+        (string) ($payload['assignee'] ?? '')
+    );
 
     $statement = $pdo->prepare(
         'UPDATE activities
          SET title = :title,
              start_time = :start_time,
              end_time = :end_time,
+             professional_id = :professional_id,
              assignee = :assignee,
              is_public = :is_public,
              completed = :completed,
@@ -93,16 +131,17 @@ if ($method === 'PUT') {
              reminder_minutes = :reminder_minutes,
              reminder_sent_at = NULL
          WHERE id = :id
-           AND user_id = :user_id'
+           AND company_id = :company_id'
     );
 
     $statement->execute([
         ':id' => $id,
-        ':user_id' => $user['id'],
+        ':company_id' => $companyId,
         ':title' => trim((string) ($payload['title'] ?? '')),
         ':start_time' => (string) ($payload['startTime'] ?? ''),
         ':end_time' => (string) ($payload['endTime'] ?? ''),
-        ':assignee' => $user['name'],
+        ':professional_id' => $assignment['professionalId'],
+        ':assignee' => $assignment['assignee'],
         ':is_public' => ($payload['visibility'] ?? 'private') === 'public' ? 1 : 0,
         ':completed' => !empty($payload['completed']) ? 1 : 0,
         ':location' => trim((string) ($payload['location'] ?? '')),
@@ -120,7 +159,8 @@ if ($method === 'PUT') {
         'title' => trim((string) ($payload['title'] ?? '')),
         'startTime' => (string) ($payload['startTime'] ?? ''),
         'endTime' => (string) ($payload['endTime'] ?? ''),
-        'assignee' => $user['name'],
+        'assignee' => $assignment['assignee'],
+        'professionalId' => $assignment['professionalId'],
         'visibility' => ($payload['visibility'] ?? 'private') === 'public' ? 'public' : 'private',
         'completed' => !empty($payload['completed']),
         'location' => trim((string) ($payload['location'] ?? '')),
@@ -132,10 +172,10 @@ if ($method === 'PUT') {
 
 if ($method === 'DELETE') {
     $id = getRequiredId();
-    $statement = $pdo->prepare('DELETE FROM activities WHERE id = :id AND user_id = :user_id');
+    $statement = $pdo->prepare('DELETE FROM activities WHERE id = :id AND company_id = :company_id');
     $statement->execute([
         ':id' => $id,
-        ':user_id' => $user['id'],
+        ':company_id' => $companyId,
     ]);
 
     if ($statement->rowCount() === 0) {
