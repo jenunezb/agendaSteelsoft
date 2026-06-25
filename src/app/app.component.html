@@ -671,6 +671,46 @@
                 </tbody>
               </table>
             </div>
+
+            @if (editingSystemAccount) {
+              <article class="company-control-card accent">
+                <div class="panel-heading">
+                  <p class="label">Superadmin</p>
+                  <h2>Editar empresa y suscripcion</h2>
+                  <p>{{ editingSystemAccount.companyName || editingSystemAccount.ownerName }}</p>
+                </div>
+
+                <div class="company-settings-layout">
+                  <form class="pending-form" (ngSubmit)="saveSystemAccount()">
+                    @if (companySettingsError) {
+                      <p class="auth-error">{{ companySettingsError }}</p>
+                    }
+                    @if (companySettingsMessage) {
+                      <p class="success-message">{{ companySettingsMessage }}</p>
+                    }
+                    <label><span>Estado de empresa</span><select name="systemCompanyStatus" [(ngModel)]="systemAccountForm.companyStatus"><option value="active">Activa</option><option value="inactive">Inactiva</option><option value="suspended">Suspendida</option></select></label>
+                    <label><span>Nombre del plan</span><input type="text" name="systemPlanName" [(ngModel)]="systemAccountForm.planName" required /></label>
+                    <label><span>Codigo del plan</span><input type="text" name="systemPlanCode" [(ngModel)]="systemAccountForm.planCode" required /></label>
+                    <label><span>Estado de suscripcion</span><select name="systemSubscriptionStatus" [(ngModel)]="systemAccountForm.subscriptionStatus"><option value="active">Activa</option><option value="trial">Trial</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></label>
+                    <label><span>Precio mensual</span><input type="number" name="systemMonthlyPrice" [(ngModel)]="systemAccountForm.monthlyPrice" min="0" /></label>
+                    <label><span>Limite de profesionales</span><input type="number" name="systemProfessionalLimit" [(ngModel)]="systemAccountForm.professionalLimit" min="4" /></label>
+                    <label><span>Dia de renovacion</span><input type="number" name="systemRenewalDay" [(ngModel)]="systemAccountForm.renewalDay" min="1" max="31" /></label>
+                    <div class="form-actions">
+                      <button type="submit" [disabled]="isSavingSystemAccount">{{ isSavingSystemAccount ? 'Guardando...' : 'Guardar cambios' }}</button>
+                      <button type="button" class="secondary-button" (click)="closeSystemAccountEditor()">Cancelar</button>
+                    </div>
+                  </form>
+
+                  <div class="pending-form company-visibility-card">
+                    <p class="label">Resumen</p>
+                    <strong>{{ editingSystemAccount.ownerName }}</strong>
+                    <p>{{ editingSystemAccount.ownerEmail }}</p>
+                    <p>Usuario: {{ editingSystemAccount.username }}</p>
+                    <p>Profesionales activos: {{ editingSystemAccount.activeProfessionals }}/{{ editingSystemAccount.professionalLimit }}</p>
+                  </div>
+                </div>
+              </article>
+            }
           </article>
         }
       </article>
@@ -945,50 +985,4 @@
   </div>
 }
 
-@if (editingSystemAccount) {
-  <div class="activity-overlay" (click)="closeSystemAccountEditor()">
-    <section class="activity-modal panel" (click)="$event.stopPropagation()">
-      <div class="activity-modal-header">
-        <div>
-          <p class="label">Superadmin</p>
-          <h2>Editar empresa y suscripcion</h2>
-          <p>{{ editingSystemAccount.companyName || editingSystemAccount.ownerName }}</p>
-        </div>
-        <button type="button" class="close-button" (click)="closeSystemAccountEditor()">Cerrar</button>
-      </div>
-
-      <div class="activity-modal-body">
-        <form class="activity-form" (ngSubmit)="saveSystemAccount()">
-          @if (companySettingsError) {
-            <p class="auth-error">{{ companySettingsError }}</p>
-          }
-          @if (companySettingsMessage) {
-            <p class="success-message">{{ companySettingsMessage }}</p>
-          }
-          <label><span>Estado de empresa</span><select name="systemCompanyStatus" [(ngModel)]="systemAccountForm.companyStatus"><option value="active">Activa</option><option value="inactive">Inactiva</option><option value="suspended">Suspendida</option></select></label>
-          <label><span>Nombre del plan</span><input type="text" name="systemPlanName" [(ngModel)]="systemAccountForm.planName" required /></label>
-          <label><span>Codigo del plan</span><input type="text" name="systemPlanCode" [(ngModel)]="systemAccountForm.planCode" required /></label>
-          <label><span>Estado de suscripcion</span><select name="systemSubscriptionStatus" [(ngModel)]="systemAccountForm.subscriptionStatus"><option value="active">Activa</option><option value="trial">Trial</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></label>
-          <label><span>Precio mensual</span><input type="number" name="systemMonthlyPrice" [(ngModel)]="systemAccountForm.monthlyPrice" min="0" /></label>
-          <label><span>Limite de profesionales</span><input type="number" name="systemProfessionalLimit" [(ngModel)]="systemAccountForm.professionalLimit" min="4" /></label>
-          <label><span>Dia de renovacion</span><input type="number" name="systemRenewalDay" [(ngModel)]="systemAccountForm.renewalDay" min="1" max="31" /></label>
-          <div class="form-actions">
-            <button type="submit" [disabled]="isSavingSystemAccount">{{ isSavingSystemAccount ? 'Guardando...' : 'Guardar cambios' }}</button>
-            <button type="button" class="secondary-button" (click)="closeSystemAccountEditor()">Cancelar</button>
-          </div>
-        </form>
-
-        <div class="selected-day activity-modal-list">
-          <article class="company-control-card accent">
-            <p class="label">Resumen</p>
-            <strong>{{ editingSystemAccount.ownerName }}</strong>
-            <p>{{ editingSystemAccount.ownerEmail }}</p>
-            <p>Usuario: {{ editingSystemAccount.username }}</p>
-            <p>Profesionales activos: {{ editingSystemAccount.activeProfessionals }}/{{ editingSystemAccount.professionalLimit }}</p>
-          </article>
-        </div>
-      </div>
-    </section>
-  </div>
-}
 }
