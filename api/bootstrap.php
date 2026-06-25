@@ -968,7 +968,9 @@ function getSystemAccountSummaries(PDO $pdo): array
             cs.plan_name,
             cs.plan_code,
             cs.status AS subscription_status,
+            cs.monthly_price,
             cs.professional_limit,
+            cs.renewal_day,
             (
                 SELECT COUNT(*)
                 FROM professionals p
@@ -1002,7 +1004,9 @@ function getSystemAccountSummaries(PDO $pdo): array
             'planName' => (string) ($row['plan_name'] ?? ''),
             'planCode' => (string) ($row['plan_code'] ?? ''),
             'subscriptionStatus' => (string) ($row['subscription_status'] ?? 'active'),
+            'monthlyPrice' => isset($row['monthly_price']) ? (float) $row['monthly_price'] : 0,
             'professionalLimit' => (int) ($row['professional_limit'] ?? 0),
+            'renewalDay' => isset($row['renewal_day']) ? (int) $row['renewal_day'] : null,
             'activeProfessionals' => (int) ($row['active_professionals'] ?? 0),
             'createdAt' => (string) ($row['created_at'] ?? ''),
         ];

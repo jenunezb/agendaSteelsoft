@@ -149,7 +149,9 @@ export interface SystemAccountSummary {
   planName: string;
   planCode: string;
   subscriptionStatus: 'active' | 'trial' | 'suspended' | 'cancelled';
+  monthlyPrice: number;
   professionalLimit: number;
+  renewalDay: number | null;
   activeProfessionals: number;
   createdAt: string;
 }

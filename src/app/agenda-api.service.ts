@@ -267,6 +267,19 @@ export class AgendaApiService {
     return this.http.get<SystemAccountSummary[]>(`${this.baseUrl}/admin.php`);
   }
 
+  updateSystemAccount(payload: {
+    companyId: number;
+    companyStatus: 'active' | 'inactive' | 'suspended';
+    planName: string;
+    planCode: string;
+    subscriptionStatus: 'active' | 'trial' | 'suspended' | 'cancelled';
+    monthlyPrice: number;
+    professionalLimit: number;
+    renewalDay?: number | null;
+  }): Observable<SystemAccountSummary[]> {
+    return this.http.put<SystemAccountSummary[]>(`${this.baseUrl}/admin.php`, payload);
+  }
+
   createPublicBooking(payload: {
     username: string;
     professionalId: number;

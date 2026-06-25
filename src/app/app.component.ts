@@ -87,10 +87,12 @@ export class AppComponent implements OnInit {
   protected editingProfessionalId: number | null = null;
   protected systemAccounts: SystemAccountSummary[] = [];
   protected isLoadingSystemAccounts = false;
+  protected isSavingSystemAccount = false;
   protected verificationToken = '';
   protected authRouteMode: 'login' | 'register' | null = null;
   protected superAdminTab: 'overview' | 'accounts' = 'overview';
   protected companyAdminTab: 'agenda' | 'config' = 'agenda';
+  protected editingSystemAccountId: number | null = null;
   protected isSubmittingPublicBooking = false;
   protected loginForm = {
     username: '',
@@ -121,6 +123,16 @@ export class AppComponent implements OnInit {
     monthlyPrice: 150000,
     professionalLimit: 4,
     renewalDay: new Date().getDate()
+  };
+  protected systemAccountForm = {
+    companyId: 0,
+    companyStatus: 'active' as 'active' | 'inactive' | 'suspended',
+    planName: '',
+    planCode: '',
+    subscriptionStatus: 'active' as 'active' | 'trial' | 'suspended' | 'cancelled',
+    monthlyPrice: 0,
+    professionalLimit: 4,
+    renewalDay: null as number | null
   };
   protected professionalForm = {
     name: '',
@@ -252,6 +264,12 @@ export class AppComponent implements OnInit {
     return this.systemAccounts.filter((account) => account.emailVerified).length;
   }
 
+  protected get editingSystemAccount(): SystemAccountSummary | null {
+    return (
+      this.systemAccounts.find((account) => account.companyId === this.editingSystemAccountId) ?? null
+    );
+  }
+
   protected get publicProfessionals() {
     return this.publicProfileUser ? (this.publicProfileProfessionals ?? []) : [];
   }
@@ -365,6 +383,65 @@ export class AppComponent implements OnInit {
         this.companySettingsError = 'No fue posible cargar las cuentas registradas.';
       }
     });
+  }
+
+  protected openSystemAccountEditor(account: SystemAccountSummary): void {
+    if (!account.companyId || account.isSystemAdmin) {
+      return;
+    }
+
+    this.editingSystemAccountId = account.companyId;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.systemAccountForm = {
+      companyId: account.companyId,
+      companyStatus: account.companyStatus,
+      planName: account.planName || 'Plan gratuito',
+      planCode: account.planCode || 'free',
+      subscriptionStatus: account.subscriptionStatus,
+      monthlyPrice: account.monthlyPrice || 0,
+      professionalLimit: Math.max(account.professionalLimit || 4, 4),
+      renewalDay: account.renewalDay
+    };
+  }
+
+  protected closeSystemAccountEditor(): void {
+    this.editingSystemAccountId = null;
+    this.isSavingSystemAccount = false;
+  }
+
+  protected saveSystemAccount(): void {
+    if (!this.systemAccountForm.companyId) {
+      return;
+    }
+
+    this.isSavingSystemAccount = true;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.agendaApi
+      .updateSystemAccount({
+        companyId: this.systemAccountForm.companyId,
+        companyStatus: this.systemAccountForm.companyStatus,
+        planName: this.systemAccountForm.planName.trim(),
+        planCode: this.systemAccountForm.planCode.trim().toLowerCase(),
+        subscriptionStatus: this.systemAccountForm.subscriptionStatus,
+        monthlyPrice: Number(this.systemAccountForm.monthlyPrice) || 0,
+        professionalLimit: Math.max(Number(this.systemAccountForm.professionalLimit) || 4, 4),
+        renewalDay: this.systemAccountForm.renewalDay
+      })
+      .subscribe({
+        next: (accounts) => {
+          this.systemAccounts = accounts;
+          this.isSavingSystemAccount = false;
+          this.companySettingsMessage = 'Cuenta actualizada por el superadmin.';
+          this.closeSystemAccountEditor();
+        },
+        error: (error) => {
+          this.isSavingSystemAccount = false;
+          this.companySettingsError =
+            error?.error?.message ?? 'No fue posible actualizar la cuenta seleccionada.';
+        }
+      });
   }
 
   protected saveCompanyProfile(): void {

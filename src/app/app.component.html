@@ -652,7 +652,16 @@
                           <small>{{ account.subscriptionStatus || 'active' }}</small>
                         </div>
                       </td>
-                      <td>{{ account.createdAt | date:'dd/MM/yyyy' }}</td>
+                      <td>
+                        <div class="superadmin-status-stack">
+                          <small>{{ account.createdAt | date:'dd/MM/yyyy' }}</small>
+                          @if (!account.isSystemAdmin && account.companyId) {
+                            <button type="button" class="secondary-button" (click)="openSystemAccountEditor(account)">
+                              Editar plan
+                            </button>
+                          }
+                        </div>
+                      </td>
                     </tr>
                   } @empty {
                     <tr>
@@ -684,7 +693,7 @@
           <div class="enterprise-hero-copy">
             <p class="label">{{ companyContext?.subscription?.planName || 'Plan basico' }}</p>
             <h2>1 administrador + 4 profesionales operativos</h2>
-            <p>El administrador no consume los 4 cupos. Desde aqui gestionas agenda, tareas, finanzas y accesos individuales.</p>
+            <p>El administrador no consume los 4 cupos. Desde aqui gestionas visibilidad, notificaciones y accesos individuales.</p>
           </div>
           <div class="enterprise-kpi-grid">
             <article class="enterprise-kpi-card">
@@ -716,23 +725,23 @@
           <div class="panel-heading">
             <p class="label">Empresa y plan</p>
             <h2>Configuracion general</h2>
+            <p>El estado de la empresa y la suscripcion del plan los administra el superadmin.</p>
           </div>
           <div class="company-control-grid">
             <article class="company-control-card">
-              <form class="pending-form" (ngSubmit)="saveCompanyProfile()">
-                <label><span>Nombre de empresa</span><input type="text" name="companyName" [(ngModel)]="companyProfileForm.name" required /></label>
-                <label><span>Estado</span><select name="companyStatus" [(ngModel)]="companyProfileForm.status"><option value="active">Activa</option><option value="inactive">Inactiva</option><option value="suspended">Suspendida</option></select></label>
-                <button type="submit" [disabled]="isSavingCompanyProfile">{{ isSavingCompanyProfile ? 'Guardando...' : 'Guardar empresa' }}</button>
-              </form>
+              <div class="pending-form company-visibility-card">
+                <p class="label">Empresa</p>
+                <strong>{{ companyContext?.company?.name }}</strong>
+                <p>Estado actual: {{ companyContext?.company?.status || 'active' }}</p>
+              </div>
             </article>
             <article class="company-control-card accent">
-              <form class="pending-form" (ngSubmit)="saveSubscription()">
-                <label><span>Plan</span><input type="text" name="planName" [(ngModel)]="companySubscriptionForm.planName" required /></label>
-                <label><span>Codigo</span><input type="text" name="planCode" [(ngModel)]="companySubscriptionForm.planCode" required /></label>
-                <label><span>Limite de profesionales</span><input type="number" name="professionalLimit" [(ngModel)]="companySubscriptionForm.professionalLimit" min="4" /></label>
-                <label><span>Precio mensual</span><input type="number" name="monthlyPrice" [(ngModel)]="companySubscriptionForm.monthlyPrice" min="0" /></label>
-                <button type="submit" [disabled]="isSavingSubscription">{{ isSavingSubscription ? 'Guardando...' : 'Guardar plan' }}</button>
-              </form>
+              <div class="pending-form company-visibility-card">
+                <p class="label">Suscripcion</p>
+                <strong>{{ companyContext?.subscription?.planName || 'Plan gratuito' }}</strong>
+                <p>Codigo: {{ companyContext?.subscription?.planCode || 'free' }}</p>
+                <p>Estado: {{ companyContext?.subscription?.status || 'active' }}</p>
+              </div>
             </article>
             <article class="company-control-card">
               <div class="pending-form company-visibility-card">
@@ -812,88 +821,6 @@
             </article>
           </div>
         </article>
-        <article class="panel enterprise-admin-panel">
-          <div class="panel-heading">
-            <p class="label">Programacion</p>
-            <h2>Crear cita de empresa</h2>
-            <p>La programacion rapida queda en configuracion para dejar la agenda visual completamente limpia.</p>
-          </div>
-          <form class="pending-form" (ngSubmit)="addActivity()">
-            <label><span>Titulo</span><input type="text" name="title" [(ngModel)]="newActivity.title" required /></label>
-            <label><span>Fecha</span><input type="date" name="date" [(ngModel)]="newActivity.date" required /></label>
-            <label><span>Hora inicio</span><select name="startTime" [(ngModel)]="newActivity.startTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
-            <label><span>Hora fin</span><select name="endTime" [(ngModel)]="newActivity.endTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
-            <label><span>Profesional</span><select name="assignee" [(ngModel)]="newActivity.assignee" required>@for (assignee of assigneeOptions; track assignee) {<option [value]="assignee">{{ assignee }}</option>}</select></label>
-            <button type="submit">{{ editingActivityId ? 'Guardar cambios' : 'Agregar actividad' }}</button>
-          </form>
-        </article>
-
-        <article class="panel enterprise-admin-panel">
-          <div class="panel-heading">
-            <p class="label">Pendientes</p>
-            <h2>Tareas generales</h2>
-          </div>
-          <form class="pending-form" (ngSubmit)="addGeneralPending()">
-            <label><span>Titulo</span><input type="text" name="pendingTitle" [(ngModel)]="newGeneralPending.title" required /></label>
-            <label><span>Fecha</span><input type="date" name="pendingDate" [(ngModel)]="newGeneralPending.date" required /></label>
-            <label><span>Asignado a</span><select name="pendingAssignee" [(ngModel)]="newGeneralPending.assignee" required>@for (assignee of assigneeOptions; track assignee) {<option [value]="assignee">{{ assignee }}</option>}</select></label>
-            <button type="submit">{{ editingGeneralPendingId ? 'Guardar cambios' : 'Agregar pendiente' }}</button>
-          </form>
-          <div class="pending-list">
-            @for (pending of generalPendings; track pending.id) {
-              <article class="pending-card">
-                <div>
-                  <span class="assignee-badge" [class]="getAssigneeClassName(pending.assignee)">{{ pending.assignee }}</span>
-                  <strong>{{ pending.title }}</strong>
-                  <p class="entry-date">{{ formatFullDateLabel(pending.date) }}</p>
-                </div>
-                <div class="card-actions">
-                  <button type="button" (click)="editGeneralPending(pending)">Editar</button>
-                  <button type="button" (click)="removeGeneralPending(pending.id)">Eliminar</button>
-                </div>
-              </article>
-            } @empty {
-              <p class="empty-state">No hay pendientes generales registrados.</p>
-            }
-          </div>
-        </article>
-
-        <article class="panel enterprise-admin-panel">
-          <div class="panel-heading">
-            <p class="label">Finanzas</p>
-            <h2>Ingresos y egresos</h2>
-          </div>
-          <form class="pending-form" (ngSubmit)="addFinancialEntry()">
-            <label><span>Concepto</span><input type="text" name="financialTitle" [(ngModel)]="newFinancialEntry.title" required /></label>
-            <label><span>Fecha</span><input type="date" name="financialDate" [(ngModel)]="newFinancialEntry.date" required /></label>
-            <label><span>Tipo</span><select name="financialType" [(ngModel)]="newFinancialEntry.type" required><option value="income">Ingreso</option><option value="expense">Egreso</option></select></label>
-            <label><span>Monto</span><input type="number" name="financialAmount" [(ngModel)]="newFinancialEntry.amount" min="1" required /></label>
-            <label><span>Asignado a</span><select name="financialAssignee" [(ngModel)]="newFinancialEntry.assignee" required>@for (assignee of assigneeOptions; track assignee) {<option [value]="assignee">{{ assignee }}</option>}</select></label>
-            <button type="submit">{{ editingFinancialEntryId ? 'Guardar cambios' : 'Agregar movimiento' }}</button>
-          </form>
-          <div class="finance-summary-grid">
-            <article class="finance-summary-card"><span>Ingresos</span><strong>{{ formatCurrency(financialReportSummary.income) }}</strong></article>
-            <article class="finance-summary-card expense"><span>Egresos</span><strong>{{ formatCurrency(financialReportSummary.expense) }}</strong></article>
-            <article class="finance-summary-card"><span>Balance</span><strong>{{ formatCurrency(financialReportSummary.net) }}</strong></article>
-          </div>
-          <div class="pending-list">
-            @for (entry of filteredFinancialEntries; track entry.id) {
-              <article class="pending-card finance-card" [class.expense]="entry.type === 'expense'">
-                <div>
-                  <strong>{{ entry.title }}</strong>
-                  <p class="entry-date">{{ formatFullDateLabel(entry.date) }}</p>
-                  <p class="finance-amount">{{ formatCurrency(entry.amount) }}</p>
-                </div>
-                <div class="card-actions">
-                  <button type="button" (click)="editFinancialEntry(entry)">Editar</button>
-                  <button type="button" (click)="removeFinancialEntry(entry.id)">Eliminar</button>
-                </div>
-              </article>
-            } @empty {
-              <p class="empty-state">No hay movimientos registrados.</p>
-            }
-          </div>
-        </article>
       </section>
     } @else if (isProfessionalUser) {
       <section class="enterprise-overview">
@@ -930,7 +857,7 @@
 
         <div class="calendar-grid">
           @for (day of calendarDays; track trackByIsoDate($index, day)) {
-            <button type="button" class="day-cell" [class.outside]="!day.inCurrentMonth" [class.selected]="selectedDate === day.isoDate" [class.today]="day.isToday" (click)="selectDate(day.isoDate)">
+            <button type="button" class="day-cell" [class.outside]="!day.inCurrentMonth" [class.selected]="selectedDate === day.isoDate" [class.today]="day.isToday" (click)="openActivityPanel(day.isoDate)">
               <span class="day-number">{{ day.dayNumber }}</span>
               <div class="mini-list">
                 @for (activity of day.activities.slice(0, 3); track trackByActivity($index, activity)) {
@@ -940,12 +867,50 @@
             </button>
           }
         </div>
+      </article>
+    </section>
+    }
+  }
+</main>
+
+@if (isActivityPanelOpen) {
+  <div class="activity-overlay" (click)="closeActivityPanel()">
+    <section class="activity-modal panel" (click)="$event.stopPropagation()">
+      <div class="activity-modal-header">
+        <div>
+          <p class="label">{{ isProfessionalUser ? 'Mi agenda' : 'Agenda del dia' }}</p>
+          <h2>{{ formatDayLabel(selectedDate) }}</h2>
+          <p>
+            {{ isCompanyAdminUser
+              ? 'Desde aqui puedes crear o editar una cita para la fecha seleccionada.'
+              : 'Estas viendo solo las actividades asignadas a tu calendario.' }}
+          </p>
+        </div>
+        <button type="button" class="close-button" (click)="closeActivityPanel()">Cerrar</button>
+      </div>
+
+      <div class="activity-modal-body">
+        @if (isCompanyAdminUser) {
+          <form class="activity-form" (ngSubmit)="addActivity()">
+            <label><span>Titulo</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" required /></label>
+            <label><span>Fecha</span><input type="date" name="modalDate" [(ngModel)]="newActivity.date" required /></label>
+            <label><span>Hora inicio</span><select name="modalStartTime" [(ngModel)]="newActivity.startTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
+            <label><span>Hora fin</span><select name="modalEndTime" [(ngModel)]="newActivity.endTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
+            <label><span>Profesional</span><select name="modalAssignee" [(ngModel)]="newActivity.assignee" required>@for (assignee of assigneeOptions; track assignee) {<option [value]="assignee">{{ assignee }}</option>}</select></label>
+            <label><span>Ubicacion</span><input type="text" name="modalLocation" [(ngModel)]="newActivity.location" /></label>
+            <label><span>Descripcion</span><textarea name="modalDescription" [(ngModel)]="newActivity.description" rows="3"></textarea></label>
+            <label><span>Recordatorio</span><select name="modalReminder" [(ngModel)]="newActivity.reminderMinutes">@for (option of reminderOptions; track option.label) {<option [ngValue]="option.value">{{ option.label }}</option>}</select></label>
+            <label><span>Visibilidad</span><select name="modalVisibility" [(ngModel)]="newActivity.visibility"><option value="private">Privada</option><option value="public">Publica</option></select></label>
+            <div class="form-actions">
+              <button type="submit">{{ isEditingActivity ? 'Guardar cambios' : 'Crear cita' }}</button>
+              @if (isEditingActivity) {
+                <button type="button" class="secondary-button" (click)="cancelActivityEdit()">Cancelar edicion</button>
+              }
+            </div>
+          </form>
+        }
 
         <div class="selected-day activity-modal-list">
-          <div>
-            <p class="label">{{ isProfessionalUser ? 'Mi agenda' : 'Agenda del dia' }}</p>
-            <h3>{{ formatDayLabel(selectedDate) }}</h3>
-          </div>
           <div class="selected-list">
             @for (activity of selectedDateActivities; track trackByActivity($index, activity)) {
               <article class="activity-card" [class.completed]="activity.completed">
@@ -960,6 +925,7 @@
                   <p class="activity-time">{{ formatActivityTimeRange(activity) }}</p>
                   @if (activity.location) { <p class="activity-location">{{ activity.location }}</p> }
                   @if (activity.description) { <p>{{ activity.description }}</p> }
+                  @if (activity.reminderMinutes !== null) { <p class="activity-reminder">{{ getReminderLabel(activity.reminderMinutes) }}</p> }
                 </div>
                 @if (isCompanyAdminUser) {
                   <div class="activity-actions">
@@ -974,9 +940,55 @@
             }
           </div>
         </div>
-      </article>
+      </div>
     </section>
-    }
-  }
-</main>
+  </div>
+}
+
+@if (editingSystemAccount) {
+  <div class="activity-overlay" (click)="closeSystemAccountEditor()">
+    <section class="activity-modal panel" (click)="$event.stopPropagation()">
+      <div class="activity-modal-header">
+        <div>
+          <p class="label">Superadmin</p>
+          <h2>Editar empresa y suscripcion</h2>
+          <p>{{ editingSystemAccount.companyName || editingSystemAccount.ownerName }}</p>
+        </div>
+        <button type="button" class="close-button" (click)="closeSystemAccountEditor()">Cerrar</button>
+      </div>
+
+      <div class="activity-modal-body">
+        <form class="activity-form" (ngSubmit)="saveSystemAccount()">
+          @if (companySettingsError) {
+            <p class="auth-error">{{ companySettingsError }}</p>
+          }
+          @if (companySettingsMessage) {
+            <p class="success-message">{{ companySettingsMessage }}</p>
+          }
+          <label><span>Estado de empresa</span><select name="systemCompanyStatus" [(ngModel)]="systemAccountForm.companyStatus"><option value="active">Activa</option><option value="inactive">Inactiva</option><option value="suspended">Suspendida</option></select></label>
+          <label><span>Nombre del plan</span><input type="text" name="systemPlanName" [(ngModel)]="systemAccountForm.planName" required /></label>
+          <label><span>Codigo del plan</span><input type="text" name="systemPlanCode" [(ngModel)]="systemAccountForm.planCode" required /></label>
+          <label><span>Estado de suscripcion</span><select name="systemSubscriptionStatus" [(ngModel)]="systemAccountForm.subscriptionStatus"><option value="active">Activa</option><option value="trial">Trial</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></label>
+          <label><span>Precio mensual</span><input type="number" name="systemMonthlyPrice" [(ngModel)]="systemAccountForm.monthlyPrice" min="0" /></label>
+          <label><span>Limite de profesionales</span><input type="number" name="systemProfessionalLimit" [(ngModel)]="systemAccountForm.professionalLimit" min="4" /></label>
+          <label><span>Dia de renovacion</span><input type="number" name="systemRenewalDay" [(ngModel)]="systemAccountForm.renewalDay" min="1" max="31" /></label>
+          <div class="form-actions">
+            <button type="submit" [disabled]="isSavingSystemAccount">{{ isSavingSystemAccount ? 'Guardando...' : 'Guardar cambios' }}</button>
+            <button type="button" class="secondary-button" (click)="closeSystemAccountEditor()">Cancelar</button>
+          </div>
+        </form>
+
+        <div class="selected-day activity-modal-list">
+          <article class="company-control-card accent">
+            <p class="label">Resumen</p>
+            <strong>{{ editingSystemAccount.ownerName }}</strong>
+            <p>{{ editingSystemAccount.ownerEmail }}</p>
+            <p>Usuario: {{ editingSystemAccount.username }}</p>
+            <p>Profesionales activos: {{ editingSystemAccount.activeProfessionals }}/{{ editingSystemAccount.professionalLimit }}</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </div>
+}
 }
