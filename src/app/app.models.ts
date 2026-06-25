@@ -74,6 +74,10 @@ export interface AuthSession {
 export interface PublicProfile {
   found: boolean;
   profileEnabled: boolean;
+  workingHours?: {
+    start: number;
+    end: number;
+  };
   user:
     | (Pick<AuthUser, 'name' | 'username' | 'publicUrl'> & {
         whatsappNumber?: string;
@@ -98,6 +102,8 @@ export interface CompanyProfile {
   slug: string;
   accountType?: 'business' | 'independent';
   status: 'active' | 'inactive' | 'suspended';
+  workingHourStart: number;
+  workingHourEnd: number;
 }
 
 export interface CompanySubscription {

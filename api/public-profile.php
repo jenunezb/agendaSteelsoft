@@ -54,6 +54,14 @@ $professionalId = isset($user['professional_id']) ? (int) $user['professional_id
 $isCompanyWorkspace = $companyId > 0 && in_array($companyRole, ['owner', 'admin'], true);
 
 if ($isCompanyWorkspace) {
+    $companyStatement = $pdo->prepare(
+        'SELECT working_hour_start, working_hour_end
+         FROM companies
+         WHERE id = :company_id'
+    );
+    $companyStatement->execute([':company_id' => $companyId]);
+    $company = $companyStatement->fetch();
+
     $activitiesStatement = $pdo->prepare(
         'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date
          FROM activities
@@ -77,6 +85,8 @@ if ($isCompanyWorkspace) {
             'name' => (string) $row['name'],
         ];
     }, $professionalsStatement->fetchAll());
+    $workingHourStart = isset($company['working_hour_start']) ? (int) $company['working_hour_start'] : 8;
+    $workingHourEnd = isset($company['working_hour_end']) ? (int) $company['working_hour_end'] : 18;
 } else {
     $activitiesStatement = $pdo->prepare(
         'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date
@@ -92,6 +102,8 @@ if ($isCompanyWorkspace) {
             'name' => (string) $user['name'],
         ]]
         : [];
+    $workingHourStart = 8;
+    $workingHourEnd = 18;
 }
 
 $activities = array_map(static function (array $row): array {
@@ -125,4 +137,8 @@ jsonResponse([
     ],
     'activities' => $activities,
     'professionals' => $professionals,
+    'workingHours' => [
+        'start' => $workingHourStart,
+        'end' => $workingHourEnd,
+    ],
 ]);

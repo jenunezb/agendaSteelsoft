@@ -37,12 +37,16 @@
             </div>
             <div class="activity-launch-content">
               <div>
-                <p class="label">Dia seleccionado</p>
-                <h3>{{ formatFullDateLabel(selectedDate) }}</h3>
+                <p class="label">Semana visible</p>
+                <h3>{{ currentWeekLabel }}</h3>
               </div>
               <p class="activity-launch-copy">
                 Hay {{ selectedDateActivities.length }} actividad{{ selectedDateActivities.length === 1 ? '' : 'es' }}
                 publica{{ selectedDateActivities.length === 1 ? '' : 's' }} en esta fecha.
+              </p>
+              <p class="activity-launch-copy">
+                Horario laboral: {{ formatTimeLabel((currentWorkingHours.start < 10 ? '0' : '') + currentWorkingHours.start + ':00') }}
+                - {{ formatTimeLabel((currentWorkingHours.end < 10 ? '0' : '') + currentWorkingHours.end + ':00') }}
               </p>
               <button type="button" (click)="openActivityPanel(selectedDate)">Ver actividades del dia</button>
               @if (publicProfileUser?.whatsappContactUrl) {
@@ -64,7 +68,7 @@
                   <span>Profesional</span>
                   <select name="publicProfessionalId" [(ngModel)]="publicBookingForm.professionalId" required>
                     @for (professional of publicProfileProfessionals; track professional.id) {
-                      <option [ngValue]="professional.id">{{ professional.name }}</option>
+                    <option [ngValue]="professional.id">{{ professional.name }}</option>
                     }
                   </select>
                 </label>
@@ -133,126 +137,83 @@
         <article class="panel calendar-panel">
           <div class="calendar-header">
             <div>
-              <p class="label">Visualizacion</p>
+              <p class="label">Agenda publica semanal</p>
               <h2>{{ currentPeriodLabel }}</h2>
             </div>
 
             <div class="calendar-controls">
-              <div class="view-switch">
-                <button type="button" [class.active]="viewMode === 'month'" (click)="setViewMode('month')">
-                  Mes
-                </button>
-                <button type="button" [class.active]="viewMode === 'week'" (click)="setViewMode('week')">
-                  Semana
-                </button>
-              </div>
-
               <div class="month-actions">
                 <button type="button" (click)="previousPeriod()">Anterior</button>
                 <button type="button" (click)="nextPeriod()">Siguiente</button>
               </div>
             </div>
           </div>
-
-          @if (viewMode === 'month') {
-            <div class="weekdays">
-              @for (dayName of weekDayNames; track dayName) {
-                <span>{{ dayName }}</span>
-              }
-            </div>
-
-            <div class="calendar-grid">
-              @for (day of calendarDays; track trackByIsoDate($index, day)) {
+          <div class="week-agenda">
+            <div class="week-agenda-header">
+              <span class="slot-heading">Hora</span>
+              @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
                 <button
                   type="button"
-                  class="day-cell"
-                  [class.outside]="!day.inCurrentMonth"
-                  [class.selected]="selectedDate === day.isoDate"
+                  class="week-day-heading"
                   [class.today]="day.isToday"
+                  [class.selected]="selectedDate === day.isoDate"
                   (click)="openActivityPanel(day.isoDate)"
                 >
-                  <span class="day-number">{{ day.dayNumber }}</span>
-                  <div class="mini-list">
-                    @for (activity of day.activities.slice(0, 3); track trackByActivity($index, activity)) {
-                      <span class="mini-pill" [class.completed]="activity.completed">
-                        {{ activity.startTime }} - {{ activity.title }}
-                      </span>
-                    }
-                  </div>
-                  @if (day.activities.length > 3) {
-                    <small>+{{ day.activities.length - 3 }} mas</small>
-                  }
+                  <strong>{{ formatWeekDayHeader(day) }}</strong>
+                  <small>{{ day.activities.length }} actividades</small>
                 </button>
               }
             </div>
-          } @else {
-            <div class="week-agenda">
-              <div class="week-agenda-header">
-                <span class="slot-heading">Hora</span>
-                @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
-                  <button
-                    type="button"
-                    class="week-day-heading"
-                    [class.today]="day.isToday"
-                    [class.selected]="selectedDate === day.isoDate"
-                    (click)="openActivityPanel(day.isoDate)"
-                  >
-                    <strong>{{ formatWeekDayHeader(day) }}</strong>
-                    <small>{{ day.activities.length }} actividades</small>
-                  </button>
+
+            <div class="week-agenda-body">
+              <div class="week-time-column">
+                @for (time of weeklyTimeOptions; track time) {
+                  <div class="time-slot week-time-cell">{{ formatTimeLabel(time) }}</div>
                 }
               </div>
 
-              <div class="week-agenda-body">
-                <div class="week-time-column">
-                  @for (time of weeklyTimeOptions; track time) {
-                    <div class="time-slot week-time-cell">{{ formatTimeLabel(time) }}</div>
-                  }
-                </div>
-
-                <div class="week-day-columns">
-                  @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
-                    <div
-                      class="week-day-column"
-                      [class.selected]="selectedDate === day.isoDate"
-                      tabindex="0"
-                      (click)="openActivityPanel(day.isoDate)"
-                      (keydown.enter)="openActivityPanel(day.isoDate)"
-                      (keydown.space)="openActivityPanel(day.isoDate)"
-                    >
-                      <div class="week-day-grid">
-                        @for (time of weeklyTimeOptions; track time) {
-                          <span class="week-grid-cell"></span>
-                        }
-                      </div>
-
-                      <div class="week-day-activities">
-                        @for (activity of getActivitiesForWeekDay(day.isoDate); track trackByActivity($index, activity)) {
-                          <article
-                            class="slot-activity week-span-activity"
-                            [class.completed]="activity.completed"
-                            [style.top.px]="getWeekActivityTop(activity)"
-                            [style.height.px]="getWeekActivityHeight(activity)"
-                          >
-                            <div class="slot-activity-header">
-                              <strong>{{ activity.title }}</strong>
-                              @if (activity.completed) {
-                                <span class="status-badge">Finalizado</span>
-                              }
-                            </div>
-                            <span>{{ formatActivityTimeRange(activity) }}</span>
-                            @if (activity.location) {
-                              <span>{{ activity.location }}</span>
-                            }
-                          </article>
-                        }
-                      </div>
+              <div class="week-day-columns">
+                @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
+                  <div
+                    class="week-day-column"
+                    [class.selected]="selectedDate === day.isoDate"
+                    tabindex="0"
+                    (click)="openActivityPanel(day.isoDate)"
+                    (keydown.enter)="openActivityPanel(day.isoDate)"
+                    (keydown.space)="openActivityPanel(day.isoDate)"
+                  >
+                    <div class="week-day-grid">
+                      @for (time of weeklyTimeOptions; track time) {
+                        <span class="week-grid-cell"></span>
+                      }
                     </div>
-                  }
-                </div>
+
+                    <div class="week-day-activities">
+                      @for (activity of getActivitiesForWeekDay(day.isoDate); track trackByActivity($index, activity)) {
+                        <article
+                          class="slot-activity week-span-activity"
+                          [class.completed]="activity.completed"
+                          [style.top.px]="getWeekActivityTop(activity)"
+                          [style.height.px]="getWeekActivityHeight(activity)"
+                        >
+                          <div class="slot-activity-header">
+                            <strong>{{ activity.title }}</strong>
+                            @if (activity.completed) {
+                              <span class="status-badge">Finalizado</span>
+                            }
+                          </div>
+                          <span>{{ formatActivityTimeRange(activity) }}</span>
+                          @if (activity.location) {
+                            <span>{{ activity.location }}</span>
+                          }
+                        </article>
+                      }
+                    </div>
+                  </div>
+                }
               </div>
             </div>
-          }
+          </div>
         </article>
       </section>
     } @else {
@@ -782,6 +743,14 @@
                 <p>Codigo: {{ companyContext?.subscription?.planCode || 'free' }}</p>
                 <p>Estado: {{ companyContext?.subscription?.status || 'active' }}</p>
               </div>
+            </article>
+            <article class="company-control-card">
+              <form class="pending-form" (ngSubmit)="saveCompanyProfile()">
+                <label><span>Nombre de empresa</span><input type="text" name="companyName" [(ngModel)]="companyProfileForm.name" required /></label>
+                <label><span>Hora inicial</span><select name="workingHourStart" [(ngModel)]="companyProfileForm.workingHourStart">@for (time of hourOptions; track time) {<option [ngValue]="+time.slice(0, 2)">{{ formatTimeLabel(time) }}</option>}</select></label>
+                <label><span>Hora final</span><select name="workingHourEnd" [(ngModel)]="companyProfileForm.workingHourEnd">@for (time of hourOptions; track time) {<option [ngValue]="+time.slice(0, 2)">{{ formatTimeLabel(time) }}</option>}</select></label>
+                <button type="submit" [disabled]="isSavingCompanyProfile">{{ isSavingCompanyProfile ? 'Guardando...' : 'Guardar empresa y horario' }}</button>
+              </form>
             </article>
             <article class="company-control-card">
               <div class="pending-form company-visibility-card">

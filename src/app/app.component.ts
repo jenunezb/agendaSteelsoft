@@ -53,10 +53,6 @@ export class AppComponent implements OnInit {
     'Noviembre',
     'Diciembre'
   ];
-  protected readonly timeOptions = this.buildTimeOptions();
-  protected readonly weeklyTimeOptions = this.buildWeeklyTimeOptions();
-  protected readonly weeklyHourStart = 8;
-  protected readonly weeklyHourEnd = 18;
   protected readonly weeklyRowHeight = 72;
 
   protected currentMonth = this.startOfMonth(new Date());
@@ -64,6 +60,7 @@ export class AppComponent implements OnInit {
   protected currentUser: AuthUser | null = null;
   protected publicProfileUser: PublicProfile['user'] = null;
   protected publicProfileProfessionals: Array<{ id: number; name: string }> = [];
+  protected publicProfileHours = { start: 8, end: 18 };
   protected canRegister = false;
   protected authMode: 'login' | 'register' = 'login';
   protected authError = '';
@@ -114,7 +111,8 @@ export class AppComponent implements OnInit {
   };
   protected companyProfileForm = {
     name: '',
-    status: 'active'
+    workingHourStart: 8,
+    workingHourEnd: 18
   };
   protected companySubscriptionForm = {
     planName: 'Basico empresarial',
@@ -262,6 +260,32 @@ export class AppComponent implements OnInit {
 
   protected get verifiedSystemAccountsCount(): number {
     return this.systemAccounts.filter((account) => account.emailVerified).length;
+  }
+
+  protected get currentWorkingHours(): { start: number; end: number } {
+    if (this.isPublicProfileMode) {
+      return {
+        start: this.publicProfileHours.start,
+        end: this.publicProfileHours.end
+      };
+    }
+
+    return {
+      start: this.companyContext?.company.workingHourStart ?? 8,
+      end: this.companyContext?.company.workingHourEnd ?? 18
+    };
+  }
+
+  protected get timeOptions(): string[] {
+    return this.buildTimeOptions(this.currentWorkingHours.start, this.currentWorkingHours.end);
+  }
+
+  protected get hourOptions(): string[] {
+    return this.buildWeeklyTimeOptions(0, 23);
+  }
+
+  protected get weeklyTimeOptions(): string[] {
+    return this.buildWeeklyTimeOptions(this.currentWorkingHours.start, this.currentWorkingHours.end);
   }
 
   protected get editingSystemAccount(): SystemAccountSummary | null {
@@ -446,9 +470,23 @@ export class AppComponent implements OnInit {
 
   protected saveCompanyProfile(): void {
     const name = this.companyProfileForm.name.trim();
+    const workingHourStart = Number(this.companyProfileForm.workingHourStart);
+    const workingHourEnd = Number(this.companyProfileForm.workingHourEnd);
 
     if (!name) {
       this.companySettingsError = 'Ingresa el nombre de la empresa.';
+      this.companySettingsMessage = '';
+      return;
+    }
+
+    if (workingHourStart < 0 || workingHourStart > 23 || workingHourEnd < 1 || workingHourEnd > 23) {
+      this.companySettingsError = 'Define un horario laboral valido.';
+      this.companySettingsMessage = '';
+      return;
+    }
+
+    if (workingHourEnd <= workingHourStart) {
+      this.companySettingsError = 'La hora final debe ser mayor a la hora inicial.';
       this.companySettingsMessage = '';
       return;
     }
@@ -459,7 +497,8 @@ export class AppComponent implements OnInit {
     this.agendaApi
       .updateCompany({
         name,
-        status: this.companyProfileForm.status as CompanyContext['company']['status']
+        workingHourStart,
+        workingHourEnd
       })
       .subscribe({
         next: (context) => {
@@ -680,6 +719,11 @@ export class AppComponent implements OnInit {
   }
 
   protected setViewMode(mode: ViewMode): void {
+    if (this.isPublicProfileMode && mode === 'month') {
+      this.viewMode = 'week';
+      return;
+    }
+
     this.viewMode = mode;
   }
 
@@ -1294,7 +1338,7 @@ export class AppComponent implements OnInit {
 
   protected getWeekActivityTop(activity: Activity): number {
     const startMinutes = this.parseTimeToMinutes(activity.startTime);
-    const dayStartMinutes = this.weeklyHourStart * 60;
+    const dayStartMinutes = this.currentWorkingHours.start * 60;
     return ((startMinutes - dayStartMinutes) / 60) * this.weeklyRowHeight;
   }
 
@@ -1561,10 +1605,15 @@ export class AppComponent implements OnInit {
   private applyPublicProfile(profile: PublicProfile): void {
     this.publicProfileUser = profile.user;
     this.publicProfileProfessionals = profile.professionals ?? [];
+    this.publicProfileHours = {
+      start: this.normalizeWorkingHour(profile.workingHours?.start, 8),
+      end: this.normalizeWorkingHour(profile.workingHours?.end, 18)
+    };
     this.generalPendings = [];
     this.financialEntries = [];
     this.activities = profile.activities.sort((left, right) => this.compareActivities(left, right));
     this.publicBookingForm.professionalId = this.publicProfileProfessionals[0]?.id ?? 0;
+    this.viewMode = 'week';
 
     if (!profile.found) {
       this.publicProfileState = 'not-found';
@@ -1587,7 +1636,8 @@ export class AppComponent implements OnInit {
     };
     this.companyProfileForm = {
       name: context.company.name,
-      status: context.company.status
+      workingHourStart: context.company.workingHourStart,
+      workingHourEnd: context.company.workingHourEnd
     };
     this.companySubscriptionForm = {
       planName: context.subscription.planName,
@@ -1846,13 +1896,13 @@ export class AppComponent implements OnInit {
     return `${date.getDate()} ${this.monthNames[date.getMonth()]} ${date.getFullYear()}`;
   }
 
-  private buildTimeOptions(): string[] {
+  private buildTimeOptions(startHour: number, endHour: number): string[] {
     const times: string[] = [];
 
-    for (let hour = 8; hour <= 18; hour += 1) {
+    for (let hour = startHour; hour <= endHour; hour += 1) {
       times.push(`${`${hour}`.padStart(2, '0')}:00`);
 
-      if (hour < 18) {
+      if (hour < endHour) {
         times.push(`${`${hour}`.padStart(2, '0')}:30`);
       }
     }
@@ -1860,14 +1910,24 @@ export class AppComponent implements OnInit {
     return times;
   }
 
-  private buildWeeklyTimeOptions(): string[] {
+  private buildWeeklyTimeOptions(startHour: number, endHour: number): string[] {
     const times: string[] = [];
 
-    for (let hour = 8; hour <= 18; hour += 1) {
+    for (let hour = startHour; hour <= endHour; hour += 1) {
       times.push(`${`${hour}`.padStart(2, '0')}:00`);
     }
 
     return times;
+  }
+
+  private normalizeWorkingHour(value: number | null | undefined, fallback: number): number {
+    const normalized = Number(value);
+
+    if (!Number.isFinite(normalized) || normalized < 0 || normalized > 23) {
+      return fallback;
+    }
+
+    return normalized;
   }
 
   private getHourSlot(time: string): string {

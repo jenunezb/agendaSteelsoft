@@ -126,6 +126,8 @@ function ensureSchema(PDO $pdo, string $databaseName): void
             slug VARCHAR(170) NOT NULL UNIQUE,
             account_type ENUM("business", "independent") NOT NULL DEFAULT "business",
             status ENUM("active", "inactive", "suspended") NOT NULL DEFAULT "active",
+            working_hour_start TINYINT UNSIGNED NOT NULL DEFAULT 8,
+            working_hour_end TINYINT UNSIGNED NOT NULL DEFAULT 18,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )'
@@ -201,6 +203,27 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'companies',
         'account_type',
         'ALTER TABLE companies ADD COLUMN account_type ENUM("business", "independent") NOT NULL DEFAULT "business" AFTER slug'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'companies',
+        'status',
+        'ALTER TABLE companies ADD COLUMN status ENUM("active", "inactive", "suspended") NOT NULL DEFAULT "active" AFTER account_type'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'companies',
+        'working_hour_start',
+        'ALTER TABLE companies ADD COLUMN working_hour_start TINYINT UNSIGNED NOT NULL DEFAULT 8 AFTER status'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'companies',
+        'working_hour_end',
+        'ALTER TABLE companies ADD COLUMN working_hour_end TINYINT UNSIGNED NOT NULL DEFAULT 18 AFTER working_hour_start'
     );
     ensureColumnExists(
         $pdo,
@@ -907,7 +930,7 @@ function getCompanyContext(PDO $pdo, array $user): array
 {
     $companyId = requireCurrentCompanyId($user);
     $companyStatement = $pdo->prepare(
-        'SELECT id, name, slug, account_type, status
+        'SELECT id, name, slug, account_type, status, working_hour_start, working_hour_end
          FROM companies
          WHERE id = :id'
     );
@@ -930,6 +953,8 @@ function getCompanyContext(PDO $pdo, array $user): array
             'slug' => (string) $company['slug'],
             'accountType' => (string) ($company['account_type'] ?? 'business'),
             'status' => (string) $company['status'],
+            'workingHourStart' => isset($company['working_hour_start']) ? (int) $company['working_hour_start'] : 8,
+            'workingHourEnd' => isset($company['working_hour_end']) ? (int) $company['working_hour_end'] : 18,
         ],
         'subscription' => [
             'id' => isset($subscription['id']) ? (int) $subscription['id'] : 0,

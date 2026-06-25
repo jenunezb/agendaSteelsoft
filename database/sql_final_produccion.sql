@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS companies (
   slug VARCHAR(170) NOT NULL UNIQUE,
   account_type ENUM('business', 'independent') NOT NULL DEFAULT 'business',
   status ENUM('active', 'inactive', 'suspended') NOT NULL DEFAULT 'active',
+  working_hour_start TINYINT UNSIGNED NOT NULL DEFAULT 8,
+  working_hour_end TINYINT UNSIGNED NOT NULL DEFAULT 18,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -94,6 +96,8 @@ DELIMITER ;
 
 CALL ensure_column('companies', 'account_type', 'ALTER TABLE companies ADD COLUMN account_type ENUM(''business'', ''independent'') NOT NULL DEFAULT ''business'' AFTER slug');
 CALL ensure_column('companies', 'status', 'ALTER TABLE companies ADD COLUMN status ENUM(''active'', ''inactive'', ''suspended'') NOT NULL DEFAULT ''active'' AFTER account_type');
+CALL ensure_column('companies', 'working_hour_start', 'ALTER TABLE companies ADD COLUMN working_hour_start TINYINT UNSIGNED NOT NULL DEFAULT 8 AFTER status');
+CALL ensure_column('companies', 'working_hour_end', 'ALTER TABLE companies ADD COLUMN working_hour_end TINYINT UNSIGNED NOT NULL DEFAULT 18 AFTER working_hour_start');
 
 CALL ensure_column('users', 'email', 'ALTER TABLE users ADD COLUMN email VARCHAR(150) NOT NULL DEFAULT '''' AFTER username');
 CALL ensure_column('users', 'company_id', 'ALTER TABLE users ADD COLUMN company_id INT UNSIGNED NULL AFTER password_hash');

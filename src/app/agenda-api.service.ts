@@ -215,7 +215,7 @@ export class AgendaApiService {
   }
 
   updateCompany(
-    company: Pick<CompanyContext['company'], 'name' | 'status'>
+    company: Pick<CompanyContext['company'], 'name' | 'workingHourStart' | 'workingHourEnd'>
   ): Observable<CompanyContext> {
     return this.http.put<CompanyContext>(`${this.baseUrl}/company.php`, {
       action: 'updateCompany',

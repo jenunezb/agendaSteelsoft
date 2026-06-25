@@ -30,18 +30,32 @@ $companyId = requireCurrentCompanyId($user);
 
 if ($action === 'updateCompany') {
     $name = trim((string) ($payload['name'] ?? ''));
+    $workingHourStart = (int) ($payload['workingHourStart'] ?? 8);
+    $workingHourEnd = (int) ($payload['workingHourEnd'] ?? 18);
 
     if ($name === '') {
         jsonResponse(['message' => 'El nombre de la empresa es obligatorio.'], 422);
     }
 
+    if ($workingHourStart < 0 || $workingHourStart > 23 || $workingHourEnd < 1 || $workingHourEnd > 23) {
+        jsonResponse(['message' => 'El horario laboral es invalido.'], 422);
+    }
+
+    if ($workingHourEnd <= $workingHourStart) {
+        jsonResponse(['message' => 'La hora final debe ser mayor a la hora inicial.'], 422);
+    }
+
     $statement = $pdo->prepare(
         'UPDATE companies
-         SET name = :name
+         SET name = :name,
+             working_hour_start = :working_hour_start,
+             working_hour_end = :working_hour_end
          WHERE id = :id'
     );
     $statement->execute([
         ':name' => $name,
+        ':working_hour_start' => $workingHourStart,
+        ':working_hour_end' => $workingHourEnd,
         ':id' => $companyId,
     ]);
 

@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS companies (
   slug VARCHAR(170) NOT NULL UNIQUE,
   account_type ENUM('business', 'independent') NOT NULL DEFAULT 'business',
   status ENUM('active', 'inactive', 'suspended') NOT NULL DEFAULT 'active',
+  working_hour_start TINYINT UNSIGNED NOT NULL DEFAULT 8,
+  working_hour_end TINYINT UNSIGNED NOT NULL DEFAULT 18,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
