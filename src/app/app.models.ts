@@ -88,7 +88,10 @@ export interface PublicProfile {
   professionals?: Array<{
     id: number;
     name: string;
+    roleIds: number[];
+    roleNames: string[];
   }>;
+  services?: CompanyService[];
 }
 
 export interface WeekGroup {
@@ -123,9 +126,28 @@ export interface CompanyProfessional {
   email: string;
   phone: string;
   active: boolean;
+  roleIds: number[];
+  roleNames: string[];
   linkedUserId?: number | null;
   username?: string;
   emailVerified?: boolean;
+}
+
+export interface ServiceRole {
+  id: number;
+  name: string;
+  active: boolean;
+}
+
+export interface CompanyService {
+  id: number;
+  companyId?: number;
+  roleId: number | null;
+  roleName: string;
+  name: string;
+  durationMinutes: number;
+  description: string;
+  active: boolean;
 }
 
 export interface CompanyStats {
@@ -137,6 +159,8 @@ export interface CompanyContext {
   company: CompanyProfile;
   subscription: CompanySubscription;
   professionals: CompanyProfessional[];
+  serviceRoles: ServiceRole[];
+  services: CompanyService[];
   stats: CompanyStats;
 }
 

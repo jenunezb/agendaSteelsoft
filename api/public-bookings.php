@@ -13,21 +13,16 @@ if ($method !== 'POST') {
 
 $payload = getPayload();
 $username = strtolower(trim((string) ($payload['username'] ?? '')));
-$professionalId = (int) ($payload['professionalId'] ?? 0);
+$serviceId = (int) ($payload['serviceId'] ?? 0);
+$professionalId = isset($payload['professionalId']) ? (int) $payload['professionalId'] : 0;
 $customerName = trim((string) ($payload['customerName'] ?? ''));
-$customerEmail = strtolower(trim((string) ($payload['customerEmail'] ?? '')));
 $customerPhone = trim((string) ($payload['customerPhone'] ?? ''));
 $date = trim((string) ($payload['date'] ?? ''));
 $startTime = trim((string) ($payload['startTime'] ?? ''));
-$endTime = trim((string) ($payload['endTime'] ?? ''));
 $notes = trim((string) ($payload['notes'] ?? ''));
 
-if ($username === '' || $professionalId <= 0 || $customerName === '' || $customerEmail === '' || $date === '' || $startTime === '' || $endTime === '') {
+if ($username === '' || $serviceId <= 0 || $customerName === '' || $date === '' || $startTime === '') {
     jsonResponse(['message' => 'Completa los datos de la reserva.'], 422);
-}
-
-if (!filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
-    jsonResponse(['message' => 'Ingresa un correo valido para la reserva.'], 422);
 }
 
 $statement = $pdo->prepare(
@@ -50,36 +45,41 @@ if ($companyId <= 0 || !in_array($companyRole, ['owner', 'admin'], true)) {
     jsonResponse(['message' => 'La agenda publica no permite reservas generales.'], 422);
 }
 
-$professional = findProfessionalById($pdo, $companyId, $professionalId);
-if ($professional === null || empty($professional['active'])) {
-    jsonResponse(['message' => 'Profesional no disponible para esta reserva.'], 422);
+$service = findServiceById($pdo, $companyId, $serviceId);
+if ($service === null || empty($service['active'])) {
+    jsonResponse(['message' => 'Servicio no disponible para esta reserva.'], 422);
 }
 
-$conflictStatement = $pdo->prepare(
-    'SELECT COUNT(*)
-     FROM activities
-     WHERE company_id = :company_id
-       AND professional_id = :professional_id
-       AND activity_date = :activity_date
-       AND start_time < :end_time
-       AND end_time > :start_time'
+$roleId = (int) ($service['roleId'] ?? 0);
+if ($roleId <= 0) {
+    jsonResponse(['message' => 'El servicio no tiene una especialidad asociada.'], 422);
+}
+
+$endTime = addMinutesToTime($startTime, (int) ($service['durationMinutes'] ?? 30));
+
+$professional = findAvailableProfessionalForService(
+    $pdo,
+    $companyId,
+    $roleId,
+    $date,
+    $startTime,
+    $endTime,
+    $professionalId > 0 ? $professionalId : null
 );
-$conflictStatement->execute([
-    ':company_id' => $companyId,
-    ':professional_id' => $professionalId,
-    ':activity_date' => $date,
-    ':start_time' => $startTime,
-    ':end_time' => $endTime,
-]);
 
-if ((int) $conflictStatement->fetchColumn() > 0) {
-    jsonResponse(['message' => 'Ese horario ya no esta disponible para el profesional seleccionado.'], 409);
+if ($professional === null) {
+    if ($professionalId > 0) {
+        jsonResponse(['message' => 'El profesional seleccionado no esta disponible o no ofrece este servicio.'], 409);
+    }
+
+    jsonResponse(['message' => 'No hay profesionales disponibles para este servicio en ese horario.'], 409);
 }
 
-$title = sprintf('Reserva web - %s', $customerName);
+$title = sprintf('Reserva web - %s - %s', (string) ($service['name'] ?? 'Servicio'), $customerName);
 $descriptionParts = [
+    sprintf('Servicio: %s', (string) ($service['name'] ?? '')),
+    sprintf('Duracion: %d minutos', (int) ($service['durationMinutes'] ?? 30)),
     sprintf('Cliente: %s', $customerName),
-    sprintf('Correo: %s', $customerEmail),
 ];
 
 if ($customerPhone !== '') {
@@ -98,12 +98,12 @@ $statement = $pdo->prepare(
 $statement->execute([
     ':user_id' => (int) $user['id'],
     ':company_id' => $companyId,
-    ':professional_id' => $professionalId,
+    ':professional_id' => (int) $professional['id'],
     ':title' => $title,
     ':start_time' => $startTime,
     ':end_time' => $endTime,
     ':assignee' => (string) $professional['name'],
-    ':location' => 'Reserva web',
+    ':location' => '',
     ':description' => implode("\n", $descriptionParts),
     ':activity_date' => $date,
 ]);

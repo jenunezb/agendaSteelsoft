@@ -5,17 +5,30 @@ import {
   Activity,
   AuthSession,
   AuthUser,
+  CompanyService,
   CompanyContext,
   CompanyProfessional,
-  SystemAccountSummary,
   FinancialEntry,
   GeneralPending,
-  PublicProfile
+  PublicProfile,
+  ServiceRole,
+  SystemAccountSummary
 } from './app.models';
 
 type RawCompanyProfessional = Partial<CompanyProfessional> & {
   linked_user_id?: number | null;
   email_verified?: boolean | number;
+  role_ids?: Array<number | string> | string;
+  role_names?: string[] | string;
+};
+
+type RawServiceRole = Partial<ServiceRole>;
+
+type RawCompanyService = Partial<CompanyService> & {
+  company_id?: number;
+  role_id?: number | null;
+  role_name?: string | null;
+  duration_minutes?: number | string;
 };
 
 type RawActivity = Partial<Activity> & {
@@ -77,8 +90,13 @@ export class AgendaApiService {
           activities: (profile.activities ?? []).map((activity) => this.normalizeActivity(activity)),
           professionals: (profile.professionals ?? []).map((professional) => ({
             id: Number(professional.id) || 0,
-            name: professional.name?.trim() ?? ''
-          }))
+            name: professional.name?.trim() ?? '',
+            roleIds: Array.isArray(professional.roleIds) ? professional.roleIds.map((roleId) => Number(roleId) || 0).filter((roleId) => roleId > 0) : [],
+            roleNames: Array.isArray(professional.roleNames) ? professional.roleNames.map((roleName) => roleName?.trim() ?? '').filter(Boolean) : []
+          })),
+          services: (profile.services ?? []).map((service) =>
+            this.normalizeCompanyService(service as RawCompanyService)
+          )
         }))
       );
   }
@@ -236,7 +254,7 @@ export class AgendaApiService {
   }
 
   createProfessional(
-    professional: Omit<CompanyProfessional, 'id'>
+    professional: Pick<CompanyProfessional, 'name' | 'email' | 'phone' | 'active' | 'roleIds'>
   ): Observable<CompanyProfessional> {
     return this.http
       .post<RawCompanyProfessional>(`${this.baseUrl}/professionals.php`, professional)
@@ -245,7 +263,7 @@ export class AgendaApiService {
 
   updateProfessional(
     id: number,
-    professional: Omit<CompanyProfessional, 'id'>
+    professional: Pick<CompanyProfessional, 'name' | 'email' | 'phone' | 'active' | 'roleIds'>
   ): Observable<CompanyProfessional> {
     return this.http
       .put<RawCompanyProfessional>(`${this.baseUrl}/professionals.php?id=${id}`, professional)
@@ -254,6 +272,53 @@ export class AgendaApiService {
 
   deleteProfessional(id: number): Observable<{ success: boolean }> {
     return this.http.delete<{ success: boolean }>(`${this.baseUrl}/professionals.php?id=${id}`);
+  }
+
+  getServiceRoles(): Observable<ServiceRole[]> {
+    return this.http
+      .get<RawServiceRole[]>(`${this.baseUrl}/service-roles.php`)
+      .pipe(map((roles) => roles.map((role) => this.normalizeServiceRole(role))));
+  }
+
+  createServiceRole(role: Omit<ServiceRole, 'id'>): Observable<ServiceRole> {
+    return this.http
+      .post<RawServiceRole>(`${this.baseUrl}/service-roles.php`, role)
+      .pipe(map((savedRole) => this.normalizeServiceRole(savedRole)));
+  }
+
+  updateServiceRole(id: number, role: Omit<ServiceRole, 'id'>): Observable<ServiceRole> {
+    return this.http
+      .put<RawServiceRole>(`${this.baseUrl}/service-roles.php?id=${id}`, role)
+      .pipe(map((savedRole) => this.normalizeServiceRole(savedRole)));
+  }
+
+  deleteServiceRole(id: number): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.baseUrl}/service-roles.php?id=${id}`);
+  }
+
+  getServices(): Observable<CompanyService[]> {
+    return this.http
+      .get<RawCompanyService[]>(`${this.baseUrl}/services.php`)
+      .pipe(map((services) => services.map((service) => this.normalizeCompanyService(service))));
+  }
+
+  createService(service: Omit<CompanyService, 'id' | 'companyId' | 'roleName'>): Observable<CompanyService> {
+    return this.http
+      .post<RawCompanyService>(`${this.baseUrl}/services.php`, service)
+      .pipe(map((savedService) => this.normalizeCompanyService(savedService)));
+  }
+
+  updateService(
+    id: number,
+    service: Omit<CompanyService, 'id' | 'companyId' | 'roleName'>
+  ): Observable<CompanyService> {
+    return this.http
+      .put<RawCompanyService>(`${this.baseUrl}/services.php?id=${id}`, service)
+      .pipe(map((savedService) => this.normalizeCompanyService(savedService)));
+  }
+
+  deleteService(id: number): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.baseUrl}/services.php?id=${id}`);
   }
 
   verifyEmail(token: string): Observable<{ success: boolean; message: string }> {
@@ -282,13 +347,12 @@ export class AgendaApiService {
 
   createPublicBooking(payload: {
     username: string;
-    professionalId: number;
+    serviceId: number;
+    professionalId: number | null;
     customerName: string;
-    customerEmail: string;
     customerPhone: string;
     date: string;
     startTime: string;
-    endTime: string;
     notes: string;
   }): Observable<{ success: boolean; message: string }> {
     return this.http.post<{ success: boolean; message: string }>(
@@ -428,6 +492,8 @@ export class AgendaApiService {
       email: professional.email?.trim() ?? '',
       phone: professional.phone?.trim() ?? '',
       active: Boolean(professional.active),
+      roleIds: this.normalizeNumericList(professional.roleIds ?? professional.role_ids),
+      roleNames: this.normalizeStringList(professional.roleNames ?? professional.role_names),
       linkedUserId: professional.linkedUserId
         ? Number(professional.linkedUserId)
         : professional.linked_user_id
@@ -436,5 +502,61 @@ export class AgendaApiService {
       username: professional.username?.trim() ?? '',
       emailVerified: Boolean(professional.emailVerified ?? professional.email_verified)
     };
+  }
+
+  private normalizeServiceRole(role: RawServiceRole): ServiceRole {
+    return {
+      id: Number(role.id) || 0,
+      name: role.name?.trim() ?? '',
+      active: Boolean(role.active)
+    };
+  }
+
+  private normalizeCompanyService(service: RawCompanyService): CompanyService {
+    return {
+      id: Number(service.id) || 0,
+      companyId: Number(service.companyId ?? service.company_id) || 0,
+      roleId:
+        service.roleId !== undefined && service.roleId !== null
+          ? Number(service.roleId)
+          : service.role_id !== undefined && service.role_id !== null
+            ? Number(service.role_id)
+            : null,
+      roleName: service.roleName?.trim() ?? service.role_name?.trim() ?? '',
+      name: service.name?.trim() ?? '',
+      durationMinutes: Number(service.durationMinutes ?? service.duration_minutes) || 0,
+      description: service.description?.trim() ?? '',
+      active: Boolean(service.active)
+    };
+  }
+
+  private normalizeNumericList(value: unknown): number[] {
+    if (Array.isArray(value)) {
+      return value.map((item) => Number(item) || 0).filter((item) => item > 0);
+    }
+
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => Number(item.trim()) || 0)
+        .filter((item) => item > 0);
+    }
+
+    return [];
+  }
+
+  private normalizeStringList(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.map((item) => `${item ?? ''}`.trim()).filter(Boolean);
+    }
+
+    if (typeof value === 'string') {
+      return value
+        .split('||')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    return [];
   }
 }

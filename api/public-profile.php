@@ -71,20 +71,11 @@ if ($isCompanyWorkspace) {
     );
     $activitiesStatement->execute([':company_id' => $companyId]);
 
-    $professionalsStatement = $pdo->prepare(
-        'SELECT id, name
-         FROM professionals
-         WHERE company_id = :company_id
-           AND active = 1
-         ORDER BY name'
-    );
-    $professionalsStatement->execute([':company_id' => $companyId]);
-    $professionals = array_map(static function (array $row): array {
-        return [
-            'id' => (int) $row['id'],
-            'name' => (string) $row['name'],
-        ];
-    }, $professionalsStatement->fetchAll());
+    $professionals = array_values(array_filter(
+        getCompanyProfessionals($pdo, $companyId),
+        static fn (array $professional): bool => !empty($professional['active'])
+    ));
+    $services = getCompanyServices($pdo, $companyId, true);
     $workingHourStart = isset($company['working_hour_start']) ? (int) $company['working_hour_start'] : 8;
     $workingHourEnd = isset($company['working_hour_end']) ? (int) $company['working_hour_end'] : 18;
 } else {
@@ -100,8 +91,11 @@ if ($isCompanyWorkspace) {
         ? [[
             'id' => $professionalId,
             'name' => (string) $user['name'],
+            'roleIds' => [],
+            'roleNames' => [],
         ]]
         : [];
+    $services = [];
     $workingHourStart = 8;
     $workingHourEnd = 18;
 }
@@ -137,6 +131,7 @@ jsonResponse([
     ],
     'activities' => $activities,
     'professionals' => $professionals,
+    'services' => $services,
     'workingHours' => [
         'start' => $workingHourStart,
         'end' => $workingHourEnd,

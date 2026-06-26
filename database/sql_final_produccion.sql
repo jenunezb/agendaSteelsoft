@@ -115,6 +115,31 @@ CALL ensure_column('users', 'telegram_chat_id', 'ALTER TABLE users ADD COLUMN te
 CALL ensure_column('users', 'telegram_notifications_enabled', 'ALTER TABLE users ADD COLUMN telegram_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER telegram_chat_id');
 
 CALL ensure_column('professionals', 'linked_user_id', 'ALTER TABLE professionals ADD COLUMN linked_user_id INT UNSIGNED NULL AFTER phone');
+CREATE TABLE IF NOT EXISTS service_roles (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  company_id INT UNSIGNED NOT NULL,
+  name VARCHAR(120) NOT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS services (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  company_id INT UNSIGNED NOT NULL,
+  role_id INT UNSIGNED NULL,
+  name VARCHAR(150) NOT NULL,
+  duration_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 30,
+  description TEXT NOT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS professional_roles (
+  professional_id INT UNSIGNED NOT NULL,
+  role_id INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (professional_id, role_id)
+);
 
 CALL ensure_column('activities', 'user_id', 'ALTER TABLE activities ADD COLUMN user_id INT UNSIGNED NULL AFTER id');
 CALL ensure_column('activities', 'company_id', 'ALTER TABLE activities ADD COLUMN company_id INT UNSIGNED NULL AFTER user_id');
@@ -145,6 +170,10 @@ CALL ensure_index_name('users', 'idx_users_company', 'CREATE INDEX idx_users_com
 CALL ensure_index_name('users', 'idx_users_professional', 'CREATE INDEX idx_users_professional ON users (professional_id)');
 CALL ensure_index_name('professionals', 'idx_professionals_company_active', 'CREATE INDEX idx_professionals_company_active ON professionals (company_id, active, name)');
 CALL ensure_index_name('professionals', 'idx_professionals_linked_user', 'CREATE INDEX idx_professionals_linked_user ON professionals (linked_user_id)');
+CALL ensure_index_name('service_roles', 'idx_service_roles_company_active', 'CREATE INDEX idx_service_roles_company_active ON service_roles (company_id, active, name)');
+CALL ensure_index_name('services', 'idx_services_company_active', 'CREATE INDEX idx_services_company_active ON services (company_id, active, name)');
+CALL ensure_index_name('services', 'idx_services_role', 'CREATE INDEX idx_services_role ON services (role_id)');
+CALL ensure_index_name('professional_roles', 'idx_professional_roles_role', 'CREATE INDEX idx_professional_roles_role ON professional_roles (role_id)');
 CALL ensure_index_name('company_subscriptions', 'idx_company_subscriptions_company', 'CREATE INDEX idx_company_subscriptions_company ON company_subscriptions (company_id, status)');
 CALL ensure_index_name('activities', 'idx_activities_user_date', 'CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time)');
 CALL ensure_index_name('activities', 'idx_activities_company_date', 'CREATE INDEX idx_activities_company_date ON activities (company_id, activity_date, start_time)');

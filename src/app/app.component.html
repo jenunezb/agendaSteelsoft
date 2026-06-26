@@ -61,75 +61,16 @@
             <article class="panel pending-panel">
               <div class="panel-heading">
                 <h2>Reservar cita</h2>
-                <p>Elige profesional, horario y deja tus datos para registrar la cita.</p>
+                <p>El cliente elige servicio, puede escoger profesional si quiere, y toca la hora en la agenda.</p>
               </div>
-              <form class="pending-form" (ngSubmit)="submitPublicBooking()">
-                <label>
-                  <span>Profesional</span>
-                  <select name="publicProfessionalId" [(ngModel)]="publicBookingForm.professionalId" required>
-                    @for (professional of publicProfileProfessionals; track professional.id) {
-                    <option [ngValue]="professional.id">{{ professional.name }}</option>
-                    }
-                  </select>
-                </label>
-
-                <label>
-                  <span>Nombre</span>
-                  <input type="text" name="publicCustomerName" [(ngModel)]="publicBookingForm.customerName" required />
-                </label>
-
-                <label>
-                  <span>Correo</span>
-                  <input type="email" name="publicCustomerEmail" [(ngModel)]="publicBookingForm.customerEmail" required />
-                </label>
-
-                <label>
-                  <span>Telefono</span>
-                  <input type="text" name="publicCustomerPhone" [(ngModel)]="publicBookingForm.customerPhone" />
-                </label>
-
-                <label>
-                  <span>Fecha</span>
-                  <input type="date" name="publicBookingDate" [(ngModel)]="publicBookingForm.date" required />
-                </label>
-
-                <label>
-                  <span>Hora inicio</span>
-                  <select name="publicBookingStart" [(ngModel)]="publicBookingForm.startTime" required>
-                    <option value="">Selecciona</option>
-                    @for (time of timeOptions; track time) {
-                      <option [value]="time">{{ formatTimeLabel(time) }}</option>
-                    }
-                  </select>
-                </label>
-
-                <label>
-                  <span>Hora fin</span>
-                  <select name="publicBookingEnd" [(ngModel)]="publicBookingForm.endTime" required>
-                    <option value="">Selecciona</option>
-                    @for (time of timeOptions; track time) {
-                      <option [value]="time">{{ formatTimeLabel(time) }}</option>
-                    }
-                  </select>
-                </label>
-
-                <label>
-                  <span>Notas</span>
-                  <textarea name="publicBookingNotes" [(ngModel)]="publicBookingForm.notes" rows="3"></textarea>
-                </label>
-
-                @if (authError) {
-                  <p class="auth-error">{{ authError }}</p>
-                }
-
-                @if (authMessage) {
-                  <p class="success-message">{{ authMessage }}</p>
-                }
-
-                <button type="submit" [disabled]="isSubmittingPublicBooking">
-                  {{ isSubmittingPublicBooking ? 'Reservando...' : 'Agendar cita' }}
+              <div class="launch-summary">
+                <p class="activity-launch-copy">
+                  El horario de inicio se llena automaticamente con la hora que el cliente toque.
+                </p>
+                <button type="button" (click)="openPublicBookingModal(selectedDate)">
+                  Abrir formulario de reserva
                 </button>
-              </form>
+              </div>
             </article>
           }
         </div>
@@ -178,13 +119,15 @@
                     class="week-day-column"
                     [class.selected]="selectedDate === day.isoDate"
                     tabindex="0"
-                    (click)="openActivityPanel(day.isoDate)"
-                    (keydown.enter)="openActivityPanel(day.isoDate)"
-                    (keydown.space)="openActivityPanel(day.isoDate)"
                   >
                     <div class="week-day-grid">
                       @for (time of weeklyTimeOptions; track time) {
-                        <span class="week-grid-cell"></span>
+                        <button
+                          type="button"
+                          class="week-grid-cell week-grid-button"
+                          [attr.aria-label]="'Reservar cita el ' + formatFullDateLabel(day.isoDate) + ' a las ' + formatTimeLabel(time)"
+                          (click)="openPublicBookingModal(day.isoDate, time)"
+                        ></button>
                       }
                     </div>
 
@@ -195,6 +138,7 @@
                           [class.completed]="activity.completed"
                           [style.top.px]="getWeekActivityTop(activity)"
                           [style.height.px]="getWeekActivityHeight(activity)"
+                          (click)="$event.stopPropagation(); openActivityPanel(day.isoDate)"
                         >
                           <div class="slot-activity-header">
                             <strong>{{ activity.title }}</strong>
@@ -231,6 +175,114 @@
       </section>
     }
   </main>
+  @if (isPublicBookingModalOpen) {
+    <div class="activity-overlay" (click)="closePublicBookingModal()">
+      <section class="activity-modal panel public-booking-modal" (click)="$event.stopPropagation()">
+        <div class="activity-modal-header">
+          <div>
+            <p class="label">Reserva externa</p>
+            <h2>Reservar cita</h2>
+            <p>
+              Completa los datos del cliente. La hora de inicio toma por defecto el bloque que se toco.
+            </p>
+          </div>
+          <button type="button" class="close-button" (click)="closePublicBookingModal()">Cerrar</button>
+        </div>
+
+        <div class="activity-modal-body public-booking-body">
+          <form class="pending-form" (ngSubmit)="submitPublicBooking()">
+            <label>
+              <span>Servicio</span>
+              <select name="publicBookingServiceModal" [(ngModel)]="publicBookingForm.serviceId" (ngModelChange)="onPublicBookingServiceChange()" required>
+                <option [ngValue]="0">Selecciona</option>
+                @for (service of publicProfileServices; track service.id) {
+                  <option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span>Profesional</span>
+              <select name="publicProfessionalIdModal" [(ngModel)]="publicBookingForm.professionalId">
+                <option [ngValue]="0">Asignar automaticamente</option>
+                @for (professional of filteredPublicProfessionals; track professional.id) {
+                  <option [ngValue]="professional.id">{{ professional.name }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span>Fecha</span>
+              <input type="date" name="publicBookingDateModal" [(ngModel)]="publicBookingForm.date" required />
+            </label>
+
+            <label>
+              <span>Hora inicio</span>
+              <select name="publicBookingStartModal" [(ngModel)]="publicBookingForm.startTime" (ngModelChange)="onPublicBookingStartTimeChange()" required>
+                <option value="">Selecciona</option>
+                @for (time of timeOptions; track time) {
+                  <option [value]="time">{{ formatTimeLabel(time) }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span>Hora fin</span>
+              <input type="text" name="publicBookingEndModal" [ngModel]="publicBookingEndTime ? formatTimeLabel(publicBookingEndTime) : ''" readonly />
+            </label>
+
+            <label>
+              <span>Nombre</span>
+              <input type="text" name="publicCustomerNameModal" [(ngModel)]="publicBookingForm.customerName" required />
+            </label>
+
+            <label>
+              <span>Telefono</span>
+              <input type="text" name="publicCustomerPhoneModal" [(ngModel)]="publicBookingForm.customerPhone" />
+            </label>
+
+            <label>
+              <span>Notas</span>
+              <textarea name="publicBookingNotesModal" [(ngModel)]="publicBookingForm.notes" rows="3"></textarea>
+            </label>
+
+            @if (authError) {
+              <p class="auth-error">{{ authError }}</p>
+            }
+
+            @if (authMessage) {
+              <p class="success-message">{{ authMessage }}</p>
+            }
+
+            <button type="submit" [disabled]="isSubmittingPublicBooking">
+              {{ isSubmittingPublicBooking ? 'Reservando...' : 'Agendar cita' }}
+            </button>
+          </form>
+
+          <div class="selected-day activity-modal-list public-modal-list">
+            <p class="label">Horario seleccionado</p>
+            <h3>{{ formatFullDateLabel(publicBookingForm.date || selectedDate) }}</h3>
+            <p class="activity-launch-copy">
+              Servicio:
+              <strong>{{ selectedPublicService?.name || 'Selecciona un servicio' }}</strong>
+            </p>
+            <p class="activity-launch-copy">
+              Inicio:
+              <strong>{{ publicBookingForm.startTime ? formatTimeLabel(publicBookingForm.startTime) : 'Selecciona una hora' }}</strong>
+            </p>
+            <p class="activity-launch-copy">
+              Fin:
+              <strong>{{ publicBookingEndTime ? formatTimeLabel(publicBookingEndTime) : 'Selecciona una hora' }}</strong>
+            </p>
+            <p class="activity-launch-copy">
+              Profesional:
+              <strong>{{ selectedPublicProfessionalName }}</strong>
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+  }
 } @else if (!isAuthenticated) {
   @if (isAuthRoute) {
   <main class="layout auth-layout">
@@ -756,7 +808,7 @@
               <div class="pending-form company-visibility-card">
                 <p class="label">Perfil publico</p>
                 <strong>{{ currentUser?.profilePublic ? 'Activo por defecto' : 'Inactivo' }}</strong>
-                <p>La agenda general se comparte publicamente y el cliente puede elegir profesional.</p>
+                <p>La agenda general se comparte publicamente y el cliente puede elegir servicio y, si desea, profesional.</p>
                 <button type="button" (click)="toggleProfileVisibility()" [disabled]="isUpdatingProfileVisibility">{{ isUpdatingProfileVisibility ? 'Actualizando...' : (currentUser?.profilePublic ? 'Desactivar enlace' : 'Activar enlace') }}</button>
               </div>
             </article>
@@ -786,9 +838,106 @@
 
         <article class="panel enterprise-admin-panel">
           <div class="panel-heading">
+            <p class="label">Especialidades</p>
+            <h2>Roles de servicio</h2>
+            <p>Define categorias como manicura, pedicura, peluqueria, cejas o pestañas.</p>
+          </div>
+          @if (companySettingsError) {
+            <p class="auth-error">{{ companySettingsError }}</p>
+          }
+          @if (companySettingsMessage) {
+            <p class="success-message">{{ companySettingsMessage }}</p>
+          }
+          <div class="company-control-grid">
+            <article class="company-control-card accent">
+              <form class="pending-form" (ngSubmit)="saveServiceRole()">
+                <label><span>Nombre</span><input type="text" name="serviceRoleName" [(ngModel)]="serviceRoleForm.name" required /></label>
+                <label><span>Estado</span><select name="serviceRoleActive" [(ngModel)]="serviceRoleForm.active"><option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option></select></label>
+                <div class="form-actions">
+                  <button type="submit" [disabled]="isSavingServiceRole">{{ isSavingServiceRole ? 'Guardando...' : (isEditingServiceRole ? 'Actualizar especialidad' : 'Crear especialidad') }}</button>
+                  @if (isEditingServiceRole) {
+                    <button type="button" class="secondary-button" (click)="cancelServiceRoleEdit()">Cancelar</button>
+                  }
+                </div>
+              </form>
+            </article>
+            <article class="company-control-card">
+              <div class="pending-list">
+                @for (role of serviceRoles; track role.id) {
+                  <article class="pending-card">
+                    <div>
+                      <span class="assignee-badge" [class.assignee-steelsoft]="role.active">{{ role.active ? 'Activa' : 'Inactiva' }}</span>
+                      <strong>{{ role.name }}</strong>
+                    </div>
+                    <div class="card-actions">
+                      <button type="button" (click)="editServiceRole(role)">Editar</button>
+                      <button type="button" (click)="removeServiceRole(role.id)">Eliminar</button>
+                    </div>
+                  </article>
+                } @empty {
+                  <p class="empty-state">No hay especialidades registradas todavia.</p>
+                }
+              </div>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel enterprise-admin-panel">
+          <div class="panel-heading">
+            <p class="label">Servicios</p>
+            <h2>Catalogo de atencion</h2>
+            <p>Configura cada servicio, su duracion y la especialidad que lo puede atender.</p>
+          </div>
+          @if (companySettingsError) {
+            <p class="auth-error">{{ companySettingsError }}</p>
+          }
+          @if (companySettingsMessage) {
+            <p class="success-message">{{ companySettingsMessage }}</p>
+          }
+          <div class="company-control-grid">
+            <article class="company-control-card accent">
+              <form class="pending-form" (ngSubmit)="saveService()">
+                <label><span>Servicio</span><input type="text" name="serviceName" [(ngModel)]="serviceForm.name" required /></label>
+                <label><span>Especialidad</span><select name="serviceRoleId" [(ngModel)]="serviceForm.roleId" required><option [ngValue]="0">Selecciona</option>@for (role of serviceRoles; track role.id) {<option [ngValue]="role.id">{{ role.name }}</option>}</select></label>
+                <label><span>Duracion (minutos)</span><input type="number" name="serviceDurationMinutes" [(ngModel)]="serviceForm.durationMinutes" min="15" step="15" required /></label>
+                <label><span>Descripcion</span><textarea name="serviceDescription" [(ngModel)]="serviceForm.description" rows="3"></textarea></label>
+                <label><span>Estado</span><select name="serviceActive" [(ngModel)]="serviceForm.active"><option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option></select></label>
+                <div class="form-actions">
+                  <button type="submit" [disabled]="isSavingService">{{ isSavingService ? 'Guardando...' : (isEditingService ? 'Actualizar servicio' : 'Crear servicio') }}</button>
+                  @if (isEditingService) {
+                    <button type="button" class="secondary-button" (click)="cancelServiceEdit()">Cancelar</button>
+                  }
+                </div>
+              </form>
+            </article>
+            <article class="company-control-card">
+              <div class="pending-list">
+                @for (service of companyServices; track service.id) {
+                  <article class="pending-card">
+                    <div>
+                      <span class="assignee-badge" [class.assignee-steelsoft]="service.active">{{ service.active ? 'Activo' : 'Inactivo' }}</span>
+                      <strong>{{ service.name }}</strong>
+                      <p>{{ service.roleName }} · {{ service.durationMinutes }} min</p>
+                      @if (service.description) { <p>{{ service.description }}</p> }
+                    </div>
+                    <div class="card-actions">
+                      <button type="button" (click)="editService(service)">Editar</button>
+                      <button type="button" (click)="removeService(service.id)">Eliminar</button>
+                    </div>
+                  </article>
+                } @empty {
+                  <p class="empty-state">No hay servicios registrados todavia.</p>
+                }
+              </div>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel enterprise-admin-panel">
+          <div class="panel-heading">
             <p class="label">Profesionales</p>
             <h2>Accesos individuales</h2>
-            <p>Cada profesional recibe usuario real, verificacion por correo y acceso a su propio calendario.</p>
+            <p>Cada profesional recibe usuario real, verificacion por correo y sus especialidades asignadas.</p>
           </div>
           <div class="company-control-grid">
             <article class="company-control-card accent">
@@ -797,6 +946,23 @@
                 <label><span>Correo</span><input type="email" name="professionalEmail" [(ngModel)]="professionalForm.email" /></label>
                 <label><span>Telefono</span><input type="text" name="professionalPhone" [(ngModel)]="professionalForm.phone" /></label>
                 <label><span>Estado</span><select name="professionalActive" [(ngModel)]="professionalForm.active"><option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option></select></label>
+                <div class="role-selector">
+                  <span>Especialidades</span>
+                  <div class="role-checkbox-list">
+                    @for (role of serviceRoles; track role.id) {
+                      <label class="role-checkbox">
+                        <input
+                          type="checkbox"
+                          [checked]="professionalForm.roleIds.includes(role.id)"
+                          (change)="toggleProfessionalRole(role.id, $any($event.target).checked)"
+                        />
+                        <span>{{ role.name }}</span>
+                      </label>
+                    } @empty {
+                      <p class="empty-state">Primero crea al menos una especialidad.</p>
+                    }
+                  </div>
+                </div>
                 <div class="form-actions">
                   <button type="submit" [disabled]="isSavingProfessional">{{ isSavingProfessional ? 'Guardando...' : (isEditingProfessional ? 'Actualizar profesional' : 'Agregar profesional') }}</button>
                   @if (isEditingProfessional) {
@@ -812,6 +978,7 @@
                     <div>
                       <span class="assignee-badge" [class.assignee-steelsoft]="professional.active">{{ professional.active ? 'Activo' : 'Inactivo' }}</span>
                       <strong>{{ professional.name }}</strong>
+                      @if (professional.roleNames.length > 0) { <p>{{ professional.roleNames.join(', ') }}</p> }
                       @if (professional.email) { <p>{{ professional.email }}</p> }
                       @if (professional.username) {
                         <p>Usuario: {{ professional.username }}</p>
@@ -899,15 +1066,17 @@
       </div>
 
       <div class="activity-modal-body">
-        @if (isCompanyAdminUser) {
+        @if (!isSystemAdmin) {
           <form class="activity-form" (ngSubmit)="addActivity()">
-            <label><span>Titulo</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" required /></label>
+            <label><span>Servicio</span><select name="modalServiceId" [(ngModel)]="activityBookingForm.serviceId" (ngModelChange)="onActivityServiceChange()"><option [ngValue]="0">Selecciona</option>@for (service of activeServiceOptions; track service.id) {<option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min</option>}</select></label>
+            <label><span>Cliente</span><input type="text" name="modalCustomerName" [(ngModel)]="activityBookingForm.customerName" /></label>
+            <label><span>Telefono cliente</span><input type="text" name="modalCustomerPhone" [(ngModel)]="activityBookingForm.customerPhone" /></label>
+            <label><span>Titulo</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" placeholder="Se llena automaticamente si eliges servicio o cliente" /></label>
             <label><span>Fecha</span><input type="date" name="modalDate" [(ngModel)]="newActivity.date" required /></label>
-            <label><span>Hora inicio</span><select name="modalStartTime" [(ngModel)]="newActivity.startTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
+            <label><span>Hora inicio</span><select name="modalStartTime" [(ngModel)]="newActivity.startTime" (ngModelChange)="onActivityStartTimeChange()" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
             <label><span>Hora fin</span><select name="modalEndTime" [(ngModel)]="newActivity.endTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
             <label><span>Profesional</span><select name="modalAssignee" [(ngModel)]="newActivity.assignee" required>@for (assignee of assigneeOptions; track assignee) {<option [value]="assignee">{{ assignee }}</option>}</select></label>
-            <label><span>Ubicacion</span><input type="text" name="modalLocation" [(ngModel)]="newActivity.location" /></label>
-            <label><span>Descripcion</span><textarea name="modalDescription" [(ngModel)]="newActivity.description" rows="3"></textarea></label>
+            <label><span>Notas</span><textarea name="modalDescription" [(ngModel)]="newActivity.description" rows="3"></textarea></label>
             <label><span>Recordatorio</span><select name="modalReminder" [(ngModel)]="newActivity.reminderMinutes">@for (option of reminderOptions; track option.label) {<option [ngValue]="option.value">{{ option.label }}</option>}</select></label>
             <label><span>Visibilidad</span><select name="modalVisibility" [(ngModel)]="newActivity.visibility"><option value="private">Privada</option><option value="public">Publica</option></select></label>
             <div class="form-actions">

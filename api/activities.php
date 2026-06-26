@@ -56,18 +56,23 @@ if ($method === 'GET') {
 
 $payload = getPayload();
 
-if ($isProfessionalUser) {
-    jsonResponse(['message' => 'El profesional solo puede consultar su propio calendario.'], 403);
+if ($isProfessionalUser && $professionalId <= 0) {
+    jsonResponse(['message' => 'El profesional no tiene un calendario asignado.'], 403);
 }
 
 if ($method === 'POST') {
     $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
-    $assignment = resolveProfessionalAssignment(
-        $pdo,
-        $companyId,
-        $payload['professionalId'] ?? null,
-        (string) ($payload['assignee'] ?? '')
-    );
+    $assignment = $isProfessionalUser
+        ? [
+            'professionalId' => $professionalId,
+            'assignee' => (string) ($user['name'] ?? ''),
+        ]
+        : resolveProfessionalAssignment(
+            $pdo,
+            $companyId,
+            $payload['professionalId'] ?? null,
+            (string) ($payload['assignee'] ?? '')
+        );
     $statement = $pdo->prepare(
         'INSERT INTO activities
         (user_id, company_id, professional_id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes, reminder_sent_at)
@@ -109,12 +114,17 @@ if ($method === 'POST') {
 if ($method === 'PUT') {
     $id = getRequiredId();
     $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
-    $assignment = resolveProfessionalAssignment(
-        $pdo,
-        $companyId,
-        $payload['professionalId'] ?? null,
-        (string) ($payload['assignee'] ?? '')
-    );
+    $assignment = $isProfessionalUser
+        ? [
+            'professionalId' => $professionalId,
+            'assignee' => (string) ($user['name'] ?? ''),
+        ]
+        : resolveProfessionalAssignment(
+            $pdo,
+            $companyId,
+            $payload['professionalId'] ?? null,
+            (string) ($payload['assignee'] ?? '')
+        );
 
     $statement = $pdo->prepare(
         'UPDATE activities
@@ -131,10 +141,10 @@ if ($method === 'PUT') {
              reminder_minutes = :reminder_minutes,
              reminder_sent_at = NULL
          WHERE id = :id
-           AND company_id = :company_id'
+           AND company_id = :company_id' . ($isProfessionalUser ? ' AND professional_id = :scope_professional_id' : '')
     );
 
-    $statement->execute([
+    $params = [
         ':id' => $id,
         ':company_id' => $companyId,
         ':title' => trim((string) ($payload['title'] ?? '')),
@@ -148,7 +158,13 @@ if ($method === 'PUT') {
         ':description' => trim((string) ($payload['description'] ?? '')),
         ':activity_date' => (string) ($payload['date'] ?? ''),
         ':reminder_minutes' => $reminderMinutes,
-    ]);
+    ];
+
+    if ($isProfessionalUser) {
+        $params[':scope_professional_id'] = $professionalId;
+    }
+
+    $statement->execute($params);
 
     if ($statement->rowCount() === 0) {
         jsonResponse(['message' => 'Actividad no encontrada.'], 404);
@@ -172,11 +188,21 @@ if ($method === 'PUT') {
 
 if ($method === 'DELETE') {
     $id = getRequiredId();
-    $statement = $pdo->prepare('DELETE FROM activities WHERE id = :id AND company_id = :company_id');
-    $statement->execute([
+    $statement = $pdo->prepare(
+        'DELETE FROM activities
+         WHERE id = :id
+           AND company_id = :company_id' . ($isProfessionalUser ? ' AND professional_id = :scope_professional_id' : '')
+    );
+    $params = [
         ':id' => $id,
         ':company_id' => $companyId,
-    ]);
+    ];
+
+    if ($isProfessionalUser) {
+        $params[':scope_professional_id'] = $professionalId;
+    }
+
+    $statement->execute($params);
 
     if ($statement->rowCount() === 0) {
         jsonResponse(['message' => 'Actividad no encontrada.'], 404);

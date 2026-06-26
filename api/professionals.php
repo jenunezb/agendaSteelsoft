@@ -20,6 +20,7 @@ if ($method === 'POST') {
     $email = trim((string) ($payload['email'] ?? ''));
     $phone = trim((string) ($payload['phone'] ?? ''));
     $active = !array_key_exists('active', $payload) || !empty($payload['active']);
+    $roleIds = is_array($payload['roleIds'] ?? null) ? $payload['roleIds'] : [];
 
     if ($name === '') {
         jsonResponse(['message' => 'El nombre del profesional es obligatorio.'], 422);
@@ -40,6 +41,7 @@ if ($method === 'POST') {
     ]);
 
     $professionalId = (int) $pdo->lastInsertId();
+    syncProfessionalRoleAssignments($pdo, $companyId, $professionalId, $roleIds);
     $accountAccess = null;
 
     if ($email !== '') {
@@ -62,15 +64,9 @@ if ($method === 'POST') {
         }
     }
 
-    jsonResponse([
+    $savedProfessional = findProfessionalById($pdo, $companyId, $professionalId);
+    jsonResponse($savedProfessional ?? [
         'id' => $professionalId,
-        'name' => $name,
-        'email' => $email,
-        'phone' => $phone,
-        'active' => $active,
-        'linkedUserId' => $accountAccess['userId'] ?? null,
-        'username' => $accountAccess['username'] ?? '',
-        'emailVerified' => false,
     ], 201);
 }
 
@@ -86,6 +82,7 @@ if ($method === 'PUT') {
     $email = trim((string) ($payload['email'] ?? ''));
     $phone = trim((string) ($payload['phone'] ?? ''));
     $active = !array_key_exists('active', $payload) || !empty($payload['active']);
+    $roleIds = is_array($payload['roleIds'] ?? null) ? $payload['roleIds'] : [];
 
     if ($name === '') {
         jsonResponse(['message' => 'El nombre del profesional es obligatorio.'], 422);
@@ -106,6 +103,7 @@ if ($method === 'PUT') {
         ':id' => $id,
         ':company_id' => $companyId,
     ]);
+    syncProfessionalRoleAssignments($pdo, $companyId, $id, $roleIds);
 
     $linkedUserId = isset($existingProfessional['linked_user_id']) ? (int) $existingProfessional['linked_user_id'] : 0;
     $linkedUsername = '';
@@ -133,7 +131,8 @@ if ($method === 'PUT') {
         }
     }
 
-    jsonResponse([
+    $savedProfessional = findProfessionalById($pdo, $companyId, $id);
+    jsonResponse($savedProfessional ?? [
         'id' => $id,
         'name' => $name,
         'email' => $email,
@@ -161,6 +160,10 @@ if ($method === 'DELETE') {
             ':professional_id' => $id,
         ]);
     }
+
+    $pdo->prepare('DELETE FROM professional_roles WHERE professional_id = :professional_id')->execute([
+        ':professional_id' => $id,
+    ]);
 
     $statement = $pdo->prepare('DELETE FROM professionals WHERE id = :id AND company_id = :company_id');
     $statement->execute([

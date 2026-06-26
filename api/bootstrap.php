@@ -197,6 +197,40 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         )'
     );
 
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS service_roles (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            company_id INT UNSIGNED NOT NULL,
+            name VARCHAR(120) NOT NULL,
+            active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )'
+    );
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS services (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            company_id INT UNSIGNED NOT NULL,
+            role_id INT UNSIGNED NULL,
+            name VARCHAR(150) NOT NULL,
+            duration_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 30,
+            description TEXT NOT NULL,
+            active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )'
+    );
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS professional_roles (
+            professional_id INT UNSIGNED NOT NULL,
+            role_id INT UNSIGNED NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (professional_id, role_id)
+        )'
+    );
+
     ensureColumnExists(
         $pdo,
         $databaseName,
@@ -333,6 +367,34 @@ function ensureSchema(PDO $pdo, string $databaseName): void
     ensureColumnExists(
         $pdo,
         $databaseName,
+        'services',
+        'role_id',
+        'ALTER TABLE services ADD COLUMN role_id INT UNSIGNED NULL AFTER company_id'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'services',
+        'duration_minutes',
+        'ALTER TABLE services ADD COLUMN duration_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 30 AFTER name'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'services',
+        'description',
+        'ALTER TABLE services ADD COLUMN description TEXT NOT NULL AFTER duration_minutes'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'services',
+        'active',
+        'ALTER TABLE services ADD COLUMN active TINYINT(1) NOT NULL DEFAULT 1 AFTER description'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
         'activities',
         'user_id',
         'ALTER TABLE activities ADD COLUMN user_id INT UNSIGNED NULL AFTER id'
@@ -429,6 +491,10 @@ function ensureSchema(PDO $pdo, string $databaseName): void
     ensureIndexExists($pdo, $databaseName, 'users', 'idx_users_professional', 'CREATE INDEX idx_users_professional ON users (professional_id)');
     ensureIndexExists($pdo, $databaseName, 'professionals', 'idx_professionals_company_active', 'CREATE INDEX idx_professionals_company_active ON professionals (company_id, active, name)');
     ensureIndexExists($pdo, $databaseName, 'professionals', 'idx_professionals_linked_user', 'CREATE INDEX idx_professionals_linked_user ON professionals (linked_user_id)');
+    ensureIndexExists($pdo, $databaseName, 'service_roles', 'idx_service_roles_company_active', 'CREATE INDEX idx_service_roles_company_active ON service_roles (company_id, active, name)');
+    ensureIndexExists($pdo, $databaseName, 'services', 'idx_services_company_active', 'CREATE INDEX idx_services_company_active ON services (company_id, active, name)');
+    ensureIndexExists($pdo, $databaseName, 'services', 'idx_services_role', 'CREATE INDEX idx_services_role ON services (role_id)');
+    ensureIndexExists($pdo, $databaseName, 'professional_roles', 'idx_professional_roles_role', 'CREATE INDEX idx_professional_roles_role ON professional_roles (role_id)');
     ensureIndexExists($pdo, $databaseName, 'company_subscriptions', 'idx_company_subscriptions_company', 'CREATE INDEX idx_company_subscriptions_company ON company_subscriptions (company_id, status)');
     ensureIndexExists($pdo, $databaseName, 'activities', 'idx_activities_user_date', 'CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time)');
     ensureIndexExists($pdo, $databaseName, 'activities', 'idx_activities_company_date', 'CREATE INDEX idx_activities_company_date ON activities (company_id, activity_date, start_time)');
@@ -882,7 +948,7 @@ function getCurrentSubscription(PDO $pdo, int $companyId): ?array
     $statement = $pdo->prepare(
         'SELECT id, plan_code, plan_name, status, monthly_price, professional_limit, started_at, renewal_day
          FROM company_subscriptions
-         WHERE p.company_id = :company_id
+         WHERE company_id = :company_id
          ORDER BY id DESC
          LIMIT 1'
     );
@@ -903,11 +969,19 @@ function getCompanyProfessionals(PDO $pdo, int $companyId): array
             p.active,
             p.linked_user_id,
             u.username,
-            u.email_verified_at
+            u.email_verified_at,
+            GROUP_CONCAT(DISTINCT sr.id ORDER BY sr.name) AS role_ids,
+            GROUP_CONCAT(DISTINCT sr.name ORDER BY sr.name SEPARATOR "||") AS role_names
          FROM professionals p
          LEFT JOIN users u
            ON u.professional_id = p.id
-         WHERE company_id = :company_id
+         LEFT JOIN professional_roles pr
+           ON pr.professional_id = p.id
+         LEFT JOIN service_roles sr
+           ON sr.id = pr.role_id
+          AND sr.company_id = p.company_id
+         WHERE p.company_id = :company_id
+         GROUP BY p.id, p.name, p.email, p.phone, p.active, p.linked_user_id, u.username, u.email_verified_at
          ORDER BY p.active DESC, p.name ASC'
     );
     $statement->execute([':company_id' => $companyId]);
@@ -919,11 +993,176 @@ function getCompanyProfessionals(PDO $pdo, int $companyId): array
             'email' => (string) ($row['email'] ?? ''),
             'phone' => (string) ($row['phone'] ?? ''),
             'active' => !empty($row['active']),
+            'roleIds' => array_values(array_filter(array_map('intval', explode(',', (string) ($row['role_ids'] ?? ''))))),
+            'roleNames' => array_values(array_filter(array_map('trim', explode('||', (string) ($row['role_names'] ?? ''))))),
             'linkedUserId' => isset($row['linked_user_id']) ? (int) $row['linked_user_id'] : null,
             'username' => (string) ($row['username'] ?? ''),
             'emailVerified' => !empty($row['email_verified_at']),
         ];
     }, $statement->fetchAll());
+}
+
+function getCompanyServiceRoles(PDO $pdo, int $companyId): array
+{
+    $statement = $pdo->prepare(
+        'SELECT id, name, active
+         FROM service_roles
+         WHERE company_id = :company_id
+         ORDER BY active DESC, name ASC'
+    );
+    $statement->execute([':company_id' => $companyId]);
+
+    return array_map(static function (array $row): array {
+        return [
+            'id' => (int) $row['id'],
+            'name' => (string) ($row['name'] ?? ''),
+            'active' => !empty($row['active']),
+        ];
+    }, $statement->fetchAll());
+}
+
+function getCompanyServices(PDO $pdo, int $companyId, bool $onlyActive = false): array
+{
+    $statement = $pdo->prepare(
+        'SELECT
+            s.id,
+            s.company_id,
+            s.role_id,
+            sr.name AS role_name,
+            s.name,
+            s.duration_minutes,
+            s.description,
+            s.active
+         FROM services s
+         LEFT JOIN service_roles sr
+           ON sr.id = s.role_id
+          AND sr.company_id = s.company_id
+         WHERE s.company_id = :company_id' . ($onlyActive ? ' AND s.active = 1' : '') . '
+         ORDER BY s.active DESC, s.name ASC'
+    );
+    $statement->execute([':company_id' => $companyId]);
+
+    return array_map(static function (array $row): array {
+        return [
+            'id' => (int) $row['id'],
+            'companyId' => (int) ($row['company_id'] ?? 0),
+            'roleId' => isset($row['role_id']) ? (int) $row['role_id'] : null,
+            'roleName' => (string) ($row['role_name'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+            'durationMinutes' => (int) ($row['duration_minutes'] ?? 30),
+            'description' => (string) ($row['description'] ?? ''),
+            'active' => !empty($row['active']),
+        ];
+    }, $statement->fetchAll());
+}
+
+function findServiceRoleById(PDO $pdo, int $companyId, int $roleId): ?array
+{
+    $statement = $pdo->prepare(
+        'SELECT id, company_id, name, active
+         FROM service_roles
+         WHERE id = :id AND company_id = :company_id
+         LIMIT 1'
+    );
+    $statement->execute([
+        ':id' => $roleId,
+        ':company_id' => $companyId,
+    ]);
+    $role = $statement->fetch();
+
+    return is_array($role) ? $role : null;
+}
+
+function findServiceById(PDO $pdo, int $companyId, int $serviceId): ?array
+{
+    $statement = $pdo->prepare(
+        'SELECT s.id, s.company_id, s.role_id, sr.name AS role_name, s.name, s.duration_minutes, s.description, s.active
+         FROM services s
+         LEFT JOIN service_roles sr
+           ON sr.id = s.role_id
+          AND sr.company_id = s.company_id
+         WHERE s.id = :id AND s.company_id = :company_id
+         LIMIT 1'
+    );
+    $statement->execute([
+        ':id' => $serviceId,
+        ':company_id' => $companyId,
+    ]);
+    $service = $statement->fetch();
+
+    if (!is_array($service)) {
+        return null;
+    }
+
+    return [
+        'id' => (int) $service['id'],
+        'companyId' => (int) ($service['company_id'] ?? 0),
+        'roleId' => isset($service['role_id']) ? (int) $service['role_id'] : null,
+        'roleName' => (string) ($service['role_name'] ?? ''),
+        'name' => (string) ($service['name'] ?? ''),
+        'durationMinutes' => (int) ($service['duration_minutes'] ?? 30),
+        'description' => (string) ($service['description'] ?? ''),
+        'active' => !empty($service['active']),
+    ];
+}
+
+function professionalHasRole(PDO $pdo, int $companyId, int $professionalId, int $roleId): bool
+{
+    $statement = $pdo->prepare(
+        'SELECT COUNT(*)
+         FROM professional_roles pr
+         INNER JOIN professionals p
+           ON p.id = pr.professional_id
+         WHERE p.company_id = :company_id
+           AND pr.professional_id = :professional_id
+           AND pr.role_id = :role_id'
+    );
+    $statement->execute([
+        ':company_id' => $companyId,
+        ':professional_id' => $professionalId,
+        ':role_id' => $roleId,
+    ]);
+
+    return (int) $statement->fetchColumn() > 0;
+}
+
+function syncProfessionalRoleAssignments(PDO $pdo, int $companyId, int $professionalId, array $roleIds): void
+{
+    $validatedRoleIds = [];
+
+    foreach ($roleIds as $roleId) {
+        $normalizedRoleId = (int) $roleId;
+
+        if ($normalizedRoleId <= 0) {
+            continue;
+        }
+
+        if (findServiceRoleById($pdo, $companyId, $normalizedRoleId) === null) {
+            jsonResponse(['message' => 'Una de las especialidades seleccionadas no existe.'], 422);
+        }
+
+        $validatedRoleIds[$normalizedRoleId] = true;
+    }
+
+    $pdo->prepare('DELETE FROM professional_roles WHERE professional_id = :professional_id')->execute([
+        ':professional_id' => $professionalId,
+    ]);
+
+    if ($validatedRoleIds === []) {
+        return;
+    }
+
+    $statement = $pdo->prepare(
+        'INSERT INTO professional_roles (professional_id, role_id)
+         VALUES (:professional_id, :role_id)'
+    );
+
+    foreach (array_keys($validatedRoleIds) as $roleId) {
+        $statement->execute([
+            ':professional_id' => $professionalId,
+            ':role_id' => $roleId,
+        ]);
+    }
 }
 
 function getCompanyContext(PDO $pdo, array $user): array
@@ -943,6 +1182,8 @@ function getCompanyContext(PDO $pdo, array $user): array
 
     $subscription = getCurrentSubscription($pdo, $companyId);
     $professionals = getCompanyProfessionals($pdo, $companyId);
+    $serviceRoles = getCompanyServiceRoles($pdo, $companyId);
+    $services = getCompanyServices($pdo, $companyId);
     $activeProfessionals = count(array_filter($professionals, static fn (array $professional): bool => $professional['active']));
     $professionalLimit = (int) ($subscription['professional_limit'] ?? 4);
 
@@ -967,6 +1208,8 @@ function getCompanyContext(PDO $pdo, array $user): array
             'renewalDay' => isset($subscription['renewal_day']) ? (int) $subscription['renewal_day'] : null,
         ],
         'professionals' => $professionals,
+        'serviceRoles' => $serviceRoles,
+        'services' => $services,
         'stats' => [
             'activeProfessionals' => $activeProfessionals,
             'availableSlots' => max($professionalLimit - $activeProfessionals, 0),
@@ -1041,13 +1284,133 @@ function getSystemAccountSummaries(PDO $pdo): array
 function findProfessionalById(PDO $pdo, int $companyId, int $professionalId): ?array
 {
     $statement = $pdo->prepare(
-        'SELECT id, name, email, phone, linked_user_id, active
-         FROM professionals
-         WHERE id = :id AND company_id = :company_id'
+        'SELECT
+            p.id,
+            p.name,
+            p.email,
+            p.phone,
+            p.linked_user_id,
+            p.active,
+            u.username,
+            u.email_verified_at,
+            GROUP_CONCAT(DISTINCT sr.id ORDER BY sr.name) AS role_ids,
+            GROUP_CONCAT(DISTINCT sr.name ORDER BY sr.name SEPARATOR "||") AS role_names
+         FROM professionals p
+         LEFT JOIN users u
+           ON u.professional_id = p.id
+         LEFT JOIN professional_roles pr
+           ON pr.professional_id = p.id
+         LEFT JOIN service_roles sr
+           ON sr.id = pr.role_id
+          AND sr.company_id = p.company_id
+         WHERE p.id = :id AND p.company_id = :company_id
+         GROUP BY p.id, p.name, p.email, p.phone, p.linked_user_id, p.active, u.username, u.email_verified_at'
     );
     $statement->execute([
         ':id' => $professionalId,
         ':company_id' => $companyId,
+    ]);
+    $professional = $statement->fetch();
+
+    if (!is_array($professional)) {
+        return null;
+    }
+
+    return [
+        'id' => (int) $professional['id'],
+        'name' => (string) $professional['name'],
+        'email' => (string) ($professional['email'] ?? ''),
+        'phone' => (string) ($professional['phone'] ?? ''),
+        'active' => !empty($professional['active']),
+        'roleIds' => array_values(array_filter(array_map('intval', explode(',', (string) ($professional['role_ids'] ?? ''))))),
+        'roleNames' => array_values(array_filter(array_map('trim', explode('||', (string) ($professional['role_names'] ?? ''))))),
+        'linkedUserId' => isset($professional['linked_user_id']) ? (int) $professional['linked_user_id'] : null,
+        'username' => (string) ($professional['username'] ?? ''),
+        'emailVerified' => !empty($professional['email_verified_at']),
+    ];
+}
+
+function addMinutesToTime(string $time, int $minutesToAdd): string
+{
+    $dateTime = DateTimeImmutable::createFromFormat('H:i', substr($time, 0, 5));
+
+    if (!$dateTime instanceof DateTimeImmutable) {
+        return $time;
+    }
+
+    return $dateTime->modify(sprintf('+%d minutes', $minutesToAdd))->format('H:i');
+}
+
+function findAvailableProfessionalForService(
+    PDO $pdo,
+    int $companyId,
+    int $roleId,
+    string $date,
+    string $startTime,
+    string $endTime,
+    ?int $preferredProfessionalId = null
+): ?array {
+    if ($preferredProfessionalId !== null && $preferredProfessionalId > 0) {
+        $statement = $pdo->prepare(
+            'SELECT p.id, p.name, p.email, p.phone, p.linked_user_id, p.active
+             FROM professionals p
+             INNER JOIN professional_roles pr
+               ON pr.professional_id = p.id
+             WHERE p.company_id = :company_id
+               AND p.id = :professional_id
+               AND p.active = 1
+               AND pr.role_id = :role_id
+               AND NOT EXISTS (
+                    SELECT 1
+                    FROM activities a
+                    WHERE a.company_id = p.company_id
+                      AND a.professional_id = p.id
+                      AND a.activity_date = :activity_date
+                      AND a.start_time < :end_time
+                      AND a.end_time > :start_time
+               )
+             LIMIT 1'
+        );
+        $statement->execute([
+            ':company_id' => $companyId,
+            ':professional_id' => $preferredProfessionalId,
+            ':role_id' => $roleId,
+            ':activity_date' => $date,
+            ':start_time' => $startTime,
+            ':end_time' => $endTime,
+        ]);
+        $professional = $statement->fetch();
+
+        return is_array($professional) ? $professional : null;
+    }
+
+    $statement = $pdo->prepare(
+        'SELECT p.id, p.name, p.email, p.phone, p.linked_user_id, p.active
+         FROM professionals p
+         INNER JOIN professional_roles pr
+           ON pr.professional_id = p.id
+         WHERE p.company_id = :company_id
+           AND p.active = 1
+           AND pr.role_id = :role_id
+           AND NOT EXISTS (
+                SELECT 1
+                FROM activities a
+                WHERE a.company_id = p.company_id
+                  AND a.professional_id = p.id
+                  AND a.activity_date = :activity_date
+                  AND a.start_time < :end_time
+                  AND a.end_time > :start_time
+           )
+         GROUP BY p.id, p.name, p.email, p.phone, p.linked_user_id, p.active
+         ORDER BY p.name ASC
+         LIMIT 1'
+    );
+    $statement->execute([
+        ':company_id' => $companyId,
+        ':role_id' => $roleId,
+        ':activity_date' => $date,
+        ':start_time' => $startTime,
+        ':end_time' => $endTime,
     ]);
     $professional = $statement->fetch();
 

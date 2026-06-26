@@ -8,11 +8,13 @@ import {
   AuthSession,
   AuthUser,
   CalendarDay,
+  CompanyService,
   CompanyContext,
   CompanyProfessional,
   FinancialEntry,
   GeneralPending,
   PublicProfile,
+  ServiceRole,
   SystemAccountSummary,
   WeekGroup
 } from './app.models';
@@ -59,7 +61,8 @@ export class AppComponent implements OnInit {
   protected selectedDate = this.toIsoDate(this.normalizeCalendarDate(new Date()));
   protected currentUser: AuthUser | null = null;
   protected publicProfileUser: PublicProfile['user'] = null;
-  protected publicProfileProfessionals: Array<{ id: number; name: string }> = [];
+  protected publicProfileProfessionals: NonNullable<PublicProfile['professionals']> = [];
+  protected publicProfileServices: CompanyService[] = [];
   protected publicProfileHours = { start: 8, end: 18 };
   protected canRegister = false;
   protected authMode: 'login' | 'register' = 'login';
@@ -81,7 +84,11 @@ export class AppComponent implements OnInit {
   protected isSavingCompanyProfile = false;
   protected isSavingSubscription = false;
   protected isSavingProfessional = false;
+  protected isSavingServiceRole = false;
+  protected isSavingService = false;
   protected editingProfessionalId: number | null = null;
+  protected editingServiceRoleId: number | null = null;
+  protected editingServiceId: number | null = null;
   protected systemAccounts: SystemAccountSummary[] = [];
   protected isLoadingSystemAccounts = false;
   protected isSavingSystemAccount = false;
@@ -91,6 +98,7 @@ export class AppComponent implements OnInit {
   protected companyAdminTab: 'agenda' | 'config' = 'agenda';
   protected editingSystemAccountId: number | null = null;
   protected isSubmittingPublicBooking = false;
+  protected isPublicBookingModalOpen = false;
   protected loginForm = {
     username: '',
     password: ''
@@ -136,17 +144,33 @@ export class AppComponent implements OnInit {
     name: '',
     email: '',
     phone: '',
+    active: true,
+    roleIds: [] as number[]
+  };
+  protected serviceRoleForm = {
+    name: '',
+    active: true
+  };
+  protected serviceForm = {
+    name: '',
+    roleId: 0,
+    durationMinutes: 60,
+    description: '',
     active: true
   };
   protected publicBookingForm = {
+    serviceId: 0,
     professionalId: 0,
     customerName: '',
-    customerEmail: '',
     customerPhone: '',
     date: '',
     startTime: '',
-    endTime: '',
     notes: ''
+  };
+  protected activityBookingForm = {
+    serviceId: 0,
+    customerName: '',
+    customerPhone: ''
   };
   protected financeFilters = {
     startDate: '',
@@ -258,6 +282,14 @@ export class AppComponent implements OnInit {
     return this.editingProfessionalId !== null;
   }
 
+  protected get isEditingServiceRole(): boolean {
+    return this.editingServiceRoleId !== null;
+  }
+
+  protected get isEditingService(): boolean {
+    return this.editingServiceId !== null;
+  }
+
   protected get verifiedSystemAccountsCount(): number {
     return this.systemAccounts.filter((account) => account.emailVerified).length;
   }
@@ -296,6 +328,60 @@ export class AppComponent implements OnInit {
 
   protected get publicProfessionals() {
     return this.publicProfileUser ? (this.publicProfileProfessionals ?? []) : [];
+  }
+
+  protected get serviceRoles(): ServiceRole[] {
+    return this.companyContext?.serviceRoles ?? [];
+  }
+
+  protected get companyServices(): CompanyService[] {
+    return this.companyContext?.services ?? [];
+  }
+
+  protected get activeServiceOptions(): CompanyService[] {
+    return this.companyServices.filter((service) => service.active);
+  }
+
+  protected get selectedActivityService(): CompanyService | null {
+    return this.activeServiceOptions.find((service) => service.id === this.activityBookingForm.serviceId) ?? null;
+  }
+
+  protected get selectedPublicService(): CompanyService | null {
+    return this.publicProfileServices.find((service) => service.id === this.publicBookingForm.serviceId) ?? null;
+  }
+
+  protected get filteredPublicProfessionals() {
+    const selectedService = this.selectedPublicService;
+
+    if (!selectedService?.roleId) {
+      return this.publicProfileProfessionals ?? [];
+    }
+
+    return (this.publicProfileProfessionals ?? []).filter((professional) =>
+      professional.roleIds.includes(selectedService.roleId ?? 0)
+    );
+  }
+
+  protected get selectedPublicProfessionalName(): string {
+    if (!this.publicBookingForm.professionalId) {
+      return 'Asignacion automatica';
+    }
+
+    return (
+      this.filteredPublicProfessionals.find(
+        (professional) => professional.id === this.publicBookingForm.professionalId
+      )?.name ?? 'Profesional no disponible'
+    );
+  }
+
+  protected get publicBookingEndTime(): string {
+    const selectedService = this.selectedPublicService;
+
+    if (!selectedService || !this.publicBookingForm.startTime) {
+      return '';
+    }
+
+    return this.getEndTimeByDuration(this.publicBookingForm.startTime, selectedService.durationMinutes);
   }
 
   protected setAuthMode(mode: 'login' | 'register'): void {
@@ -545,7 +631,8 @@ export class AppComponent implements OnInit {
       name: this.professionalForm.name.trim(),
       email: this.professionalForm.email.trim(),
       phone: this.professionalForm.phone.trim(),
-      active: this.professionalForm.active
+      active: this.professionalForm.active,
+      roleIds: this.professionalForm.roleIds
     };
 
     if (!professionalPayload.name) {
@@ -588,7 +675,8 @@ export class AppComponent implements OnInit {
       name: professional.name,
       email: professional.email,
       phone: professional.phone,
-      active: professional.active
+      active: professional.active,
+      roleIds: [...professional.roleIds]
     };
   }
 
@@ -621,6 +709,197 @@ export class AppComponent implements OnInit {
       error: (error) => {
         this.companySettingsError =
           error?.error?.message ?? 'No fue posible eliminar el profesional.';
+      }
+    });
+  }
+
+  protected toggleProfessionalRole(roleId: number, checked: boolean): void {
+    const nextRoleIds = checked
+      ? Array.from(new Set([...this.professionalForm.roleIds, roleId]))
+      : this.professionalForm.roleIds.filter((existingRoleId) => existingRoleId !== roleId);
+    this.professionalForm.roleIds = nextRoleIds;
+  }
+
+  protected saveServiceRole(): void {
+    const payload = {
+      name: this.serviceRoleForm.name.trim(),
+      active: this.serviceRoleForm.active
+    };
+
+    if (!payload.name) {
+      this.companySettingsError = 'Ingresa el nombre de la especialidad.';
+      this.companySettingsMessage = '';
+      return;
+    }
+
+    this.isSavingServiceRole = true;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+
+    const request =
+      this.editingServiceRoleId === null
+        ? this.agendaApi.createServiceRole(payload)
+        : this.agendaApi.updateServiceRole(this.editingServiceRoleId, payload);
+    const wasEditing = this.editingServiceRoleId !== null;
+
+    request.subscribe({
+      next: (serviceRole) => {
+        if (!this.companyContext) {
+          this.isSavingServiceRole = false;
+          return;
+        }
+
+        this.companyContext = {
+          ...this.companyContext,
+          serviceRoles:
+            this.editingServiceRoleId === null
+              ? [...this.companyContext.serviceRoles, serviceRole].sort((left, right) => left.name.localeCompare(right.name))
+              : this.companyContext.serviceRoles
+                  .map((existingRole) => (existingRole.id === serviceRole.id ? serviceRole : existingRole))
+                  .sort((left, right) => left.name.localeCompare(right.name))
+        };
+        this.isSavingServiceRole = false;
+        this.resetServiceRoleForm();
+        this.companySettingsMessage = wasEditing ? 'Especialidad actualizada.' : 'Especialidad creada.';
+      },
+      error: (error) => {
+        this.isSavingServiceRole = false;
+        this.companySettingsError =
+          error?.error?.message ??
+          (error?.status === 500
+            ? 'No fue posible guardar la especialidad. Revisa que la base de datos tenga las tablas service_roles, services y professional_roles.'
+            : 'No fue posible guardar la especialidad.');
+      }
+    });
+  }
+
+  protected editServiceRole(role: ServiceRole): void {
+    this.editingServiceRoleId = role.id;
+    this.serviceRoleForm = {
+      name: role.name,
+      active: role.active
+    };
+  }
+
+  protected cancelServiceRoleEdit(): void {
+    this.resetServiceRoleForm();
+  }
+
+  protected removeServiceRole(roleId: number): void {
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.agendaApi.deleteServiceRole(roleId).subscribe({
+      next: () => {
+        if (this.companyContext) {
+          this.companyContext = {
+            ...this.companyContext,
+            serviceRoles: this.companyContext.serviceRoles.filter((role) => role.id !== roleId)
+          };
+        }
+
+        if (this.editingServiceRoleId === roleId) {
+          this.resetServiceRoleForm();
+        }
+
+        this.companySettingsMessage = 'Especialidad eliminada.';
+      },
+      error: (error) => {
+        this.companySettingsError = error?.error?.message ?? 'No fue posible eliminar la especialidad.';
+      }
+    });
+  }
+
+  protected saveService(): void {
+    const payload = {
+      name: this.serviceForm.name.trim(),
+      roleId: Number(this.serviceForm.roleId) || 0,
+      durationMinutes: Number(this.serviceForm.durationMinutes) || 0,
+      description: this.serviceForm.description.trim(),
+      active: this.serviceForm.active
+    };
+
+    if (!payload.name || payload.roleId <= 0) {
+      this.companySettingsError = 'Completa nombre y especialidad del servicio.';
+      this.companySettingsMessage = '';
+      return;
+    }
+
+    this.isSavingService = true;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+
+    const request =
+      this.editingServiceId === null
+        ? this.agendaApi.createService(payload)
+        : this.agendaApi.updateService(this.editingServiceId, payload);
+    const wasEditing = this.editingServiceId !== null;
+
+    request.subscribe({
+      next: (service) => {
+        if (!this.companyContext) {
+          this.isSavingService = false;
+          return;
+        }
+
+        this.companyContext = {
+          ...this.companyContext,
+          services:
+            this.editingServiceId === null
+              ? [...this.companyContext.services, service].sort((left, right) => left.name.localeCompare(right.name))
+              : this.companyContext.services
+                  .map((existingService) => (existingService.id === service.id ? service : existingService))
+                  .sort((left, right) => left.name.localeCompare(right.name))
+        };
+        this.isSavingService = false;
+        this.resetServiceForm();
+        this.companySettingsMessage = wasEditing ? 'Servicio actualizado.' : 'Servicio creado.';
+      },
+      error: (error) => {
+        this.isSavingService = false;
+        this.companySettingsError =
+          error?.error?.message ??
+          (error?.status === 500
+            ? 'No fue posible guardar el servicio. Revisa que la base de datos tenga las tablas service_roles, services y professional_roles.'
+            : 'No fue posible guardar el servicio.');
+      }
+    });
+  }
+
+  protected editService(service: CompanyService): void {
+    this.editingServiceId = service.id;
+    this.serviceForm = {
+      name: service.name,
+      roleId: service.roleId ?? 0,
+      durationMinutes: service.durationMinutes,
+      description: service.description,
+      active: service.active
+    };
+  }
+
+  protected cancelServiceEdit(): void {
+    this.resetServiceForm();
+  }
+
+  protected removeService(serviceId: number): void {
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.agendaApi.deleteService(serviceId).subscribe({
+      next: () => {
+        if (this.companyContext) {
+          this.companyContext = {
+            ...this.companyContext,
+            services: this.companyContext.services.filter((service) => service.id !== serviceId)
+          };
+        }
+
+        if (this.editingServiceId === serviceId) {
+          this.resetServiceForm();
+        }
+
+        this.companySettingsMessage = 'Servicio eliminado.';
+      },
+      error: (error) => {
+        this.companySettingsError = error?.error?.message ?? 'No fue posible eliminar el servicio.';
       }
     });
   }
@@ -729,21 +1008,17 @@ export class AppComponent implements OnInit {
 
   protected submitPublicBooking(): void {
     const customerName = this.publicBookingForm.customerName.trim();
-    const customerEmail = this.publicBookingForm.customerEmail.trim().toLowerCase();
     const date = this.publicBookingForm.date;
     const startTime = this.publicBookingForm.startTime;
-    const endTime = this.publicBookingForm.endTime;
 
     if (
       !this.publicProfileUser ||
+      this.publicBookingForm.serviceId <= 0 ||
       !customerName ||
-      !customerEmail ||
       !date ||
-      !startTime ||
-      !endTime ||
-      this.publicBookingForm.professionalId <= 0
+      !startTime
     ) {
-      this.authError = 'Completa los datos de la reserva y selecciona un profesional.';
+      this.authError = 'Completa los datos de la reserva y selecciona un servicio.';
       this.authMessage = '';
       return;
     }
@@ -754,28 +1029,27 @@ export class AppComponent implements OnInit {
 
     this.agendaApi.createPublicBooking({
       username: this.publicProfileUser.username,
-      professionalId: this.publicBookingForm.professionalId,
+      serviceId: this.publicBookingForm.serviceId,
+      professionalId: this.publicBookingForm.professionalId > 0 ? this.publicBookingForm.professionalId : null,
       customerName,
-      customerEmail,
       customerPhone: this.publicBookingForm.customerPhone.trim(),
       date,
       startTime,
-      endTime,
       notes: this.publicBookingForm.notes.trim()
     }).subscribe({
       next: (response) => {
         this.isSubmittingPublicBooking = false;
         this.authMessage = response.message;
         this.publicBookingForm = {
+          serviceId: this.publicBookingForm.serviceId,
           professionalId: this.publicBookingForm.professionalId,
           customerName: '',
-          customerEmail: '',
           customerPhone: '',
           date: '',
           startTime: '',
-          endTime: '',
           notes: ''
         };
+        this.isPublicBookingModalOpen = false;
       },
       error: (error) => {
         this.isSubmittingPublicBooking = false;
@@ -825,6 +1099,50 @@ export class AppComponent implements OnInit {
     this.isActivityPanelOpen = true;
   }
 
+  protected openPublicBookingModal(isoDate: string, startTime = ''): void {
+    this.selectDate(isoDate);
+    this.authError = '';
+    this.authMessage = '';
+    const serviceId = this.publicBookingForm.serviceId || this.publicProfileServices[0]?.id || 0;
+    this.publicBookingForm = {
+      ...this.publicBookingForm,
+      serviceId,
+      date: isoDate,
+      startTime,
+      professionalId: this.isProfessionalCompatibleWithSelectedService(this.publicBookingForm.professionalId)
+        ? this.publicBookingForm.professionalId
+        : 0
+    };
+    this.syncPublicBookingSelection();
+    this.isPublicBookingModalOpen = true;
+  }
+
+  protected closePublicBookingModal(): void {
+    this.isPublicBookingModalOpen = false;
+    this.authError = '';
+    this.authMessage = '';
+  }
+
+  protected onPublicBookingServiceChange(): void {
+    if (!this.isProfessionalCompatibleWithSelectedService(this.publicBookingForm.professionalId)) {
+      this.publicBookingForm.professionalId = 0;
+    }
+
+    this.syncPublicBookingSelection();
+  }
+
+  protected onPublicBookingStartTimeChange(): void {
+    this.syncPublicBookingSelection();
+  }
+
+  protected onActivityServiceChange(): void {
+    this.syncActivityEndTimeWithService();
+  }
+
+  protected onActivityStartTimeChange(): void {
+    this.syncActivityEndTimeWithService();
+  }
+
   protected closeActivityPanel(): void {
     this.isActivityPanelOpen = false;
     this.resetActivityForm();
@@ -850,12 +1168,11 @@ export class AppComponent implements OnInit {
   }
 
   protected addActivity(): void {
-    const title = this.newActivity.title.trim();
+    const title = this.buildActivityTitle();
     const startTime = this.newActivity.startTime;
     const endTime = this.newActivity.endTime;
     const assignee = this.newActivity.assignee;
-    const location = this.newActivity.location.trim();
-    const description = this.newActivity.description.trim();
+    const description = this.buildActivityDescription();
 
     if (!title || !this.newActivity.date || !startTime || !endTime || !assignee) {
       return;
@@ -874,7 +1191,7 @@ export class AppComponent implements OnInit {
       professionalId: this.findProfessionalIdByName(assignee),
       visibility: this.newActivity.visibility,
       completed: this.newActivity.completed,
-      location,
+      location: '',
       description,
       date: this.newActivity.date,
       reminderMinutes: this.newActivity.reminderMinutes
@@ -932,6 +1249,12 @@ export class AppComponent implements OnInit {
   protected editActivity(activity: Activity): void {
     this.editingActivityId = activity.id;
     this.isActivityPanelOpen = true;
+    const parsedBookingData = this.parseActivityBookingForm(activity);
+    this.activityBookingForm = {
+      serviceId: parsedBookingData.serviceId,
+      customerName: parsedBookingData.customerName,
+      customerPhone: parsedBookingData.customerPhone
+    };
     this.newActivity = {
       title: activity.title,
       startTime: activity.startTime,
@@ -940,11 +1263,12 @@ export class AppComponent implements OnInit {
       professionalId: activity.professionalId ?? null,
       visibility: activity.visibility,
       completed: activity.completed,
-      location: activity.location,
-      description: activity.description,
+      location: '',
+      description: parsedBookingData.notes,
       date: activity.date,
       reminderMinutes: activity.reminderMinutes
     };
+    this.syncActivityEndTimeWithService();
     this.selectDate(activity.date);
   }
 
@@ -1521,6 +1845,11 @@ export class AppComponent implements OnInit {
   private resetActivityForm(): void {
     this.editingActivityId = null;
     this.newActivity = this.buildEmptyActivity();
+    this.activityBookingForm = {
+      serviceId: 0,
+      customerName: '',
+      customerPhone: ''
+    };
   }
 
   private resetGeneralPendingForm(): void {
@@ -1539,6 +1868,26 @@ export class AppComponent implements OnInit {
       name: '',
       email: '',
       phone: '',
+      active: true,
+      roleIds: []
+    };
+  }
+
+  private resetServiceRoleForm(): void {
+    this.editingServiceRoleId = null;
+    this.serviceRoleForm = {
+      name: '',
+      active: true
+    };
+  }
+
+  private resetServiceForm(): void {
+    this.editingServiceId = null;
+    this.serviceForm = {
+      name: '',
+      roleId: this.serviceRoles[0]?.id ?? 0,
+      durationMinutes: 60,
+      description: '',
       active: true
     };
   }
@@ -1605,6 +1954,7 @@ export class AppComponent implements OnInit {
   private applyPublicProfile(profile: PublicProfile): void {
     this.publicProfileUser = profile.user;
     this.publicProfileProfessionals = profile.professionals ?? [];
+    this.publicProfileServices = (profile.services ?? []).filter((service) => service.active);
     this.publicProfileHours = {
       start: this.normalizeWorkingHour(profile.workingHours?.start, 8),
       end: this.normalizeWorkingHour(profile.workingHours?.end, 18)
@@ -1612,7 +1962,9 @@ export class AppComponent implements OnInit {
     this.generalPendings = [];
     this.financialEntries = [];
     this.activities = profile.activities.sort((left, right) => this.compareActivities(left, right));
-    this.publicBookingForm.professionalId = this.publicProfileProfessionals[0]?.id ?? 0;
+    this.publicBookingForm.serviceId = this.publicProfileServices[0]?.id ?? 0;
+    this.publicBookingForm.professionalId = 0;
+    this.syncPublicBookingSelection();
     this.viewMode = 'week';
 
     if (!profile.found) {
@@ -1630,9 +1982,9 @@ export class AppComponent implements OnInit {
   private applyCompanyContext(context: CompanyContext): void {
     this.companyContext = {
       ...context,
-      professionals: [...context.professionals].sort((left, right) =>
-        left.name.localeCompare(right.name)
-      )
+      professionals: [...context.professionals].sort((left, right) => left.name.localeCompare(right.name)),
+      serviceRoles: [...context.serviceRoles].sort((left, right) => left.name.localeCompare(right.name)),
+      services: [...context.services].sort((left, right) => left.name.localeCompare(right.name))
     };
     this.companyProfileForm = {
       name: context.company.name,
@@ -1652,6 +2004,10 @@ export class AppComponent implements OnInit {
       this.syncAssigneeFields(this.activeProfessionals[0].name);
     } else {
       this.syncAssigneeFields(this.currentAssigneeFallback());
+    }
+
+    if (!this.serviceForm.name) {
+      this.resetServiceForm();
     }
   }
 
@@ -1712,6 +2068,41 @@ export class AppComponent implements OnInit {
     this.isActivityPanelOpen = false;
     this.isPendingPanelOpen = false;
     this.isFinancePanelOpen = false;
+    this.isPublicBookingModalOpen = false;
+  }
+
+  private syncPublicBookingSelection(): void {
+    if (!this.isProfessionalCompatibleWithSelectedService(this.publicBookingForm.professionalId)) {
+      this.publicBookingForm.professionalId = 0;
+    }
+  }
+
+  private syncActivityEndTimeWithService(): void {
+    const selectedService = this.selectedActivityService;
+
+    if (!selectedService || !this.newActivity.startTime) {
+      return;
+    }
+
+    this.newActivity.endTime = this.getEndTimeByDuration(
+      this.newActivity.startTime,
+      selectedService.durationMinutes
+    );
+  }
+
+  private isProfessionalCompatibleWithSelectedService(professionalId: number): boolean {
+    if (professionalId <= 0) {
+      return true;
+    }
+
+    const selectedService = this.selectedPublicService;
+    const professional = this.publicProfileProfessionals?.find((item) => item.id === professionalId);
+
+    if (!selectedService?.roleId || !professional) {
+      return false;
+    }
+
+    return professional.roleIds.includes(selectedService.roleId);
   }
 
   private getCurrentAssignee(): string {
@@ -1948,6 +2339,102 @@ export class AppComponent implements OnInit {
     }
 
     return this.timeOptions[currentIndex + 1];
+  }
+
+  private getEndTimeByDuration(startTime: string, durationMinutes: number): string {
+    const startMinutes = this.parseTimeToMinutes(startTime);
+
+    if (!startTime || !Number.isFinite(startMinutes) || durationMinutes <= 0) {
+      return '';
+    }
+
+    const totalMinutes = startMinutes + durationMinutes;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${`${hours}`.padStart(2, '0')}:${`${minutes}`.padStart(2, '0')}`;
+  }
+
+  private buildActivityTitle(): string {
+    const selectedService = this.selectedActivityService;
+    const customerName = this.activityBookingForm.customerName.trim();
+    const manualTitle = this.newActivity.title.trim();
+
+    if (selectedService && customerName) {
+      return `${selectedService.name} - ${customerName}`;
+    }
+
+    if (selectedService) {
+      return selectedService.name;
+    }
+
+    if (customerName) {
+      return `Cita - ${customerName}`;
+    }
+
+    return manualTitle;
+  }
+
+  private buildActivityDescription(): string {
+    const metadataLines: string[] = [];
+    const selectedService = this.selectedActivityService;
+    const customerName = this.activityBookingForm.customerName.trim();
+    const customerPhone = this.activityBookingForm.customerPhone.trim();
+    const notes = this.newActivity.description.trim();
+
+    if (selectedService) {
+      metadataLines.push(`Servicio: ${selectedService.name}`);
+    }
+
+    if (customerName) {
+      metadataLines.push(`Cliente: ${customerName}`);
+    }
+
+    if (customerPhone) {
+      metadataLines.push(`Telefono: ${customerPhone}`);
+    }
+
+    if (notes) {
+      metadataLines.push(`Notas: ${notes}`);
+    }
+
+    return metadataLines.join('\n');
+  }
+
+  private parseActivityBookingForm(activity: Activity): {
+    serviceId: number;
+    customerName: string;
+    customerPhone: string;
+    notes: string;
+  } {
+    const lines = activity.description
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const lineMap = new Map<string, string>();
+
+    for (const line of lines) {
+      const separatorIndex = line.indexOf(':');
+
+      if (separatorIndex <= 0) {
+        continue;
+      }
+
+      const key = line.slice(0, separatorIndex).trim().toLowerCase();
+      const value = line.slice(separatorIndex + 1).trim();
+      lineMap.set(key, value);
+    }
+
+    const serviceName = lineMap.get('servicio') ?? '';
+    const selectedService =
+      this.activeServiceOptions.find((service) => service.name.toLowerCase() === serviceName.toLowerCase()) ??
+      null;
+
+    return {
+      serviceId: selectedService?.id ?? 0,
+      customerName: lineMap.get('cliente') ?? '',
+      customerPhone: lineMap.get('telefono') ?? '',
+      notes: lineMap.get('notas') ?? activity.description
+    };
   }
 
   private compareTimes(left: string, right: string): number {
