@@ -767,11 +767,22 @@
           </div>
         </article>
 
-        @if (companySettingsError) {
-          <p class="auth-error">{{ companySettingsError }}</p>
-        }
-        @if (companySettingsMessage) {
-          <p class="success-message">{{ companySettingsMessage }}</p>
+        @if (companySettingsError || companySettingsMessage) {
+          <aside
+            class="floating-feedback"
+            [class.floating-feedback-error]="!!companySettingsError"
+            [class.floating-feedback-success]="!!companySettingsMessage && !companySettingsError"
+            role="alert"
+            aria-live="assertive"
+          >
+            <div class="floating-feedback-copy">
+              <strong>{{ companySettingsError ? 'No se pudo completar la accion' : 'Cambios guardados' }}</strong>
+              <p>{{ companySettingsError || companySettingsMessage }}</p>
+            </div>
+            <button type="button" class="floating-feedback-close" (click)="dismissCompanySettingsFeedback()" aria-label="Cerrar notificacion">
+              Cerrar
+            </button>
+          </aside>
         }
 
         <article class="panel enterprise-admin-panel">

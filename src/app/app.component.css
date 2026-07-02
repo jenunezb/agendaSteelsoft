@@ -550,6 +550,63 @@ button:disabled {
   margin-top: 16px;
 }
 
+.floating-feedback {
+  position: fixed;
+  top: 108px;
+  right: 20px;
+  z-index: 1000;
+  width: min(420px, calc(100vw - 32px));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(10, 10, 10, 0.08);
+  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.floating-feedback-error {
+  background: linear-gradient(180deg, rgba(111, 28, 28, 0.96), rgba(74, 18, 18, 0.94));
+  color: #fff4f4;
+}
+
+.floating-feedback-success {
+  background: linear-gradient(180deg, rgba(29, 95, 44, 0.96), rgba(23, 71, 34, 0.94));
+  color: #f4fff6;
+}
+
+.floating-feedback-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.floating-feedback-copy strong,
+.floating-feedback-copy p {
+  margin: 0;
+}
+
+.floating-feedback-copy p {
+  line-height: 1.45;
+}
+
+.floating-feedback-close {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.14);
+  color: inherit;
+  box-shadow: none !important;
+}
+
+.floating-feedback-close:hover {
+  background: rgba(255, 255, 255, 0.24) !important;
+  color: inherit !important;
+}
+
 .form-actions {
   display: grid;
   gap: 8px;
@@ -1409,6 +1466,14 @@ button {
 @media (max-width: 720px) {
   .layout {
     padding-inline: 12px;
+  }
+
+  .floating-feedback {
+    top: 88px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    padding: 14px;
   }
 
   .landing-hero,

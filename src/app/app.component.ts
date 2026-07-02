@@ -713,6 +713,11 @@ export class AppComponent implements OnInit {
     });
   }
 
+  protected dismissCompanySettingsFeedback(): void {
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+  }
+
   protected toggleProfessionalRole(roleId: number, checked: boolean): void {
     const nextRoleIds = checked
       ? Array.from(new Set([...this.professionalForm.roleIds, roleId]))
