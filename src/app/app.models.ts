@@ -80,6 +80,7 @@ export interface PublicProfile {
   };
   user:
     | (Pick<AuthUser, 'name' | 'username' | 'publicUrl'> & {
+        companyName?: string;
         whatsappNumber?: string;
         whatsappContactUrl?: string;
       })

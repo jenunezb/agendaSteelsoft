@@ -7,34 +7,16 @@
     </section>
   </main>
 } @else if (isPublicProfileMode) {
-  <main class="layout">
-    <header class="topbar panel">
-      <div class="brand">
-        <span class="brand-mark">S</span>
-        <div>
-          <p class="label">Perfil publico</p>
-          <h1>{{ activeProfileName }}</h1>
-        </div>
-      </div>
-      @if (publicProfileUser) {
-        <div class="session-summary">
-          <div>
-            <p class="label">Usuario</p>
-            <strong>{{ publicProfileUser.username }}</strong>
-            <small>{{ publicProfileUser.publicUrl }}</small>
-          </div>
-        </div>
-      }
-    </header>
-
+  <main class="layout public-layout">
     @if (publicProfileState === 'ready') {
       <section class="board public-board">
         <article class="panel calendar-panel public-calendar-panel">
           <div class="calendar-header">
-            <div>
+            <div class="public-calendar-heading">
               <p class="label">Agenda publica semanal</p>
-              <h2>{{ currentPeriodLabel }}</h2>
-              <p>
+              <h1 class="public-company-name">{{ publicProfileUser?.companyName || activeProfileName }}</h1>
+              <h2 class="public-period-label">{{ currentPeriodLabel }}</h2>
+              <p class="public-working-hours">
                 Horario laboral: {{ formatTimeLabel((currentWorkingHours.start < 10 ? '0' : '') + currentWorkingHours.start + ':00') }}
                 - {{ formatTimeLabel((currentWorkingHours.end < 10 ? '0' : '') + currentWorkingHours.end + ':00') }}
               </p>

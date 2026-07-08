@@ -1674,19 +1674,27 @@ export class AppComponent implements OnInit {
   }
 
   protected get weekAgendaGridTemplateColumns(): string {
-    return `74px repeat(${Math.max(this.weeklyCalendarDays.length, 1)}, minmax(88px, 1fr))`;
+    return `${this.weekAgendaTimeColumnWidth}px repeat(${Math.max(this.weeklyCalendarDays.length, 1)}, minmax(${this.weekAgendaDayWidth}px, 1fr))`;
   }
 
   protected get weekDayColumnsTemplateColumns(): string {
-    return `repeat(${Math.max(this.weeklyCalendarDays.length, 1)}, minmax(88px, 1fr))`;
+    return `repeat(${Math.max(this.weeklyCalendarDays.length, 1)}, minmax(${this.weekAgendaDayWidth}px, 1fr))`;
   }
 
   protected get weekAgendaMinWidth(): string {
-    return `${74 + Math.max(this.weeklyCalendarDays.length, 1) * 94}px`;
+    return `${this.weekAgendaTimeColumnWidth + Math.max(this.weeklyCalendarDays.length, 1) * (this.weekAgendaDayWidth + 6)}px`;
   }
 
   protected get weekDayColumnsMinWidth(): string {
-    return `${Math.max(this.weeklyCalendarDays.length, 1) * 94}px`;
+    return `${Math.max(this.weeklyCalendarDays.length, 1) * (this.weekAgendaDayWidth + 6)}px`;
+  }
+
+  protected get weekAgendaTimeColumnWidth(): number {
+    return this.isPublicProfileMode ? 56 : 74;
+  }
+
+  protected get weekAgendaDayWidth(): number {
+    return this.isPublicProfileMode ? 68 : 88;
   }
 
   protected get weeklyGroups(): WeekGroup[] {

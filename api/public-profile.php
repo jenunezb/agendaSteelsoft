@@ -55,7 +55,7 @@ $isCompanyWorkspace = $companyId > 0 && in_array($companyRole, ['owner', 'admin'
 
 if ($isCompanyWorkspace) {
     $companyStatement = $pdo->prepare(
-        'SELECT working_hour_start, working_hour_end
+        'SELECT name, working_hour_start, working_hour_end
          FROM companies
          WHERE id = :company_id'
     );
@@ -96,6 +96,7 @@ if ($isCompanyWorkspace) {
     $services = [];
     $workingHourStart = 8;
     $workingHourEnd = 18;
+    $company = null;
 }
 
 $activities = array_map(static function (array $row): array {
@@ -122,6 +123,7 @@ jsonResponse([
     'user' => [
         'name' => $user['name'],
         'username' => $user['username'],
+        'companyName' => $isCompanyWorkspace ? (string) ($company['name'] ?? $user['name']) : (string) $user['name'],
         'publicUrl' => buildPublicProfileUrl((string) $user['username']),
         'whatsappNumber' => (string) ($user['whatsapp_number'] ?? ''),
         'whatsappContactUrl' => buildWhatsappClickUrl(

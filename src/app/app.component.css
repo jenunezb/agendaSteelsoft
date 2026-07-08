@@ -25,6 +25,14 @@
     linear-gradient(180deg, #fffdf8 0%, #f5f1e7 100%);
 }
 
+.public-layout {
+  max-width: 980px;
+  padding-top: 12px;
+  background:
+    linear-gradient(180deg, rgba(10, 10, 10, 0.98) 0, rgba(10, 10, 10, 0.98) 40px, transparent 40px),
+    linear-gradient(180deg, #fffdf8 0%, #f5f1e7 100%);
+}
+
 .auth-layout {
   display: grid;
   place-items: center;
@@ -995,7 +1003,30 @@ button {
 }
 
 .public-calendar-panel {
-  width: 100%;
+  padding: 18px;
+}
+
+.public-calendar-heading {
+  display: grid;
+}
+
+.public-company-name {
+  margin: 0;
+  font-size: clamp(1.2rem, 3.1vw, 1.8rem);
+  line-height: 1.02;
+}
+
+.public-period-label {
+  margin: 0;
+  font-size: clamp(0.98rem, 2.2vw, 1.25rem);
+  line-height: 1.1;
+  color: var(--muted);
+}
+
+.public-working-hours {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
 }
 
 .calendar-controls {
@@ -1127,7 +1158,7 @@ button {
 .week-day-heading {
   display: grid;
   gap: 3px;
-  padding: 10px 8px;
+  padding: 8px 6px;
   text-align: center;
   border-radius: 14px;
   background: linear-gradient(180deg, #ffffff, #fff8e5);
@@ -1471,6 +1502,9 @@ button {
     padding-inline: 12px;
   }
 
+  .public-layout {
+  }
+
   .floating-feedback {
     top: 88px;
     right: 12px;
@@ -1504,6 +1538,18 @@ button {
 
   .calendar-panel {
     order: -1;
+  }
+
+  .public-company-name {
+    font-size: 1.15rem;
+  }
+
+  .public-period-label {
+    font-size: 0.9rem;
+  }
+
+  .public-calendar-panel {
+    padding: 14px;
   }
 
   .side-column {
@@ -1557,10 +1603,32 @@ button {
     grid-template-columns: 1fr 1fr;
   }
 
+  .month-actions button {
+    padding: 9px 10px;
+  }
+
   .weekdays,
   .calendar-grid {
     gap: 6px;
     min-width: 720px;
+  }
+
+  .week-agenda-header,
+  .week-agenda-body {
+    gap: 4px;
+  }
+
+  .week-day-heading {
+    padding: 7px 4px;
+    border-radius: 12px;
+  }
+
+  .week-day-heading strong {
+    font-size: 0.78rem;
+  }
+
+  .week-day-heading small {
+    font-size: 0.62rem;
   }
 
   .day-cell {
