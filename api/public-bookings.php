@@ -26,7 +26,7 @@ if ($username === '' || $serviceId <= 0 || $customerName === '' || $date === '' 
 }
 
 $statement = $pdo->prepare(
-    'SELECT id, name, company_id, company_role, profile_public
+    'SELECT id, name, company_id, company_role, profile_public, whatsapp_number, whatsapp_notifications_enabled
      FROM users
      WHERE username = :username
      LIMIT 1'
@@ -108,7 +108,494 @@ $statement->execute([
     ':activity_date' => $date,
 ]);
 
+$activityId = (int) $pdo->lastInsertId();
+$notificationSummary = sendBookingWhatsappNotifications(
+    $pdo,
+    $user,
+    $professional,
+    [
+        'id' => $activityId,
+        'serviceName' => (string) ($service['name'] ?? 'Servicio'),
+        'customerName' => $customerName,
+        'customerPhone' => $customerPhone,
+        'date' => $date,
+        'startTime' => $startTime,
+        'endTime' => $endTime,
+        'notes' => $notes,
+    ]
+);
+
 jsonResponse([
     'success' => true,
     'message' => 'Reserva creada correctamente. La empresa recibira esta cita en la agenda del profesional.',
+    'notifications' => $notificationSummary,
 ], 201);
+
+function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $professional, array $booking): array
+{
+    $config = getWhatsappConfig();
+    $results = [];
+    $professionalName = (string) ($professional['name'] ?? '');
+
+    if (
+        trim((string) ($config['twilio_account_sid'] ?? '')) === ''
+        || trim((string) ($config['twilio_auth_token'] ?? '')) === ''
+        || trim((string) ($config['twilio_whatsapp_from'] ?? '')) === ''
+    ) {
+        return [
+            'sent' => [],
+            'failed' => [],
+            'skipped' => ['twilio-not-configured'],
+        ];
+    }
+
+    $dateLabel = formatBookingDateLabel((string) $booking['date']);
+    $timeLabel = substr((string) $booking['startTime'], 0, 5);
+    $serviceName = (string) $booking['serviceName'];
+    $customerName = (string) $booking['customerName'];
+    $customerPhone = normalizeWhatsappNumber((string) $booking['customerPhone']);
+    $notes = trim((string) $booking['notes']);
+    $ownerPhone = normalizeWhatsappNumber((string) ($ownerUser['whatsapp_number'] ?? ''));
+    $ownerNotificationsEnabled = !empty($ownerUser['whatsapp_notifications_enabled']);
+
+    if ($ownerNotificationsEnabled && $ownerPhone !== '') {
+        $results[] = sendTwilioBookingNotification(
+            $config,
+            $ownerPhone,
+            buildAdminBookingMessage(
+                (string) ($ownerUser['name'] ?? 'Administracion'),
+                $professionalName,
+                $serviceName,
+                $customerName,
+                $customerPhone,
+                $dateLabel,
+                $timeLabel,
+                $notes
+            ),
+            'admin',
+            buildAdminBookingContentVariables(
+                $serviceName,
+                $dateLabel,
+                $timeLabel,
+                $customerName,
+                $professionalName,
+                $customerPhone
+            )
+        );
+    } else {
+        $results[] = [
+            'recipient' => 'admin',
+            'success' => false,
+            'skipped' => true,
+            'message' => 'La administradora no tiene WhatsApp configurado o habilitado.',
+        ];
+    }
+
+    $professionalRecipientPhone = resolveProfessionalWhatsappNumber($pdo, (int) ($ownerUser['company_id'] ?? 0), $professional);
+
+    if ($professionalRecipientPhone !== '' && $professionalRecipientPhone !== $ownerPhone) {
+        $results[] = sendTwilioBookingNotification(
+            $config,
+            $professionalRecipientPhone,
+            buildProfessionalBookingMessage(
+                $professionalName !== '' ? $professionalName : 'Profesional',
+                $serviceName,
+                $customerName,
+                $customerPhone,
+                $dateLabel,
+                $timeLabel,
+                $notes
+            ),
+            'professional',
+            buildProfessionalBookingContentVariables(
+                $serviceName,
+                $dateLabel,
+                $timeLabel,
+                $customerName,
+                $customerPhone,
+                $professionalName
+            )
+        );
+    } else {
+        $results[] = [
+            'recipient' => 'professional',
+            'success' => false,
+            'skipped' => true,
+            'message' => 'El profesional no tiene WhatsApp propio configurado o coincide con administracion.',
+        ];
+    }
+
+    if ($customerPhone !== '') {
+        $results[] = sendTwilioBookingNotification(
+            $config,
+            $customerPhone,
+            buildCustomerBookingMessage(
+                $customerName,
+                $professionalName,
+                $serviceName,
+                $dateLabel,
+                $timeLabel
+            ),
+            'customer',
+            buildCustomerBookingContentVariables(
+                $serviceName,
+                $dateLabel,
+                $timeLabel,
+                $professionalName
+            )
+        );
+    } else {
+        $results[] = [
+            'recipient' => 'customer',
+            'success' => false,
+            'skipped' => true,
+            'message' => 'El cliente no envio numero de WhatsApp.',
+        ];
+    }
+
+    return [
+        'sent' => array_values(array_filter($results, static fn (array $result): bool => !empty($result['success']))),
+        'failed' => array_values(array_filter($results, static fn (array $result): bool => empty($result['success']) && empty($result['skipped']))),
+        'skipped' => array_values(array_map(
+            static fn (array $result): string => (string) ($result['recipient'] . ': ' . $result['message']),
+            array_filter($results, static fn (array $result): bool => !empty($result['skipped']))
+        )),
+    ];
+}
+
+function sendTwilioBookingNotification(
+    array $config,
+    string $phone,
+    string $message,
+    string $recipient,
+    array $contentVariables
+): array
+{
+    $accountSid = (string) ($config['twilio_account_sid'] ?? '');
+    $authToken = (string) ($config['twilio_auth_token'] ?? '');
+    $from = normalizeTwilioBookingAddress((string) ($config['twilio_whatsapp_from'] ?? ''));
+    $to = normalizeTwilioBookingAddress($phone);
+
+    if ($from === '' || $to === '') {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'message' => 'Numero de origen o destino invalido.',
+        ];
+    }
+
+    $endpoint = sprintf(
+        'https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json',
+        rawurlencode($accountSid)
+    );
+    $recipientContentSid = getBookingRecipientContentSid($config, $recipient);
+    $payload = [
+        'From' => $from,
+        'To' => $to,
+    ];
+
+    if ($recipientContentSid !== '') {
+        $payload['ContentSid'] = $recipientContentSid;
+        $payload['ContentVariables'] = encodeTwilioContentVariables($contentVariables);
+    } else {
+        $payload['Body'] = $message;
+    }
+
+    [$rawResponse, $statusCode, $transportError] = sendTwilioFormRequest(
+        $endpoint,
+        [
+            'Authorization: Basic ' . base64_encode($accountSid . ':' . $authToken),
+            'Content-Type: application/x-www-form-urlencoded',
+        ],
+        $payload
+    );
+
+    if ($transportError !== '') {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'message' => $transportError,
+        ];
+    }
+
+    if ($statusCode >= 400) {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'message' => sprintf('Twilio devolvio HTTP %d: %s', $statusCode, $rawResponse),
+        ];
+    }
+
+    $decodedResponse = json_decode($rawResponse, true);
+
+    return [
+        'recipient' => $recipient,
+        'success' => true,
+        'sid' => is_array($decodedResponse) ? (string) ($decodedResponse['sid'] ?? '') : '',
+        'status' => is_array($decodedResponse) ? (string) ($decodedResponse['status'] ?? '') : '',
+    ];
+}
+
+function getBookingRecipientContentSid(array $config, string $recipient): string
+{
+    return match ($recipient) {
+        'admin' => trim((string) ($config['twilio_booking_admin_content_sid'] ?? '')),
+        'professional' => trim((string) ($config['twilio_booking_professional_content_sid'] ?? '')),
+        'customer' => trim((string) ($config['twilio_booking_customer_content_sid'] ?? '')),
+        default => '',
+    };
+}
+
+function encodeTwilioContentVariables(array $variables): string
+{
+    $json = json_encode($variables, JSON_UNESCAPED_UNICODE);
+
+    if ($json === false) {
+        throw new RuntimeException('No fue posible serializar las variables de Twilio.');
+    }
+
+    return $json;
+}
+
+function sendTwilioFormRequest(string $endpoint, array $headers, array $payload): array
+{
+    $formPayload = http_build_query($payload);
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => $formPayload,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $rawResponse = curl_exec($ch);
+        $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($rawResponse === false || $curlError !== '') {
+            return [
+                is_string($rawResponse) ? $rawResponse : '',
+                $statusCode,
+                $curlError !== '' ? $curlError : 'No hubo respuesta de Twilio.',
+            ];
+        }
+
+        return [$rawResponse, $statusCode, ''];
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", $headers) . "\r\n",
+            'content' => $formPayload,
+            'timeout' => 30,
+            'ignore_errors' => true,
+        ],
+    ]);
+
+    $rawResponse = @file_get_contents($endpoint, false, $context);
+    $responseHeaders = $http_response_header ?? [];
+    $statusCode = extractTwilioHttpStatusCode($responseHeaders);
+
+    if ($rawResponse === false) {
+        $error = error_get_last();
+
+        return [
+            '',
+            $statusCode,
+            (string) ($error['message'] ?? 'No hubo respuesta de Twilio.'),
+        ];
+    }
+
+    return [$rawResponse, $statusCode, ''];
+}
+
+function extractTwilioHttpStatusCode(array $responseHeaders): int
+{
+    foreach ($responseHeaders as $header) {
+        if (preg_match('/^HTTP\/\S+\s+(\d{3})\b/', $header, $matches) === 1) {
+            return (int) $matches[1];
+        }
+    }
+
+    return 0;
+}
+
+function normalizeTwilioBookingAddress(string $value): string
+{
+    $normalizedValue = normalizeWhatsappNumber($value);
+
+    if ($normalizedValue === '') {
+        return '';
+    }
+
+    return 'whatsapp:+' . $normalizedValue;
+}
+
+function resolveProfessionalWhatsappNumber(PDO $pdo, int $companyId, array $professional): string
+{
+    $linkedUserId = isset($professional['linked_user_id']) ? (int) $professional['linked_user_id'] : 0;
+
+    if ($linkedUserId > 0) {
+        $statement = $pdo->prepare(
+            'SELECT whatsapp_number, whatsapp_notifications_enabled
+             FROM users
+             WHERE id = :id
+             LIMIT 1'
+        );
+        $statement->execute([':id' => $linkedUserId]);
+        $linkedUser = $statement->fetch();
+
+        if (is_array($linkedUser) && !empty($linkedUser['whatsapp_notifications_enabled'])) {
+            $linkedPhone = normalizeWhatsappNumber((string) ($linkedUser['whatsapp_number'] ?? ''));
+
+            if ($linkedPhone !== '') {
+                return $linkedPhone;
+            }
+        }
+    }
+
+    return normalizeWhatsappNumber((string) ($professional['phone'] ?? ''));
+}
+
+function formatBookingDateLabel(string $isoDate): string
+{
+    $date = DateTimeImmutable::createFromFormat('Y-m-d', $isoDate);
+
+    if (!$date instanceof DateTimeImmutable) {
+        return $isoDate;
+    }
+
+    return $date->format('d/m/Y');
+}
+
+function buildAdminBookingMessage(
+    string $adminName,
+    string $professionalName,
+    string $serviceName,
+    string $customerName,
+    string $customerPhone,
+    string $dateLabel,
+    string $timeLabel,
+    string $notes
+): string {
+    $message = sprintf(
+        'Hola %s, se agendo una nueva cita para %s con %s el %s a las %s. Cliente: %s.',
+        $adminName,
+        $serviceName,
+        $professionalName !== '' ? $professionalName : 'el profesional asignado',
+        $dateLabel,
+        $timeLabel,
+        $customerName
+    );
+
+    if ($customerPhone !== '') {
+        $message .= sprintf(' WhatsApp cliente: +%s.', $customerPhone);
+    }
+
+    if ($notes !== '') {
+        $message .= sprintf(' Notas: %s.', $notes);
+    }
+
+    return $message;
+}
+
+function buildProfessionalBookingMessage(
+    string $professionalName,
+    string $serviceName,
+    string $customerName,
+    string $customerPhone,
+    string $dateLabel,
+    string $timeLabel,
+    string $notes
+): string {
+    $message = sprintf(
+        'Hola %s, tienes una nueva cita de %s el %s a las %s. Cliente: %s.',
+        $professionalName,
+        $serviceName,
+        $dateLabel,
+        $timeLabel,
+        $customerName
+    );
+
+    if ($customerPhone !== '') {
+        $message .= sprintf(' WhatsApp cliente: +%s.', $customerPhone);
+    }
+
+    if ($notes !== '') {
+        $message .= sprintf(' Notas: %s.', $notes);
+    }
+
+    return $message;
+}
+
+function buildCustomerBookingMessage(
+    string $customerName,
+    string $professionalName,
+    string $serviceName,
+    string $dateLabel,
+    string $timeLabel
+): string {
+    return sprintf(
+        'Hola %s, tu cita de %s quedo agendada para el %s a las %s con %s.',
+        $customerName,
+        $serviceName,
+        $dateLabel,
+        $timeLabel,
+        $professionalName !== '' ? $professionalName : 'nuestro equipo'
+    );
+}
+
+function buildAdminBookingContentVariables(
+    string $serviceName,
+    string $dateLabel,
+    string $timeLabel,
+    string $customerName,
+    string $professionalName,
+    string $customerPhone
+): array {
+    return [
+        '1' => $serviceName,
+        '2' => $dateLabel,
+        '3' => $timeLabel,
+        '4' => $customerName,
+        '5' => $professionalName !== '' ? $professionalName : 'Profesional asignado',
+        '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin numero',
+    ];
+}
+
+function buildProfessionalBookingContentVariables(
+    string $serviceName,
+    string $dateLabel,
+    string $timeLabel,
+    string $customerName,
+    string $customerPhone,
+    string $professionalName
+): array {
+    return [
+        '1' => $professionalName !== '' ? $professionalName : 'Profesional',
+        '2' => $serviceName,
+        '3' => $dateLabel,
+        '4' => $timeLabel,
+        '5' => $customerName,
+        '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin numero',
+    ];
+}
+
+function buildCustomerBookingContentVariables(
+    string $serviceName,
+    string $dateLabel,
+    string $timeLabel,
+    string $professionalName
+): array {
+    return [
+        '1' => $serviceName,
+        '2' => $dateLabel,
+        '3' => $timeLabel,
+        '4' => $professionalName !== '' ? $professionalName : 'nuestro equipo',
+    ];
+}

@@ -21,18 +21,17 @@ if (!$isCli) {
 }
 
 if (
-    ($config['provider'] === 'meta' && ($config['access_token'] === '' || $config['phone_number_id'] === ''))
-    || ($config['provider'] === '360dialog' && $config['dialog_api_key'] === '')
-    || $config['template_name'] === ''
+    $config['twilio_account_sid'] === ''
+    || $config['twilio_auth_token'] === ''
+    || $config['twilio_whatsapp_from'] === ''
 ) {
     jsonResponse([
-        'message' => 'Falta configurar WhatsApp Cloud API.',
+        'message' => 'Falta configurar el proveedor de WhatsApp.',
         'missing' => [
             'provider' => $config['provider'],
-            'access_token' => $config['provider'] === 'meta' && $config['access_token'] === '',
-            'phone_number_id' => $config['provider'] === 'meta' && $config['phone_number_id'] === '',
-            '360dialog_api_key' => $config['provider'] === '360dialog' && $config['dialog_api_key'] === '',
-            'template_name' => $config['template_name'] === '',
+            'twilio_account_sid' => $config['twilio_account_sid'] === '',
+            'twilio_auth_token' => $config['twilio_auth_token'] === '',
+            'twilio_whatsapp_from' => $config['twilio_whatsapp_from'] === '',
         ],
     ], 422);
 }
@@ -139,27 +138,54 @@ jsonResponse([
 
 function sendWhatsappReminder(array $config, array $activity): array
 {
-    $payload = buildWhatsappPayloadPreview($config, $activity);
-    [$endpoint, $headers] = buildWhatsappTransport($config);
+    return sendTwilioWhatsappReminder($config, $activity);
+}
 
-    $ch = curl_init($endpoint);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
-        CURLOPT_TIMEOUT => 30,
-    ]);
+function sendTwilioWhatsappReminder(array $config, array $activity): array
+{
+    $accountSid = (string) $config['twilio_account_sid'];
+    $authToken = (string) $config['twilio_auth_token'];
+    $from = normalizeTwilioWhatsappAddress((string) $config['twilio_whatsapp_from']);
+    $to = normalizeTwilioWhatsappAddress((string) $activity['whatsapp_number']);
+    $contentSid = trim((string) ($config['twilio_content_sid'] ?? ''));
 
-    $rawResponse = curl_exec($ch);
-    $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    if ($rawResponse === false || $curlError !== '') {
+    if ($from === '' || $to === '') {
         return [
             'success' => false,
-            'message' => $curlError !== '' ? $curlError : 'No hubo respuesta de WhatsApp.',
+            'message' => 'Los numeros de origen o destino de Twilio no son validos.',
+            'response' => '',
+        ];
+    }
+
+    $endpoint = sprintf(
+        'https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json',
+        rawurlencode($accountSid)
+    );
+    $requestPayload = [
+        'From' => $from,
+        'To' => $to,
+    ];
+
+    if ($contentSid !== '') {
+        $requestPayload['ContentSid'] = $contentSid;
+        $requestPayload['ContentVariables'] = buildTwilioContentVariablesJson($activity);
+    } else {
+        $requestPayload['Body'] = buildTwilioWhatsappBody($activity);
+    }
+
+    [$rawResponse, $statusCode, $transportError] = sendFormRequest(
+        $endpoint,
+        [
+            'Authorization: Basic ' . base64_encode($accountSid . ':' . $authToken),
+            'Content-Type: application/x-www-form-urlencoded',
+        ],
+        $requestPayload
+    );
+
+    if ($transportError !== '') {
+        return [
+            'success' => false,
+            'message' => $transportError,
             'response' => $rawResponse,
         ];
     }
@@ -167,7 +193,7 @@ function sendWhatsappReminder(array $config, array $activity): array
     if ($statusCode >= 400) {
         return [
             'success' => false,
-            'message' => sprintf('WhatsApp devolvio HTTP %d: %s', $statusCode, $rawResponse),
+            'message' => sprintf('Twilio devolvio HTTP %d: %s', $statusCode, $rawResponse),
             'response' => $rawResponse,
         ];
     }
@@ -179,114 +205,94 @@ function sendWhatsappReminder(array $config, array $activity): array
     ];
 }
 
-function buildWhatsappTransport(array $config): array
+function sendFormRequest(string $endpoint, array $headers, array $payload): array
 {
-    if (($config['provider'] ?? 'meta') === '360dialog') {
-        $baseUrl = rtrim((string) ($config['dialog_base_url'] ?? 'https://waba-v2.360dialog.io'), '/');
+    $formPayload = http_build_query($payload);
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => $formPayload,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $rawResponse = curl_exec($ch);
+        $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($rawResponse === false || $curlError !== '') {
+            return [
+                is_string($rawResponse) ? $rawResponse : '',
+                $statusCode,
+                $curlError !== '' ? $curlError : 'No hubo respuesta de Twilio.',
+            ];
+        }
+
+        return [$rawResponse, $statusCode, ''];
+    }
+
+    $httpHeaders = implode("\r\n", $headers);
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => $httpHeaders . "\r\n",
+            'content' => $formPayload,
+            'timeout' => 30,
+            'ignore_errors' => true,
+        ],
+    ]);
+
+    $rawResponse = @file_get_contents($endpoint, false, $context);
+    $responseHeaders = $http_response_header ?? [];
+    $statusCode = extractHttpStatusCode($responseHeaders);
+
+    if ($rawResponse === false) {
+        $error = error_get_last();
 
         return [
-            $baseUrl . '/messages',
-            [
-                'D360-API-KEY: ' . $config['dialog_api_key'],
-                'Content-Type: application/json',
-            ],
+            '',
+            $statusCode,
+            (string) ($error['message'] ?? 'No hubo respuesta de Twilio.'),
         ];
     }
 
-    return [
-        sprintf(
-            'https://graph.facebook.com/%s/%s/messages',
-            $config['graph_version'],
-            $config['phone_number_id']
-        ),
-        [
-            'Authorization: Bearer ' . $config['access_token'],
-            'Content-Type: application/json',
-        ],
-    ];
+    return [$rawResponse, $statusCode, ''];
+}
+
+function extractHttpStatusCode(array $responseHeaders): int
+{
+    foreach ($responseHeaders as $header) {
+        if (preg_match('/^HTTP\/\S+\s+(\d{3})\b/', $header, $matches) === 1) {
+            return (int) $matches[1];
+        }
+    }
+
+    return 0;
 }
 
 function buildWhatsappPayloadPreview(array $config, array $activity): array
 {
-    if ($config['template_name'] === 'hello_world') {
-        return [
-            'messaging_product' => 'whatsapp',
-            'to' => (string) $activity['whatsapp_number'],
-            'type' => 'template',
-            'template' => [
-                'name' => 'hello_world',
-                'language' => [
-                    'code' => 'en_US',
-                ],
-            ],
-        ];
-    }
-
-    $date = DateTimeImmutable::createFromFormat(
-        'Y-m-d H:i:s',
-        sprintf('%s %s', $activity['activity_date'], $activity['start_time'])
-    );
-
-    if (!$date instanceof DateTimeImmutable) {
-        throw new RuntimeException('No fue posible interpretar la fecha del evento.');
-    }
-
-    $remainingText = buildRemainingText((int) $activity['reminder_minutes']);
-    $dateTimeText = sprintf('%s a las %s', $date->format('d/m/Y'), $date->format('H:i'));
-
-    return [
-        'messaging_product' => 'whatsapp',
-        'to' => (string) $activity['whatsapp_number'],
-        'type' => 'template',
-        'template' => [
-            'name' => $config['template_name'],
-            'language' => [
-                'code' => $config['template_language'],
-            ],
-            'components' => [
-                [
-                    'type' => 'body',
-                    'parameters' => buildTemplateParameters($config, $activity, $dateTimeText, $remainingText),
-                ],
-            ],
-        ],
-    ];
-}
-
-function buildTemplateParameters(
-    array $config,
-    array $activity,
-    string $dateTimeText,
-    string $remainingText
-): array {
-    $values = [
-        'nombre_usuario' => (string) $activity['user_name'],
-        'titulo_evento' => (string) $activity['title'],
-        'fecha_hora_evento' => $dateTimeText,
-        'tiempo_restante' => $remainingText,
+    $payload = [
+        'From' => normalizeTwilioWhatsappAddress((string) $config['twilio_whatsapp_from']),
+        'To' => normalizeTwilioWhatsappAddress((string) $activity['whatsapp_number']),
     ];
 
-    if (($config['template_parameter_format'] ?? 'named') === 'positional') {
-        return array_map(
-            static fn (string $value): array => [
-                'type' => 'text',
-                'text' => $value,
-            ],
-            array_values($values)
-        );
+    $contentSid = trim((string) ($config['twilio_content_sid'] ?? ''));
+
+    if ($contentSid !== '') {
+        $payload['ContentSid'] = $contentSid;
+        $payload['ContentVariables'] = buildTwilioContentVariablesJson($activity);
+
+        return $payload;
     }
 
-    $parameters = [];
+    $payload['Body'] = buildTwilioWhatsappBody($activity);
 
-    foreach ($values as $parameterName => $value) {
-        $parameters[] = [
-            'type' => 'text',
-            'parameter_name' => $parameterName,
-            'text' => $value,
-        ];
-    }
-
-    return $parameters;
+    return $payload;
 }
 
 function buildRemainingText(int $reminderMinutes): string
@@ -298,4 +304,61 @@ function buildRemainingText(int $reminderMinutes): string
         5 => '5 minutos',
         default => $reminderMinutes . ' minutos',
     };
+}
+
+function buildTwilioWhatsappBody(array $activity): string
+{
+    $date = DateTimeImmutable::createFromFormat(
+        'Y-m-d H:i:s',
+        sprintf('%s %s', $activity['activity_date'], $activity['start_time'])
+    );
+
+    if (!$date instanceof DateTimeImmutable) {
+        throw new RuntimeException('No fue posible interpretar la fecha del evento.');
+    }
+
+    return sprintf(
+        'Hola %s, te recordamos "%s" el %s a las %s. Faltan %s.',
+        (string) $activity['user_name'],
+        (string) $activity['title'],
+        $date->format('d/m/Y'),
+        $date->format('H:i'),
+        buildRemainingText((int) $activity['reminder_minutes'])
+    );
+}
+
+function normalizeTwilioWhatsappAddress(string $value): string
+{
+    $normalizedValue = normalizeWhatsappNumber($value);
+
+    if ($normalizedValue === '') {
+        return '';
+    }
+
+    return 'whatsapp:+' . $normalizedValue;
+}
+
+function buildTwilioContentVariablesJson(array $activity): string
+{
+    $date = DateTimeImmutable::createFromFormat(
+        'Y-m-d H:i:s',
+        sprintf('%s %s', $activity['activity_date'], $activity['start_time'])
+    );
+
+    if (!$date instanceof DateTimeImmutable) {
+        throw new RuntimeException('No fue posible interpretar la fecha del evento.');
+    }
+
+    $variables = [
+        '1' => $date->format('d/m'),
+        '2' => $date->format('H:i'),
+    ];
+
+    $json = json_encode($variables, JSON_UNESCAPED_UNICODE);
+
+    if ($json === false) {
+        throw new RuntimeException('No fue posible serializar las variables de contenido de Twilio.');
+    }
+
+    return $json;
 }

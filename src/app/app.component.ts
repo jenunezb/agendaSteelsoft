@@ -658,7 +658,7 @@ export class AppComponent implements OnInit {
         this.resetProfessionalForm();
         this.companySettingsMessage =
           wasEditing
-            ? 'Profesional actualizado. Si tiene correo, se renovo su acceso y verificacion.'
+            ? 'Profesional actualizado.'
             : 'Profesional agregado. Si tiene correo, se envio su acceso para verificacion.';
       },
       error: (error) => {
@@ -1044,7 +1044,7 @@ export class AppComponent implements OnInit {
     }).subscribe({
       next: (response) => {
         this.isSubmittingPublicBooking = false;
-        this.authMessage = response.message;
+        this.authMessage = this.buildPublicBookingFeedbackMessage(response);
         this.publicBookingForm = {
           serviceId: this.publicBookingForm.serviceId,
           professionalId: this.publicBookingForm.professionalId,
@@ -1061,6 +1061,52 @@ export class AppComponent implements OnInit {
         this.authError = error?.error?.message ?? 'No fue posible registrar la reserva.';
       }
     });
+  }
+
+  private buildPublicBookingFeedbackMessage(response: {
+    message: string;
+    notifications?: {
+      sent?: Array<{ recipient: string; status?: string }>;
+      failed?: Array<{ recipient: string; message?: string }>;
+      skipped?: string[];
+    };
+  }): string {
+    const notifications = response.notifications;
+
+    if (!notifications) {
+      return response.message;
+    }
+
+    const details: string[] = [];
+    const sent = notifications.sent ?? [];
+    const failed = notifications.failed ?? [];
+    const skipped = notifications.skipped ?? [];
+
+    if (sent.length > 0) {
+      details.push(
+        'WhatsApp enviado a: ' +
+          sent.map((item) => `${item.recipient}${item.status ? ` (${item.status})` : ''}`).join(', ')
+      );
+    }
+
+    if (failed.length > 0) {
+      details.push(
+        'WhatsApp con error en: ' +
+          failed
+            .map((item) => `${item.recipient}${item.message ? ` (${item.message})` : ''}`)
+            .join(', ')
+      );
+    }
+
+    if (skipped.length > 0) {
+      details.push('WhatsApp omitido: ' + skipped.join(', '));
+    }
+
+    if (details.length === 0) {
+      return response.message;
+    }
+
+    return `${response.message} ${details.join(' | ')}`;
   }
 
   protected previousPeriod(): void {

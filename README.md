@@ -59,24 +59,15 @@ Activities can now store an optional reminder per event. Each user can register 
 
 The backend includes [api/send-whatsapp-reminders.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/api/send-whatsapp-reminders.php), which is designed to be executed by cron every minute.
 
-Required WhatsApp Cloud API settings:
+Required Twilio WhatsApp settings:
 
-- `WHATSAPP_PROVIDER` optional, use `meta` or `360dialog`, default `meta`
-- `WHATSAPP_ACCESS_TOKEN`
-- `WHATSAPP_PHONE_NUMBER_ID`
-- `WHATSAPP_TEMPLATE_NAME`
-- `WHATSAPP_TEMPLATE_LANGUAGE` optional, default `es_CO`
-- `WHATSAPP_TEMPLATE_PARAMETER_FORMAT` optional, use `named` or `positional`, default `named`
-- `WHATSAPP_GRAPH_VERSION` optional, default `v23.0`
+- `WHATSAPP_PROVIDER` optional, default `twilio`
 - `WHATSAPP_CRON_SECRET` recommended if you trigger the script by URL
-- `WHATSAPP_WEBHOOK_VERIFY_TOKEN` required for Meta to verify the webhook endpoint
-- `WHATSAPP_360DIALOG_API_KEY` required when `WHATSAPP_PROVIDER=360dialog`
-- `WHATSAPP_360DIALOG_BASE_URL` optional, default `https://waba-v2.360dialog.io`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_WHATSAPP_FROM`
 
-Important: the script sends a WhatsApp template message, so the template must already exist and be approved in Meta. Do not leave `hello_world` configured for production reminders. The implementation supports two body parameter formats:
-
-- `named`: `nombre_usuario`, `titulo_evento`, `fecha_hora_evento`, `tiempo_restante`
-- `positional`: the same four values in that order, for templates using `{{1}}`, `{{2}}`, `{{3}}`, `{{4}}`
+The current implementation sends a plain WhatsApp text message through Twilio. If you use the Twilio Sandbox, the destination number must first join the sandbox.
 
 Helpful test modes:
 
@@ -84,17 +75,29 @@ Helpful test modes:
 - `?key=TU_SECRETO&test_number=573001234567` sends a direct test to a specific number
 - `?key=TU_SECRETO&activity_id=123&force=1` sends a manual test for a specific activity
 
-Webhook setup:
+## WhatsApp booking notifications
 
-- Point Meta's callback URL to [api/whatsapp-webhook.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/api/whatsapp-webhook.php)
-- Use the same value in Meta's verify token field and `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
-- Incoming `POST` events are logged to `api/logs/whatsapp-webhook.log` during setup
+Public bookings can also notify three audiences through Twilio WhatsApp:
 
-360dialog notes:
+- `TWILIO_BOOKING_ADMIN_CONTENT_SID`
+- `TWILIO_BOOKING_PROFESSIONAL_CONTENT_SID`
+- `TWILIO_BOOKING_CUSTOMER_CONTENT_SID`
 
-- The Messaging API base URL is `https://waba-v2.360dialog.io`
-- Send the API key in the `D360-API-KEY` header
-- The current reminder payload remains compatible because 360dialog accepts WhatsApp template payloads on `POST /messages`
+If one of those values is empty, the booking flow falls back to a free-form `Body` for that recipient. That can fail outside the 24-hour customer service window, so production setups should use approved templates for all three.
+
+Template variable mapping used by the booking flow:
+
+- `admin`: `1=service`, `2=date`, `3=time`, `4=customer`, `5=professional`, `6=customer phone`
+- `professional`: `1=professional`, `2=service`, `3=date`, `4=time`, `5=customer`, `6=customer phone`
+- `customer`: `1=service`, `2=date`, `3=time`, `4=professional`
+
+The repo includes [run-whatsapp-booking-test.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/run-whatsapp-booking-test.php) and [api/send-whatsapp-booking-tests.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/api/send-whatsapp-booking-tests.php) to preview or send booking notifications without creating a real reservation.
+
+Examples:
+
+- `php run-whatsapp-booking-test.php --dry-run --recipient=all 573001234567`
+- `php run-whatsapp-booking-test.php --send --recipient=customer --service-name=Consulta --customer-name=Laura 573001234567`
+- `https://tu-dominio/api/send-whatsapp-booking-tests.php?key=TU_SECRETO&dry_run=1&recipient=all&test_number=573001234567`
 
 ## Telegram reminders
 

@@ -50,20 +50,17 @@ ADD COLUMN reminder_sent_at DATETIME NULL;
    - `api/auth.php`
    - `api/public-profile.php`
    - `api/send-whatsapp-reminders.php`
-   - `api/whatsapp-webhook.php`
 
 3. Configura estas variables en el hosting o agrégalas de forma segura al arreglo de `api/config.php`:
-   - `whatsapp_provider` opcional, `meta` o `360dialog`, por defecto `meta`
-   - `whatsapp_access_token`
-   - `whatsapp_phone_number_id`
-   - `whatsapp_template_name`
-   - `whatsapp_template_language` opcional, por defecto `es_CO`
-   - `whatsapp_template_parameter_format` opcional, `named` o `positional`, por defecto `named`
-   - `whatsapp_graph_version` opcional, por defecto `v23.0`
+   - `whatsapp_provider` opcional, por defecto `twilio`
    - `whatsapp_cron_secret` recomendado para proteger la URL del cron
-   - `whatsapp_webhook_verify_token` recomendado para validar el webhook de Meta
-   - `whatsapp_360dialog_api_key` requerido si `whatsapp_provider = 360dialog`
-   - `whatsapp_360dialog_base_url` opcional, por defecto `https://waba-v2.360dialog.io`
+   - `twilio_account_sid`
+   - `twilio_auth_token`
+   - `twilio_whatsapp_from`
+   - `twilio_content_sid` para recordatorios de agenda
+   - `twilio_booking_admin_content_sid` para administracion
+   - `twilio_booking_professional_content_sid` para profesional
+   - `twilio_booking_customer_content_sid` para cliente
 
 ## 3. Subir el frontend Angular
 
@@ -116,9 +113,13 @@ Para enviar una prueba manual de una actividad puntual:
 
 - `https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO&activity_id=123&force=1`
 
-Para verificar el webhook de WhatsApp en Meta:
+Para previsualizar las plantillas de reservas sin crear una cita:
 
-- `https://agenda.steelsoft.com.co/api/whatsapp-webhook.php`
+- `https://steelsoft.com.co/api/send-whatsapp-booking-tests.php?key=TU_SECRETO&dry_run=1&recipient=all&test_number=573001234567`
+
+Para enviar una prueba real de confirmacion al cliente:
+
+- `https://steelsoft.com.co/api/send-whatsapp-booking-tests.php?key=TU_SECRETO&recipient=customer&test_number=573001234567`
 
 ## 5. Configurar el cron de WhatsApp
 
@@ -136,40 +137,13 @@ https://steelsoft.com.co/api/send-whatsapp-reminders.php?key=TU_SECRETO
 php public_html/api/send-whatsapp-reminders.php
 ```
 
-Si el template en Meta usa variables con nombre, debe aceptar 4 parametros con estos nombres:
+Si usas Twilio Sandbox, recuerda unir primero el numero destino al sandbox antes de probar envios reales.
 
-1. `nombre_usuario`
-2. `titulo_evento`
-3. `fecha_hora_evento`
-4. `tiempo_restante`
-
-Si el template usa variables posicionales (`{{1}}` a `{{4}}`), configura `whatsapp_template_parameter_format = positional` y respeta ese mismo orden.
-
-## 6. Configurar el webhook de WhatsApp
-
-En `developers.facebook.com`, dentro de la app de WhatsApp:
-
-1. Usa como `URL de devolucion de llamada`:
-
-```text
-https://agenda.steelsoft.com.co/api/whatsapp-webhook.php
-```
-
-2. Usa como `Token de verificacion` el mismo valor que guardes en `WHATSAPP_WEBHOOK_VERIFY_TOKEN` o en `api/config.php` como:
-
-```php
-'whatsapp_webhook_verify_token' => 'TU_TOKEN_LARGO_Y_PRIVADO',
-```
-
-3. Despues de `Verificar y guardar`, suscribe al menos el campo `messages`.
-
-4. Los eventos entrantes quedaran registrados temporalmente en `api/logs/whatsapp-webhook.log`.
-
-## 7. Nota importante
+## 6. Nota importante
 
 El archivo `api/config.php` contiene credenciales reales de base de datos. No lo publiques en un repositorio publico sin protegerlo antes.
 
-## 8. Configurar Telegram
+## 7. Configurar Telegram
 
 1. Crea un bot en Telegram usando `@BotFather`.
 2. Guarda en `api/config.php` o en variables de entorno:

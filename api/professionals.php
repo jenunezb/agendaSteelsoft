@@ -110,24 +110,26 @@ if ($method === 'PUT') {
     $emailVerified = false;
 
     if ($email !== '') {
-        $accountAccess = createOrRefreshProfessionalAccess($pdo, $companyId, $id, $name, $email);
+        $accountAccess = createOrRefreshProfessionalAccess($pdo, $companyId, $id, $name, $email, false);
         $linkedUserId = (int) $accountAccess['userId'];
         $linkedUsername = (string) $accountAccess['username'];
 
-        try {
-            sendProfessionalInvitationEmail(
-                $email,
-                $name,
-                $accountAccess['username'],
-                $accountAccess['password'],
-                $accountAccess['token']
-            );
-        } catch (Throwable $exception) {
-            writeAppLog('mail', 'No fue posible reenviar la invitacion del profesional.', [
-                'professional_id' => $id,
-                'email' => $email,
-                'exception' => $exception->getMessage(),
-            ]);
+        if (!empty($accountAccess['password']) && !empty($accountAccess['token'])) {
+            try {
+                sendProfessionalInvitationEmail(
+                    $email,
+                    $name,
+                    $accountAccess['username'],
+                    $accountAccess['password'],
+                    $accountAccess['token']
+                );
+            } catch (Throwable $exception) {
+                writeAppLog('mail', 'No fue posible enviar la invitacion inicial del profesional editado.', [
+                    'professional_id' => $id,
+                    'email' => $email,
+                    'exception' => $exception->getMessage(),
+                ]);
+            }
         }
     }
 

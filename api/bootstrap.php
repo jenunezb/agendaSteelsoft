@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+loadEnvFile(dirname(__DIR__) . '/.env');
+
 date_default_timezone_set((string) ((require __DIR__ . '/config.php')['app_timezone'] ?? 'America/Bogota'));
 
 session_start();
@@ -21,6 +23,55 @@ $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($requestMethod === 'OPTIONS') {
     http_response_code(204);
     exit;
+}
+
+function loadEnvFile(string $path): void
+{
+    if (!is_file($path) || !is_readable($path)) {
+        return;
+    }
+
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+    if ($lines === false) {
+        return;
+    }
+
+    foreach ($lines as $line) {
+        $trimmedLine = trim($line);
+
+        if ($trimmedLine === '' || str_starts_with($trimmedLine, '#')) {
+            continue;
+        }
+
+        $separatorPosition = strpos($trimmedLine, '=');
+
+        if ($separatorPosition === false) {
+            continue;
+        }
+
+        $name = trim(substr($trimmedLine, 0, $separatorPosition));
+        $value = trim(substr($trimmedLine, $separatorPosition + 1));
+
+        if ($name === '') {
+            continue;
+        }
+
+        if (
+            (str_starts_with($value, '"') && str_ends_with($value, '"'))
+            || (str_starts_with($value, "'") && str_ends_with($value, "'"))
+        ) {
+            $value = substr($value, 1, -1);
+        }
+
+        if (getenv($name) !== false) {
+            continue;
+        }
+
+        putenv($name . '=' . $value);
+        $_ENV[$name] = $value;
+        $_SERVER[$name] = $value;
+    }
 }
 
 function jsonResponse(mixed $data, int $status = 200): never
@@ -790,6 +841,20 @@ function findUserByEmail(PDO $pdo, string $email): ?array
     return is_array($user) ? $user : null;
 }
 
+function findProfessionalUserByProfessionalId(PDO $pdo, int $professionalId): ?array
+{
+    $statement = $pdo->prepare(
+        'SELECT id, name, username, email, password_hash, company_id, company_role, professional_id, is_system_admin, email_verified_at, verification_token_hash, verification_token_expires_at, verification_sent_at, profile_public, whatsapp_number, whatsapp_notifications_enabled, telegram_chat_id, telegram_notifications_enabled
+         FROM users
+         WHERE professional_id = :professional_id
+         LIMIT 1'
+    );
+    $statement->execute([':professional_id' => $professionalId]);
+    $user = $statement->fetch();
+
+    return is_array($user) ? $user : null;
+}
+
 function buildPublicProfileUrl(string $username): string
 {
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -1549,28 +1614,41 @@ function generateTemporaryPassword(int $length = 12): string
     return $password;
 }
 
-function createOrRefreshProfessionalAccess(PDO $pdo, int $companyId, int $professionalId, string $name, string $email): array
+function createOrRefreshProfessionalAccess(
+    PDO $pdo,
+    int $companyId,
+    int $professionalId,
+    string $name,
+    string $email,
+    bool $refreshExistingAccess = true
+): array
 {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         jsonResponse(['message' => 'Debes indicar un correo valido para habilitar acceso al profesional.'], 422);
     }
 
+    $existingProfessionalUser = findProfessionalUserByProfessionalId($pdo, $professionalId);
     $existingUser = findUserByEmail($pdo, strtolower($email));
-    if ($existingUser !== null && (int) ($existingUser['professional_id'] ?? 0) !== $professionalId) {
+    if (
+        $existingUser !== null
+        && (int) ($existingUser['professional_id'] ?? 0) !== $professionalId
+        && ($existingProfessionalUser === null || (int) $existingUser['id'] !== (int) $existingProfessionalUser['id'])
+    ) {
         jsonResponse(['message' => 'Ese correo ya esta en uso por otra cuenta.'], 422);
     }
 
-    $existingProfessionalUser = null;
-    if ($existingUser !== null && (int) ($existingUser['professional_id'] ?? 0) === $professionalId) {
+    if ($existingProfessionalUser === null && $existingUser !== null && (int) ($existingUser['professional_id'] ?? 0) === $professionalId) {
         $existingProfessionalUser = $existingUser;
     }
 
-    $plainPassword = generateTemporaryPassword();
     $username = $existingProfessionalUser !== null
         ? (string) $existingProfessionalUser['username']
         : generateUniqueUsername($pdo, strstr($email, '@', true) ?: $name);
+    $plainPassword = null;
+    $token = null;
 
     if ($existingProfessionalUser === null) {
+        $plainPassword = generateTemporaryPassword();
         $statement = $pdo->prepare(
             'INSERT INTO users (name, username, email, password_hash, company_id, company_role, professional_id)
              VALUES (:name, :username, :email, :password_hash, :company_id, "professional", :professional_id)'
@@ -1584,8 +1662,10 @@ function createOrRefreshProfessionalAccess(PDO $pdo, int $companyId, int $profes
             ':professional_id' => $professionalId,
         ]);
         $userId = (int) $pdo->lastInsertId();
-    } else {
+        $token = generateEmailVerificationToken($pdo, $userId);
+    } elseif ($refreshExistingAccess) {
         $userId = (int) $existingProfessionalUser['id'];
+        $plainPassword = generateTemporaryPassword();
         $statement = $pdo->prepare(
             'UPDATE users
              SET name = :name,
@@ -1605,6 +1685,25 @@ function createOrRefreshProfessionalAccess(PDO $pdo, int $companyId, int $profes
             ':professional_id' => $professionalId,
             ':id' => $userId,
         ]);
+        $token = generateEmailVerificationToken($pdo, $userId);
+    } else {
+        $userId = (int) $existingProfessionalUser['id'];
+        $statement = $pdo->prepare(
+            'UPDATE users
+             SET name = :name,
+                 email = :email,
+                 company_id = :company_id,
+                 company_role = "professional",
+                 professional_id = :professional_id
+             WHERE id = :id'
+        );
+        $statement->execute([
+            ':name' => $name,
+            ':email' => strtolower($email),
+            ':company_id' => $companyId,
+            ':professional_id' => $professionalId,
+            ':id' => $userId,
+        ]);
     }
 
     $pdo->prepare(
@@ -1617,8 +1716,6 @@ function createOrRefreshProfessionalAccess(PDO $pdo, int $companyId, int $profes
         ':company_id' => $companyId,
     ]);
 
-    $token = generateEmailVerificationToken($pdo, $userId);
-
     return [
         'userId' => $userId,
         'username' => $username,
@@ -1630,7 +1727,17 @@ function createOrRefreshProfessionalAccess(PDO $pdo, int $companyId, int $profes
 function normalizeWhatsappNumber(string $value): string
 {
     $normalizedValue = preg_replace('/\D+/', '', $value) ?? '';
-    return trim($normalizedValue);
+    $normalizedValue = trim($normalizedValue);
+
+    if (preg_match('/^3\d{9}$/', $normalizedValue) === 1) {
+        return '57' . $normalizedValue;
+    }
+
+    if (str_starts_with($normalizedValue, '0057') && strlen($normalizedValue) === 14) {
+        return substr($normalizedValue, 2);
+    }
+
+    return $normalizedValue;
 }
 
 function buildWhatsappClickUrl(string $number, string $message = ''): string
@@ -1970,30 +2077,23 @@ function notifySystemAdminOfRegistration(string $accountType, string $companyNam
 function getWhatsappConfig(): array
 {
     $config = require __DIR__ . '/config.php';
-    $templateParameterFormat = (string) getenv('WHATSAPP_TEMPLATE_PARAMETER_FORMAT') ?: (string) ($config['whatsapp_template_parameter_format'] ?? 'named');
-    $templateParameterFormat = strtolower(trim($templateParameterFormat));
-    $provider = (string) getenv('WHATSAPP_PROVIDER') ?: (string) ($config['whatsapp_provider'] ?? 'meta');
+    $provider = (string) getenv('WHATSAPP_PROVIDER') ?: (string) ($config['whatsapp_provider'] ?? 'twilio');
     $provider = strtolower(trim($provider));
 
-    if (!in_array($templateParameterFormat, ['named', 'positional'], true)) {
-        $templateParameterFormat = 'named';
-    }
-
-    if (!in_array($provider, ['meta', '360dialog'], true)) {
-        $provider = 'meta';
+    if ($provider !== 'twilio') {
+        $provider = 'twilio';
     }
 
     return [
         'provider' => $provider,
-        'access_token' => (string) getenv('WHATSAPP_ACCESS_TOKEN') ?: (string) ($config['whatsapp_access_token'] ?? ''),
-        'phone_number_id' => (string) getenv('WHATSAPP_PHONE_NUMBER_ID') ?: (string) ($config['whatsapp_phone_number_id'] ?? ''),
-        'template_name' => (string) getenv('WHATSAPP_TEMPLATE_NAME') ?: (string) ($config['whatsapp_template_name'] ?? ''),
-        'template_language' => (string) getenv('WHATSAPP_TEMPLATE_LANGUAGE') ?: (string) ($config['whatsapp_template_language'] ?? 'es_CO'),
-        'template_parameter_format' => $templateParameterFormat,
-        'graph_version' => (string) getenv('WHATSAPP_GRAPH_VERSION') ?: (string) ($config['whatsapp_graph_version'] ?? 'v23.0'),
         'cron_secret' => (string) getenv('WHATSAPP_CRON_SECRET') ?: (string) ($config['whatsapp_cron_secret'] ?? ''),
-        'dialog_api_key' => (string) getenv('WHATSAPP_360DIALOG_API_KEY') ?: (string) ($config['whatsapp_360dialog_api_key'] ?? ''),
-        'dialog_base_url' => (string) getenv('WHATSAPP_360DIALOG_BASE_URL') ?: (string) ($config['whatsapp_360dialog_base_url'] ?? 'https://waba-v2.360dialog.io'),
+        'twilio_account_sid' => (string) getenv('TWILIO_ACCOUNT_SID') ?: (string) ($config['twilio_account_sid'] ?? ''),
+        'twilio_auth_token' => (string) getenv('TWILIO_AUTH_TOKEN') ?: (string) ($config['twilio_auth_token'] ?? ''),
+        'twilio_whatsapp_from' => (string) getenv('TWILIO_WHATSAPP_FROM') ?: (string) ($config['twilio_whatsapp_from'] ?? ''),
+        'twilio_content_sid' => (string) getenv('TWILIO_CONTENT_SID') ?: (string) ($config['twilio_content_sid'] ?? ''),
+        'twilio_booking_admin_content_sid' => (string) getenv('TWILIO_BOOKING_ADMIN_CONTENT_SID') ?: (string) ($config['twilio_booking_admin_content_sid'] ?? ''),
+        'twilio_booking_professional_content_sid' => (string) getenv('TWILIO_BOOKING_PROFESSIONAL_CONTENT_SID') ?: (string) ($config['twilio_booking_professional_content_sid'] ?? ''),
+        'twilio_booking_customer_content_sid' => (string) getenv('TWILIO_BOOKING_CUSTOMER_CONTENT_SID') ?: (string) ($config['twilio_booking_customer_content_sid'] ?? ''),
     ];
 }
 

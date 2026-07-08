@@ -5,6 +5,7 @@ import {
   Activity,
   AuthSession,
   AuthUser,
+  PublicBookingResponse,
   CompanyService,
   CompanyContext,
   CompanyProfessional,
@@ -354,8 +355,8 @@ export class AgendaApiService {
     date: string;
     startTime: string;
     notes: string;
-  }): Observable<{ success: boolean; message: string }> {
-    return this.http.post<{ success: boolean; message: string }>(
+  }): Observable<PublicBookingResponse> {
+    return this.http.post<PublicBookingResponse>(
       `${this.baseUrl}/public-bookings.php`,
       payload
     );

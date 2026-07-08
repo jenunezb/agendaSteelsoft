@@ -164,6 +164,27 @@ export interface CompanyContext {
   stats: CompanyStats;
 }
 
+export interface BookingNotificationResult {
+  recipient: string;
+  success: boolean;
+  sid?: string;
+  status?: string;
+  message?: string;
+  skipped?: boolean;
+}
+
+export interface BookingNotificationSummary {
+  sent: BookingNotificationResult[];
+  failed: BookingNotificationResult[];
+  skipped: string[];
+}
+
+export interface PublicBookingResponse {
+  success: boolean;
+  message: string;
+  notifications?: BookingNotificationSummary;
+}
+
 export interface SystemAccountSummary {
   userId: number;
   companyId: number | null;
