@@ -124,12 +124,58 @@ $notificationSummary = sendBookingWhatsappNotifications(
         'notes' => $notes,
     ]
 );
+$responseMessage = buildBookingResponseMessage($notificationSummary);
+
+writeAppLog('public-bookings', 'Booking created from public profile.', [
+    'activityId' => $activityId,
+    'username' => $username,
+    'serviceId' => $serviceId,
+    'professionalId' => (int) ($professional['id'] ?? 0),
+    'customerPhone' => normalizeWhatsappNumber($customerPhone),
+    'notifications' => $notificationSummary,
+]);
 
 jsonResponse([
     'success' => true,
-    'message' => 'Reserva creada correctamente. La empresa recibira esta cita en la agenda del profesional.',
+    'message' => $responseMessage,
     'notifications' => $notificationSummary,
 ], 201);
+
+function buildBookingResponseMessage(array $notificationSummary): string
+{
+    $baseMessage = 'Reserva creada correctamente. La empresa recibira esta cita en la agenda del profesional.';
+    $details = [];
+    $sent = is_array($notificationSummary['sent'] ?? null) ? $notificationSummary['sent'] : [];
+    $failed = is_array($notificationSummary['failed'] ?? null) ? $notificationSummary['failed'] : [];
+    $skipped = is_array($notificationSummary['skipped'] ?? null) ? $notificationSummary['skipped'] : [];
+
+    $customerSent = array_values(array_filter(
+        $sent,
+        static fn (array $result): bool => (string) ($result['recipient'] ?? '') === 'customer'
+    ));
+    $customerFailed = array_values(array_filter(
+        $failed,
+        static fn (array $result): bool => (string) ($result['recipient'] ?? '') === 'customer'
+    ));
+    $customerSkipped = array_values(array_filter(
+        $skipped,
+        static fn (string $message): bool => str_starts_with($message, 'customer:')
+    ));
+
+    if ($customerSent !== []) {
+        $customerStatus = trim((string) ($customerSent[0]['status'] ?? ''));
+        $details[] = 'WhatsApp cliente enviado' . ($customerStatus !== '' ? ' (' . $customerStatus . ')' : '.');
+    } elseif ($customerFailed !== []) {
+        $customerError = trim((string) ($customerFailed[0]['message'] ?? 'No fue posible enviar el WhatsApp al cliente.'));
+        $details[] = 'WhatsApp cliente con error: ' . $customerError;
+    } elseif ($customerSkipped !== []) {
+        $details[] = 'WhatsApp cliente omitido: ' . preg_replace('/^customer:\s*/', '', $customerSkipped[0]);
+    } else {
+        $details[] = 'No hubo detalle del WhatsApp del cliente.';
+    }
+
+    return $baseMessage . ' ' . implode(' | ', $details);
+}
 
 function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $professional, array $booking): array
 {
@@ -137,15 +183,11 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
     $results = [];
     $professionalName = (string) ($professional['name'] ?? '');
 
-    if (
-        trim((string) ($config['twilio_account_sid'] ?? '')) === ''
-        || trim((string) ($config['twilio_auth_token'] ?? '')) === ''
-        || trim((string) ($config['twilio_whatsapp_from'] ?? '')) === ''
-    ) {
+    if (!isBookingWhatsappProviderConfigured($config)) {
         return [
             'sent' => [],
             'failed' => [],
-            'skipped' => ['twilio-not-configured'],
+            'skipped' => [($config['provider'] ?? 'textmebot') . '-not-configured'],
         ];
     }
 
@@ -159,7 +201,7 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
     $ownerNotificationsEnabled = !empty($ownerUser['whatsapp_notifications_enabled']);
 
     if ($ownerNotificationsEnabled && $ownerPhone !== '') {
-        $results[] = sendTwilioBookingNotification(
+        $results[] = sendBookingNotification(
             $config,
             $ownerPhone,
             buildAdminBookingMessage(
@@ -194,7 +236,7 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
     $professionalRecipientPhone = resolveProfessionalWhatsappNumber($pdo, (int) ($ownerUser['company_id'] ?? 0), $professional);
 
     if ($professionalRecipientPhone !== '' && $professionalRecipientPhone !== $ownerPhone) {
-        $results[] = sendTwilioBookingNotification(
+        $results[] = sendBookingNotification(
             $config,
             $professionalRecipientPhone,
             buildProfessionalBookingMessage(
@@ -226,7 +268,7 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
     }
 
     if ($customerPhone !== '') {
-        $results[] = sendTwilioBookingNotification(
+        $results[] = sendBookingNotification(
             $config,
             $customerPhone,
             buildCustomerBookingMessage(
@@ -263,6 +305,80 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
     ];
 }
 
+function isBookingWhatsappProviderConfigured(array $config): bool
+{
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return resolveTextmebotBookingApiKey($config) !== '';
+    }
+
+    return
+        trim((string) ($config['twilio_account_sid'] ?? '')) !== ''
+        && trim((string) ($config['twilio_auth_token'] ?? '')) !== ''
+        && trim((string) resolveTwilioBookingSender($config)) !== '';
+}
+
+function sendBookingNotification(
+    array $config,
+    string $phone,
+    string $message,
+    string $recipient,
+    array $contentVariables
+): array {
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return sendTextmebotBookingNotification($config, $phone, $message, $recipient);
+    }
+
+    return sendTwilioBookingNotification($config, $phone, $message, $recipient, $contentVariables);
+}
+
+function sendTextmebotBookingNotification(
+    array $config,
+    string $phone,
+    string $message,
+    string $recipient
+): array {
+    $normalizedPhone = normalizeWhatsappNumber($phone);
+    $apiKey = resolveTextmebotBookingApiKey($config);
+
+    if ($normalizedPhone === '' || $apiKey === '') {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'message' => 'Falta el numero destino o el apikey de TextMeBot.',
+        ];
+    }
+
+    $endpoint = 'https://api.textmebot.com/send.php?' . http_build_query([
+        'recipient' => $normalizedPhone,
+        'text' => $message,
+        'apikey' => $apiKey,
+    ]);
+
+    [$rawResponse, $statusCode, $transportError] = sendBookingGetRequest($endpoint);
+
+    if ($transportError !== '') {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'message' => $transportError,
+        ];
+    }
+
+    if ($statusCode >= 400) {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'message' => sprintf('TextMeBot devolvio HTTP %d: %s', $statusCode, $rawResponse),
+        ];
+    }
+
+    return [
+        'recipient' => $recipient,
+        'success' => true,
+        'status' => 'sent',
+    ];
+}
+
 function sendTwilioBookingNotification(
     array $config,
     string $phone,
@@ -273,7 +389,7 @@ function sendTwilioBookingNotification(
 {
     $accountSid = (string) ($config['twilio_account_sid'] ?? '');
     $authToken = (string) ($config['twilio_auth_token'] ?? '');
-    $from = normalizeTwilioBookingAddress((string) ($config['twilio_whatsapp_from'] ?? ''));
+    $from = normalizeTwilioBookingAddress(resolveTwilioBookingSender($config));
     $to = normalizeTwilioBookingAddress($phone);
 
     if ($from === '' || $to === '') {
@@ -334,6 +450,17 @@ function sendTwilioBookingNotification(
         'sid' => is_array($decodedResponse) ? (string) ($decodedResponse['sid'] ?? '') : '',
         'status' => is_array($decodedResponse) ? (string) ($decodedResponse['status'] ?? '') : '',
     ];
+}
+
+function resolveTwilioBookingSender(array $config): string
+{
+    $bookingSender = trim((string) ($config['twilio_booking_whatsapp_from'] ?? ''));
+
+    if ($bookingSender !== '') {
+        return $bookingSender;
+    }
+
+    return (string) ($config['twilio_whatsapp_from'] ?? '');
 }
 
 function getBookingRecipientContentSid(array $config, string $recipient): string
@@ -410,6 +537,83 @@ function sendTwilioFormRequest(string $endpoint, array $headers, array $payload)
             (string) ($error['message'] ?? 'No hubo respuesta de Twilio.'),
         ];
     }
+
+    return [$rawResponse, $statusCode, ''];
+}
+
+function sendBookingGetRequest(string $endpoint): array
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $rawResponse = curl_exec($ch);
+        $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($rawResponse === false || $curlError !== '') {
+            return [
+                is_string($rawResponse) ? $rawResponse : '',
+                $statusCode,
+                $curlError !== '' ? $curlError : 'No hubo respuesta de TextMeBot.',
+            ];
+        }
+
+        return [$rawResponse, $statusCode, ''];
+    }
+
+    if (stripos(PHP_OS_FAMILY, 'Windows') !== false) {
+        return sendBookingGetRequestWithPowershell($endpoint, 'TextMeBot');
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'timeout' => 30,
+            'ignore_errors' => true,
+        ],
+    ]);
+
+    $rawResponse = @file_get_contents($endpoint, false, $context);
+    $responseHeaders = $http_response_header ?? [];
+    $statusCode = extractTwilioHttpStatusCode($responseHeaders);
+
+    if ($rawResponse === false) {
+        $error = error_get_last();
+
+        return [
+            '',
+            $statusCode,
+            (string) ($error['message'] ?? 'No hubo respuesta de TextMeBot.'),
+        ];
+    }
+
+    return [$rawResponse, $statusCode, ''];
+}
+
+function sendBookingGetRequestWithPowershell(string $endpoint, string $serviceLabel): array
+{
+    $script = "\$ProgressPreference = 'SilentlyContinue'; "
+        . "\$response = Invoke-WebRequest -Uri '" . $endpoint . "' -Method GET -UseBasicParsing; "
+        . "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "
+        . "Write-Output \$response.StatusCode; "
+        . "Write-Output \$response.Content;";
+    $command = 'powershell -NoProfile -Command ' . escapeshellarg($script);
+
+    $output = [];
+    $exitCode = 0;
+    @exec($command, $output, $exitCode);
+
+    if ($exitCode !== 0 || $output === []) {
+        return ['', 0, 'No hubo respuesta de ' . $serviceLabel . '.'];
+    }
+
+    $statusCode = (int) array_shift($output);
+    $rawResponse = implode("\n", $output);
 
     return [$rawResponse, $statusCode, ''];
 }
@@ -598,4 +802,15 @@ function buildCustomerBookingContentVariables(
         '3' => $timeLabel,
         '4' => $professionalName !== '' ? $professionalName : 'nuestro equipo',
     ];
+}
+
+function resolveTextmebotBookingApiKey(array $config): string
+{
+    $apiKey = trim((string) ($config['textmebot_booking_api_key'] ?? ''));
+
+    if ($apiKey !== '') {
+        return $apiKey;
+    }
+
+    return trim((string) ($config['textmebot_api_key'] ?? ''));
 }

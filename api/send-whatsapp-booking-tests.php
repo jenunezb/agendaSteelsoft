@@ -26,18 +26,10 @@ if (!$isCli) {
     }
 }
 
-if (
-    trim((string) ($config['twilio_account_sid'] ?? '')) === ''
-    || trim((string) ($config['twilio_auth_token'] ?? '')) === ''
-    || trim((string) ($config['twilio_whatsapp_from'] ?? '')) === ''
-) {
+if (!isBookingTestProviderConfigured($config)) {
     jsonResponse([
-        'message' => 'Falta configurar Twilio para las pruebas de reservas.',
-        'missing' => [
-            'twilio_account_sid' => trim((string) ($config['twilio_account_sid'] ?? '')) === '',
-            'twilio_auth_token' => trim((string) ($config['twilio_auth_token'] ?? '')) === '',
-            'twilio_whatsapp_from' => trim((string) ($config['twilio_whatsapp_from'] ?? '')) === '',
-        ],
+        'message' => 'Falta configurar el proveedor de WhatsApp para las pruebas de reservas.',
+        'missing' => buildBookingTestMissingConfig($config),
     ], 422);
 }
 
@@ -57,7 +49,7 @@ $booking = [
     'customerPhone' => $customerNumber,
     'date' => trim((string) ($_GET['date'] ?? date('Y-m-d'))),
     'startTime' => trim((string) ($_GET['start_time'] ?? '09:00:00')),
-    'notes' => trim((string) ($_GET['notes'] ?? 'Reserva generada desde la prueba de Twilio.')),
+    'notes' => trim((string) ($_GET['notes'] ?? 'Reserva generada desde la prueba de TextMeBot.')),
 ];
 
 $ownerUser = [
@@ -146,11 +138,27 @@ function buildBookingTestPreview(
     array $booking
 ): array {
     [$message, $contentVariables] = buildBookingRecipientContent($recipient, $ownerUser, $professional, $booking);
+
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        $normalizedNumber = normalizeWhatsappNumber($targetNumber);
+
+        return [
+            'provider' => 'textmebot',
+            'recipient' => $recipient,
+            'endpoint' => 'https://api.textmebot.com/send.php',
+            'query' => [
+                'recipient' => $normalizedNumber,
+                'text' => $message,
+                'apikey' => resolveTextmebotBookingApiKey($config),
+            ],
+        ];
+    }
+
     $contentSid = $contentSidOverride !== '' ? $contentSidOverride : getBookingRecipientContentSid($config, $recipient);
 
     $payload = [
         'recipient' => $recipient,
-        'From' => normalizeTwilioBookingTestAddress((string) ($config['twilio_whatsapp_from'] ?? '')),
+        'From' => normalizeTwilioBookingTestAddress(resolveBookingTestSender($config)),
         'To' => normalizeTwilioBookingTestAddress($targetNumber),
     ];
 
@@ -175,9 +183,14 @@ function sendBookingTestNotification(
     array $booking
 ): array {
     [$message, $contentVariables] = buildBookingRecipientContent($recipient, $ownerUser, $professional, $booking);
+
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return sendTextmebotBookingTestNotification($config, $recipient, $targetNumber, $message);
+    }
+
     $accountSid = (string) ($config['twilio_account_sid'] ?? '');
     $authToken = (string) ($config['twilio_auth_token'] ?? '');
-    $from = normalizeTwilioBookingTestAddress((string) ($config['twilio_whatsapp_from'] ?? ''));
+    $from = normalizeTwilioBookingTestAddress(resolveBookingTestSender($config));
     $to = normalizeTwilioBookingTestAddress($targetNumber);
     $contentSid = $contentSidOverride !== '' ? $contentSidOverride : getBookingRecipientContentSid($config, $recipient);
 
@@ -238,6 +251,84 @@ function sendBookingTestNotification(
         'sid' => is_array($decodedResponse) ? (string) ($decodedResponse['sid'] ?? '') : '',
         'status' => is_array($decodedResponse) ? (string) ($decodedResponse['status'] ?? '') : '',
         'usedContentSid' => $contentSid !== '',
+    ];
+}
+
+function isBookingTestProviderConfigured(array $config): bool
+{
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return resolveTextmebotBookingApiKey($config) !== '';
+    }
+
+    return
+        trim((string) ($config['twilio_account_sid'] ?? '')) !== ''
+        && trim((string) ($config['twilio_auth_token'] ?? '')) !== ''
+        && trim((string) resolveBookingTestSender($config)) !== '';
+}
+
+function buildBookingTestMissingConfig(array $config): array
+{
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return [
+            'provider' => 'textmebot',
+            'textmebot_api_key' => resolveTextmebotBookingApiKey($config) === '',
+        ];
+    }
+
+    return [
+        'provider' => 'twilio',
+        'twilio_account_sid' => trim((string) ($config['twilio_account_sid'] ?? '')) === '',
+        'twilio_auth_token' => trim((string) ($config['twilio_auth_token'] ?? '')) === '',
+        'twilio_whatsapp_from' => trim((string) resolveBookingTestSender($config)) === '',
+    ];
+}
+
+function sendTextmebotBookingTestNotification(
+    array $config,
+    string $recipient,
+    string $targetNumber,
+    string $message
+): array {
+    $normalizedPhone = normalizeWhatsappNumber($targetNumber);
+    $apiKey = resolveTextmebotBookingApiKey($config);
+
+    if ($normalizedPhone === '' || $apiKey === '') {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'message' => 'Falta el numero destino o el apikey de TextMeBot.',
+        ];
+    }
+
+    $endpoint = 'https://api.textmebot.com/send.php?' . http_build_query([
+        'recipient' => $normalizedPhone,
+        'text' => $message,
+        'apikey' => $apiKey,
+    ]);
+
+    [$rawResponse, $statusCode, $transportError] = sendBookingTestGetRequest($endpoint);
+
+    if ($transportError !== '') {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'message' => $transportError,
+        ];
+    }
+
+    if ($statusCode >= 400) {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'message' => sprintf('TextMeBot devolvio HTTP %d: %s', $statusCode, $rawResponse),
+        ];
+    }
+
+    return [
+        'recipient' => $recipient,
+        'success' => true,
+        'status' => 'sent',
+        'usedContentSid' => false,
     ];
 }
 
@@ -406,6 +497,83 @@ function sendBookingTestFormRequest(string $endpoint, array $headers, array $pay
     return [$rawResponse, $statusCode, ''];
 }
 
+function sendBookingTestGetRequest(string $endpoint): array
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $rawResponse = curl_exec($ch);
+        $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($rawResponse === false || $curlError !== '') {
+            return [
+                is_string($rawResponse) ? $rawResponse : '',
+                $statusCode,
+                $curlError !== '' ? $curlError : 'No hubo respuesta de TextMeBot.',
+            ];
+        }
+
+        return [$rawResponse, $statusCode, ''];
+    }
+
+    if (stripos(PHP_OS_FAMILY, 'Windows') !== false) {
+        return sendBookingTestGetRequestWithPowershell($endpoint, 'TextMeBot');
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'timeout' => 30,
+            'ignore_errors' => true,
+        ],
+    ]);
+
+    $rawResponse = @file_get_contents($endpoint, false, $context);
+    $responseHeaders = $http_response_header ?? [];
+    $statusCode = extractBookingTestHttpStatusCode($responseHeaders);
+
+    if ($rawResponse === false) {
+        $error = error_get_last();
+
+        return [
+            '',
+            $statusCode,
+            (string) ($error['message'] ?? 'No hubo respuesta de TextMeBot.'),
+        ];
+    }
+
+    return [$rawResponse, $statusCode, ''];
+}
+
+function sendBookingTestGetRequestWithPowershell(string $endpoint, string $serviceLabel): array
+{
+    $script = "\$ProgressPreference = 'SilentlyContinue'; "
+        . "\$response = Invoke-WebRequest -Uri '" . $endpoint . "' -Method GET -UseBasicParsing; "
+        . "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "
+        . "Write-Output \$response.StatusCode; "
+        . "Write-Output \$response.Content;";
+    $command = 'powershell -NoProfile -Command ' . escapeshellarg($script);
+
+    $output = [];
+    $exitCode = 0;
+    @exec($command, $output, $exitCode);
+
+    if ($exitCode !== 0 || $output === []) {
+        return ['', 0, 'No hubo respuesta de ' . $serviceLabel . '.'];
+    }
+
+    $statusCode = (int) array_shift($output);
+    $rawResponse = implode("\n", $output);
+
+    return [$rawResponse, $statusCode, ''];
+}
+
 function extractBookingTestHttpStatusCode(array $responseHeaders): int
 {
     foreach ($responseHeaders as $header) {
@@ -514,4 +682,26 @@ function buildCustomerBookingTestMessage(
         $timeLabel,
         $professionalName !== '' ? $professionalName : 'nuestro equipo'
     );
+}
+
+function resolveBookingTestSender(array $config): string
+{
+    $bookingSender = trim((string) ($config['twilio_booking_whatsapp_from'] ?? ''));
+
+    if ($bookingSender !== '') {
+        return $bookingSender;
+    }
+
+    return (string) ($config['twilio_whatsapp_from'] ?? '');
+}
+
+function resolveTextmebotBookingApiKey(array $config): string
+{
+    $apiKey = trim((string) ($config['textmebot_booking_api_key'] ?? ''));
+
+    if ($apiKey !== '') {
+        return $apiKey;
+    }
+
+    return trim((string) ($config['textmebot_api_key'] ?? ''));
 }

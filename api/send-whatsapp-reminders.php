@@ -20,19 +20,10 @@ if (!$isCli) {
     }
 }
 
-if (
-    $config['twilio_account_sid'] === ''
-    || $config['twilio_auth_token'] === ''
-    || $config['twilio_whatsapp_from'] === ''
-) {
+if (!isWhatsappReminderProviderConfigured($config)) {
     jsonResponse([
         'message' => 'Falta configurar el proveedor de WhatsApp.',
-        'missing' => [
-            'provider' => $config['provider'],
-            'twilio_account_sid' => $config['twilio_account_sid'] === '',
-            'twilio_auth_token' => $config['twilio_auth_token'] === '',
-            'twilio_whatsapp_from' => $config['twilio_whatsapp_from'] === '',
-        ],
+        'missing' => buildWhatsappReminderMissingConfig($config),
     ], 422);
 }
 
@@ -108,7 +99,7 @@ foreach ($activities as $activity) {
     }
 
     if ($response['success']) {
-        if ($activityId <= 0 && !$forceSend) {
+        if ($pdo instanceof PDO && $activityId <= 0 && !$forceSend) {
             $updateStatement = $pdo->prepare(
                 'UPDATE activities
                  SET reminder_sent_at = NOW()
@@ -138,14 +129,97 @@ jsonResponse([
 
 function sendWhatsappReminder(array $config, array $activity): array
 {
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return sendTextmebotWhatsappReminder($config, $activity);
+    }
+
     return sendTwilioWhatsappReminder($config, $activity);
+}
+
+function isWhatsappReminderProviderConfigured(array $config): bool
+{
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return resolveTextmebotReminderApiKey($config) !== '';
+    }
+
+    return
+        $config['twilio_account_sid'] !== ''
+        && $config['twilio_auth_token'] !== ''
+        && $config['twilio_whatsapp_from'] !== '';
+}
+
+function buildWhatsappReminderMissingConfig(array $config): array
+{
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return [
+            'provider' => 'textmebot',
+            'textmebot_api_key' => resolveTextmebotReminderApiKey($config) === '',
+        ];
+    }
+
+    return [
+        'provider' => 'twilio',
+        'twilio_account_sid' => $config['twilio_account_sid'] === '',
+        'twilio_auth_token' => $config['twilio_auth_token'] === '',
+        'twilio_whatsapp_from' => $config['twilio_whatsapp_from'] === '',
+    ];
+}
+
+function sendTextmebotWhatsappReminder(array $config, array $activity): array
+{
+    $phone = normalizeWhatsappNumber((string) $activity['whatsapp_number']);
+    $apiKey = resolveTextmebotReminderApiKey($config);
+
+    if ($phone === '' || $apiKey === '') {
+        return [
+            'success' => false,
+            'message' => 'Falta el numero destino o el apikey de TextMeBot.',
+            'response' => '',
+        ];
+    }
+
+    $endpoint = 'https://api.textmebot.com/send.php?' . http_build_query([
+        'recipient' => $phone,
+        'text' => buildTwilioWhatsappBody($activity),
+        'apikey' => $apiKey,
+    ]);
+
+    [$rawResponse, $statusCode, $transportError] = sendGetRequest($endpoint);
+
+    if ($transportError !== '') {
+        return [
+            'success' => false,
+            'message' => $transportError,
+            'response' => $rawResponse,
+        ];
+    }
+
+    if ($statusCode >= 400) {
+        return [
+            'success' => false,
+            'message' => sprintf('TextMeBot devolvio HTTP %d: %s', $statusCode, $rawResponse),
+            'response' => $rawResponse,
+        ];
+    }
+
+    return [
+        'success' => true,
+        'message' => 'ok',
+        'response' => $rawResponse,
+    ];
 }
 
 function sendTwilioWhatsappReminder(array $config, array $activity): array
 {
     $accountSid = (string) $config['twilio_account_sid'];
     $authToken = (string) $config['twilio_auth_token'];
-    $from = normalizeTwilioWhatsappAddress((string) $config['twilio_whatsapp_from']);
+    $sender = trim((string) ($config['twilio_reminder_whatsapp_from'] ?? ''));
+
+    if ($sender === '') {
+        $sender = (string) ($config['twilio_whatsapp_from'] ?? '');
+    }
+
+    $from = normalizeTwilioWhatsappAddress($sender);
     $to = normalizeTwilioWhatsappAddress((string) $activity['whatsapp_number']);
     $contentSid = trim((string) ($config['twilio_content_sid'] ?? ''));
 
@@ -263,6 +337,83 @@ function sendFormRequest(string $endpoint, array $headers, array $payload): arra
     return [$rawResponse, $statusCode, ''];
 }
 
+function sendGetRequest(string $endpoint): array
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $rawResponse = curl_exec($ch);
+        $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($rawResponse === false || $curlError !== '') {
+            return [
+                is_string($rawResponse) ? $rawResponse : '',
+                $statusCode,
+                $curlError !== '' ? $curlError : 'No hubo respuesta de TextMeBot.',
+            ];
+        }
+
+        return [$rawResponse, $statusCode, ''];
+    }
+
+    if (stripos(PHP_OS_FAMILY, 'Windows') !== false) {
+        return sendGetRequestWithPowershell($endpoint, 'TextMeBot');
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'timeout' => 30,
+            'ignore_errors' => true,
+        ],
+    ]);
+
+    $rawResponse = @file_get_contents($endpoint, false, $context);
+    $responseHeaders = $http_response_header ?? [];
+    $statusCode = extractHttpStatusCode($responseHeaders);
+
+    if ($rawResponse === false) {
+        $error = error_get_last();
+
+        return [
+            '',
+            $statusCode,
+            (string) ($error['message'] ?? 'No hubo respuesta de TextMeBot.'),
+        ];
+    }
+
+    return [$rawResponse, $statusCode, ''];
+}
+
+function sendGetRequestWithPowershell(string $endpoint, string $serviceLabel): array
+{
+    $script = "\$ProgressPreference = 'SilentlyContinue'; "
+        . "\$response = Invoke-WebRequest -Uri '" . $endpoint . "' -Method GET -UseBasicParsing; "
+        . "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "
+        . "Write-Output \$response.StatusCode; "
+        . "Write-Output \$response.Content;";
+    $command = 'powershell -NoProfile -Command ' . escapeshellarg($script);
+
+    $output = [];
+    $exitCode = 0;
+    @exec($command, $output, $exitCode);
+
+    if ($exitCode !== 0 || $output === []) {
+        return ['', 0, 'No hubo respuesta de ' . $serviceLabel . '.'];
+    }
+
+    $statusCode = (int) array_shift($output);
+    $rawResponse = implode("\n", $output);
+
+    return [$rawResponse, $statusCode, ''];
+}
+
 function extractHttpStatusCode(array $responseHeaders): int
 {
     foreach ($responseHeaders as $header) {
@@ -276,8 +427,28 @@ function extractHttpStatusCode(array $responseHeaders): int
 
 function buildWhatsappPayloadPreview(array $config, array $activity): array
 {
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        $phone = normalizeWhatsappNumber((string) $activity['whatsapp_number']);
+
+        return [
+            'provider' => 'textmebot',
+            'endpoint' => 'https://api.textmebot.com/send.php',
+            'query' => [
+                'recipient' => $phone,
+                'text' => buildTwilioWhatsappBody($activity),
+                'apikey' => resolveTextmebotReminderApiKey($config),
+            ],
+        ];
+    }
+
+    $sender = trim((string) ($config['twilio_reminder_whatsapp_from'] ?? ''));
+
+    if ($sender === '') {
+        $sender = (string) ($config['twilio_whatsapp_from'] ?? '');
+    }
+
     $payload = [
-        'From' => normalizeTwilioWhatsappAddress((string) $config['twilio_whatsapp_from']),
+        'From' => normalizeTwilioWhatsappAddress($sender),
         'To' => normalizeTwilioWhatsappAddress((string) $activity['whatsapp_number']),
     ];
 
@@ -293,6 +464,17 @@ function buildWhatsappPayloadPreview(array $config, array $activity): array
     $payload['Body'] = buildTwilioWhatsappBody($activity);
 
     return $payload;
+}
+
+function resolveTextmebotReminderApiKey(array $config): string
+{
+    $apiKey = trim((string) ($config['textmebot_reminder_api_key'] ?? ''));
+
+    if ($apiKey !== '') {
+        return $apiKey;
+    }
+
+    return trim((string) ($config['textmebot_api_key'] ?? ''));
 }
 
 function buildRemainingText(int $reminderMinutes): string

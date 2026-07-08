@@ -2077,19 +2077,24 @@ function notifySystemAdminOfRegistration(string $accountType, string $companyNam
 function getWhatsappConfig(): array
 {
     $config = require __DIR__ . '/config.php';
-    $provider = (string) getenv('WHATSAPP_PROVIDER') ?: (string) ($config['whatsapp_provider'] ?? 'twilio');
+    $provider = (string) getenv('WHATSAPP_PROVIDER') ?: (string) ($config['whatsapp_provider'] ?? 'textmebot');
     $provider = strtolower(trim($provider));
 
-    if ($provider !== 'twilio') {
-        $provider = 'twilio';
+    if (!in_array($provider, ['textmebot', 'twilio'], true)) {
+        $provider = 'textmebot';
     }
 
     return [
         'provider' => $provider,
         'cron_secret' => (string) getenv('WHATSAPP_CRON_SECRET') ?: (string) ($config['whatsapp_cron_secret'] ?? ''),
+        'textmebot_api_key' => (string) getenv('TEXTMEBOT_API_KEY') ?: (string) ($config['textmebot_api_key'] ?? ''),
+        'textmebot_reminder_api_key' => (string) getenv('TEXTMEBOT_REMINDER_API_KEY') ?: (string) ($config['textmebot_reminder_api_key'] ?? ''),
+        'textmebot_booking_api_key' => (string) getenv('TEXTMEBOT_BOOKING_API_KEY') ?: (string) ($config['textmebot_booking_api_key'] ?? ''),
         'twilio_account_sid' => (string) getenv('TWILIO_ACCOUNT_SID') ?: (string) ($config['twilio_account_sid'] ?? ''),
         'twilio_auth_token' => (string) getenv('TWILIO_AUTH_TOKEN') ?: (string) ($config['twilio_auth_token'] ?? ''),
         'twilio_whatsapp_from' => (string) getenv('TWILIO_WHATSAPP_FROM') ?: (string) ($config['twilio_whatsapp_from'] ?? ''),
+        'twilio_reminder_whatsapp_from' => (string) getenv('TWILIO_REMINDER_WHATSAPP_FROM') ?: (string) ($config['twilio_reminder_whatsapp_from'] ?? ''),
+        'twilio_booking_whatsapp_from' => (string) getenv('TWILIO_BOOKING_WHATSAPP_FROM') ?: (string) ($config['twilio_booking_whatsapp_from'] ?? ''),
         'twilio_content_sid' => (string) getenv('TWILIO_CONTENT_SID') ?: (string) ($config['twilio_content_sid'] ?? ''),
         'twilio_booking_admin_content_sid' => (string) getenv('TWILIO_BOOKING_ADMIN_CONTENT_SID') ?: (string) ($config['twilio_booking_admin_content_sid'] ?? ''),
         'twilio_booking_professional_content_sid' => (string) getenv('TWILIO_BOOKING_PROFESSIONAL_CONTENT_SID') ?: (string) ($config['twilio_booking_professional_content_sid'] ?? ''),

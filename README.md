@@ -59,13 +59,25 @@ Activities can now store an optional reminder per event. Each user can register 
 
 The backend includes [api/send-whatsapp-reminders.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/api/send-whatsapp-reminders.php), which is designed to be executed by cron every minute.
 
+Required TextMeBot WhatsApp settings:
+
+- `WHATSAPP_PROVIDER=textmebot`
+- `TEXTMEBOT_API_KEY`
+- `TEXTMEBOT_REMINDER_API_KEY` optional override for reminders only
+- `WHATSAPP_CRON_SECRET` recommended if you trigger the script by URL
+
+Official TextMeBot send format:
+
+- `https://api.textmebot.com/send.php?recipient=[phone number]&apikey=[your apikey]&text=[text to send]`
+
 Required Twilio WhatsApp settings:
 
-- `WHATSAPP_PROVIDER` optional, default `twilio`
+- `WHATSAPP_PROVIDER=twilio`
 - `WHATSAPP_CRON_SECRET` recommended if you trigger the script by URL
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_WHATSAPP_FROM`
+- `TWILIO_REMINDER_WHATSAPP_FROM` optional override for reminders only
 
 The current implementation sends a plain WhatsApp text message through Twilio. If you use the Twilio Sandbox, the destination number must first join the sandbox.
 
@@ -77,13 +89,20 @@ Helpful test modes:
 
 ## WhatsApp booking notifications
 
-Public bookings can also notify three audiences through Twilio WhatsApp:
+Public bookings can notify three audiences through the selected provider.
 
+With TextMeBot:
+
+- `TEXTMEBOT_BOOKING_API_KEY` optional override for booking notifications
+
+With Twilio:
+
+- `TWILIO_BOOKING_WHATSAPP_FROM` optional override for booking notifications
 - `TWILIO_BOOKING_ADMIN_CONTENT_SID`
 - `TWILIO_BOOKING_PROFESSIONAL_CONTENT_SID`
 - `TWILIO_BOOKING_CUSTOMER_CONTENT_SID`
 
-If one of those values is empty, the booking flow falls back to a free-form `Body` for that recipient. That can fail outside the 24-hour customer service window, so production setups should use approved templates for all three.
+If you use Twilio and one of those values is empty, the booking flow falls back to a free-form `Body` for that recipient. That can fail outside the 24-hour customer service window, so production setups should use approved templates for all three.
 
 Template variable mapping used by the booking flow:
 
@@ -92,6 +111,12 @@ Template variable mapping used by the booking flow:
 - `customer`: `1=service`, `2=date`, `3=time`, `4=professional`
 
 The repo includes [run-whatsapp-booking-test.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/run-whatsapp-booking-test.php) and [api/send-whatsapp-booking-tests.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/api/send-whatsapp-booking-tests.php) to preview or send booking notifications without creating a real reservation.
+
+Suggested sender setup:
+
+- `TWILIO_WHATSAPP_FROM`: global fallback sender
+- `TWILIO_REMINDER_WHATSAPP_FROM`: use this if reminders still go through Sandbox
+- `TWILIO_BOOKING_WHATSAPP_FROM`: use this if bookings should use a production sender first
 
 Examples:
 
