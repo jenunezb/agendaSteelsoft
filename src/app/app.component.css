@@ -428,6 +428,10 @@ button:disabled {
   align-items: start;
 }
 
+.public-board {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 
 .activity-launch-panel {
   display: grid;
@@ -990,6 +994,10 @@ button {
   overflow: hidden;
 }
 
+.public-calendar-panel {
+  width: 100%;
+}
+
 .calendar-controls {
   display: grid;
   gap: 10px;
@@ -1095,16 +1103,12 @@ button {
 
 .week-agenda-header {
   display: grid;
-  grid-template-columns: 74px repeat(6, minmax(88px, 1fr));
   gap: 6px;
-  min-width: 860px;
 }
 
 .week-agenda-body {
   display: grid;
-  grid-template-columns: 74px repeat(6, minmax(88px, 1fr));
   gap: 6px;
-  min-width: 860px;
 }
 
 .slot-heading,
@@ -1172,7 +1176,6 @@ button {
 .week-day-columns {
   grid-column: 2 / -1;
   display: grid;
-  grid-template-columns: repeat(6, minmax(88px, 1fr));
   gap: 6px;
 }
 

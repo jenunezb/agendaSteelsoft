@@ -25,6 +25,18 @@ if ($username === '' || $serviceId <= 0 || $customerName === '' || $date === '' 
     jsonResponse(['message' => 'Completa los datos de la reserva.'], 422);
 }
 
+if (!isValidBookingDate($date)) {
+    jsonResponse(['message' => 'La fecha de la reserva no es valida.'], 422);
+}
+
+if (!isValidBookingTime($startTime)) {
+    jsonResponse(['message' => 'La hora de inicio no es valida.'], 422);
+}
+
+if (isPastBookingSlot($date, $startTime)) {
+    jsonResponse(['message' => 'Solo se permiten reservas desde la fecha y hora actual en adelante.'], 422);
+}
+
 $statement = $pdo->prepare(
     'SELECT id, name, company_id, company_role, profile_public, whatsapp_number, whatsapp_notifications_enabled
      FROM users
@@ -675,6 +687,31 @@ function formatBookingDateLabel(string $isoDate): string
     }
 
     return $date->format('d/m/Y');
+}
+
+function isValidBookingDate(string $date): bool
+{
+    $parsedDate = DateTimeImmutable::createFromFormat('Y-m-d', $date);
+    return $parsedDate instanceof DateTimeImmutable && $parsedDate->format('Y-m-d') === $date;
+}
+
+function isValidBookingTime(string $time): bool
+{
+    $normalizedTime = substr($time, 0, 5);
+    $parsedTime = DateTimeImmutable::createFromFormat('H:i', $normalizedTime);
+    return $parsedTime instanceof DateTimeImmutable && $parsedTime->format('H:i') === $normalizedTime;
+}
+
+function isPastBookingSlot(string $date, string $startTime): bool
+{
+    $bookingDateTime = DateTimeImmutable::createFromFormat('Y-m-d H:i', $date . ' ' . substr($startTime, 0, 5));
+
+    if (!$bookingDateTime instanceof DateTimeImmutable) {
+        return true;
+    }
+
+    $now = new DateTimeImmutable('now');
+    return $bookingDateTime < $now;
 }
 
 function buildAdminBookingMessage(

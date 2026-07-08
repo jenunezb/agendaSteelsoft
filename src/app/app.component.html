@@ -28,69 +28,31 @@
     </header>
 
     @if (publicProfileState === 'ready') {
-      <section class="board">
-        <div class="side-column">
-          <article class="panel activity-launch-panel">
-            <div class="panel-heading">
-              <h2>Agenda publica</h2>
-              <p>Estas viendo las actividades publicas de este perfil.</p>
-            </div>
-            <div class="activity-launch-content">
-              <div>
-                <p class="label">Semana visible</p>
-                <h3>{{ currentWeekLabel }}</h3>
-              </div>
-              <p class="activity-launch-copy">
-                Hay {{ selectedDateActivities.length }} actividad{{ selectedDateActivities.length === 1 ? '' : 'es' }}
-                publica{{ selectedDateActivities.length === 1 ? '' : 's' }} en esta fecha.
-              </p>
-              <p class="activity-launch-copy">
-                Horario laboral: {{ formatTimeLabel((currentWorkingHours.start < 10 ? '0' : '') + currentWorkingHours.start + ':00') }}
-                - {{ formatTimeLabel((currentWorkingHours.end < 10 ? '0' : '') + currentWorkingHours.end + ':00') }}
-              </p>
-              <button type="button" (click)="openActivityPanel(selectedDate)">Ver actividades del dia</button>
-              @if (publicProfileUser?.whatsappContactUrl) {
-                <a class="contact-link-button" [href]="publicProfileUser?.whatsappContactUrl" target="_blank" rel="noreferrer">
-                  Reservar o consultar por WhatsApp
-                </a>
-              }
-            </div>
-          </article>
-
-          @if (publicProfileProfessionals.length > 0) {
-            <article class="panel pending-panel">
-              <div class="panel-heading">
-                <h2>Reservar cita</h2>
-                <p>El cliente elige servicio, puede escoger profesional si quiere, y toca la hora en la agenda.</p>
-              </div>
-              <div class="launch-summary">
-                <p class="activity-launch-copy">
-                  El horario de inicio se llena automaticamente con la hora que el cliente toque.
-                </p>
-                <button type="button" (click)="openPublicBookingModal(selectedDate)">
-                  Abrir formulario de reserva
-                </button>
-              </div>
-            </article>
-          }
-        </div>
-
-        <article class="panel calendar-panel">
+      <section class="board public-board">
+        <article class="panel calendar-panel public-calendar-panel">
           <div class="calendar-header">
             <div>
               <p class="label">Agenda publica semanal</p>
               <h2>{{ currentPeriodLabel }}</h2>
+              <p>
+                Horario laboral: {{ formatTimeLabel((currentWorkingHours.start < 10 ? '0' : '') + currentWorkingHours.start + ':00') }}
+                - {{ formatTimeLabel((currentWorkingHours.end < 10 ? '0' : '') + currentWorkingHours.end + ':00') }}
+              </p>
             </div>
 
             <div class="calendar-controls">
               <div class="month-actions">
-                <button type="button" (click)="previousPeriod()">Anterior</button>
+                <button type="button" (click)="previousPeriod()" [disabled]="isPreviousPeriodDisabled">Anterior</button>
                 <button type="button" (click)="nextPeriod()">Siguiente</button>
               </div>
             </div>
           </div>
           <div class="week-agenda">
-            <div class="week-agenda-header">
+            <div
+              class="week-agenda-header"
+              [style.grid-template-columns]="weekAgendaGridTemplateColumns"
+              [style.min-width]="weekAgendaMinWidth"
+            >
               <span class="slot-heading">Hora</span>
               @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
                 <button
@@ -106,14 +68,22 @@
               }
             </div>
 
-            <div class="week-agenda-body">
+            <div
+              class="week-agenda-body"
+              [style.grid-template-columns]="weekAgendaGridTemplateColumns"
+              [style.min-width]="weekAgendaMinWidth"
+            >
               <div class="week-time-column">
                 @for (time of weeklyTimeOptions; track time) {
                   <div class="time-slot week-time-cell">{{ formatTimeLabel(time) }}</div>
                 }
               </div>
 
-              <div class="week-day-columns">
+              <div
+                class="week-day-columns"
+                [style.grid-template-columns]="weekDayColumnsTemplateColumns"
+                [style.min-width]="weekDayColumnsMinWidth"
+              >
                 @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
                   <div
                     class="week-day-column"
@@ -213,7 +183,14 @@
 
             <label>
               <span>Fecha</span>
-              <input type="date" name="publicBookingDateModal" [(ngModel)]="publicBookingForm.date" required />
+              <input
+                type="date"
+                name="publicBookingDateModal"
+                [(ngModel)]="publicBookingForm.date"
+                [min]="publicBookingMinDate"
+                (ngModelChange)="onPublicBookingDateChange()"
+                required
+              />
             </label>
 
             <label>

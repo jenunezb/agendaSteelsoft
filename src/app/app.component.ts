@@ -384,6 +384,10 @@ export class AppComponent implements OnInit {
     return this.getEndTimeByDuration(this.publicBookingForm.startTime, selectedService.durationMinutes);
   }
 
+  protected get publicBookingMinDate(): string {
+    return this.publicMinimumIsoDate;
+  }
+
   protected setAuthMode(mode: 'login' | 'register'): void {
     this.authError = '';
     this.authMessage = '';
@@ -1119,6 +1123,10 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    if (this.isPreviousPeriodDisabled) {
+      return;
+    }
+
     const previousWeek = this.addDays(this.selectedDateAsDate, -7);
     this.selectDate(this.toIsoDate(previousWeek));
   }
@@ -1138,11 +1146,18 @@ export class AppComponent implements OnInit {
   }
 
   protected selectDate(isoDate: string): void {
-    const normalizedDate = this.normalizeCalendarDate(new Date(`${isoDate}T00:00:00`));
-    const normalizedIsoDate = this.toIsoDate(normalizedDate);
+    const baseDate = new Date(`${isoDate}T00:00:00`);
+    const normalizedDate = this.isPublicProfileMode
+      ? this.normalizePublicCalendarDate(baseDate)
+      : this.normalizeCalendarDate(baseDate);
+    const clampedDate =
+      this.isPublicProfileMode && this.toIsoDate(normalizedDate) < this.publicMinimumIsoDate
+        ? new Date(this.publicMinimumDate)
+        : normalizedDate;
+    const normalizedIsoDate = this.toIsoDate(clampedDate);
     this.selectedDate = normalizedIsoDate;
     this.newActivity.date = normalizedIsoDate;
-    this.currentMonth = this.startOfMonth(normalizedDate);
+    this.currentMonth = this.startOfMonth(clampedDate);
   }
 
   protected openActivityPanel(isoDate: string): void {
@@ -1158,7 +1173,7 @@ export class AppComponent implements OnInit {
     this.publicBookingForm = {
       ...this.publicBookingForm,
       serviceId,
-      date: isoDate,
+      date: this.selectedDate,
       startTime,
       professionalId: this.isProfessionalCompatibleWithSelectedService(this.publicBookingForm.professionalId)
         ? this.publicBookingForm.professionalId
@@ -1184,6 +1199,15 @@ export class AppComponent implements OnInit {
 
   protected onPublicBookingStartTimeChange(): void {
     this.syncPublicBookingSelection();
+  }
+
+  protected onPublicBookingDateChange(): void {
+    if (!this.publicBookingForm.date) {
+      return;
+    }
+
+    this.publicBookingForm.date = this.clampPublicIsoDate(this.publicBookingForm.date);
+    this.selectDate(this.publicBookingForm.date);
   }
 
   protected onActivityServiceChange(): void {
@@ -1561,6 +1585,14 @@ export class AppComponent implements OnInit {
   }
 
   protected get currentWeekLabel(): string {
+    const visibleDays = this.weeklyCalendarDays;
+
+    if (this.isPublicProfileMode && visibleDays.length > 0) {
+      return `${this.formatLongDate(visibleDays[0].date)} - ${this.formatLongDate(
+        visibleDays[visibleDays.length - 1].date
+      )}`;
+    }
+
     const weekStart = this.selectedWeekStart;
     const weekEnd = this.getWeekEnd(weekStart);
     return `${this.formatLongDate(weekStart)} - ${this.formatLongDate(weekEnd)}`;
@@ -1612,7 +1644,7 @@ export class AppComponent implements OnInit {
     const weekStart = this.selectedWeekStart;
     const today = this.toIsoDate(new Date());
 
-    return Array.from({ length: 6 }, (_, index) => {
+    const days = Array.from({ length: 6 }, (_, index) => {
       const date = this.addDays(weekStart, index);
       const isoDate = this.toIsoDate(date);
 
@@ -1625,6 +1657,36 @@ export class AppComponent implements OnInit {
         activities: this.getActivitiesForDate(isoDate)
       };
     });
+
+    if (!this.isPublicProfileMode) {
+      return days;
+    }
+
+    return days.filter((day) => day.isoDate >= this.publicMinimumIsoDate);
+  }
+
+  protected get isPreviousPeriodDisabled(): boolean {
+    if (!this.isPublicProfileMode || this.viewMode !== 'week') {
+      return false;
+    }
+
+    return this.toIsoDate(this.selectedWeekStart) <= this.toIsoDate(this.getWeekStart(this.publicMinimumDate));
+  }
+
+  protected get weekAgendaGridTemplateColumns(): string {
+    return `74px repeat(${Math.max(this.weeklyCalendarDays.length, 1)}, minmax(88px, 1fr))`;
+  }
+
+  protected get weekDayColumnsTemplateColumns(): string {
+    return `repeat(${Math.max(this.weeklyCalendarDays.length, 1)}, minmax(88px, 1fr))`;
+  }
+
+  protected get weekAgendaMinWidth(): string {
+    return `${74 + Math.max(this.weeklyCalendarDays.length, 1) * 94}px`;
+  }
+
+  protected get weekDayColumnsMinWidth(): string {
+    return `${Math.max(this.weeklyCalendarDays.length, 1) * 94}px`;
   }
 
   protected get weeklyGroups(): WeekGroup[] {
@@ -1773,6 +1835,24 @@ export class AppComponent implements OnInit {
 
   private get selectedDateAsDate(): Date {
     return new Date(`${this.selectedDate}T00:00:00`);
+  }
+
+  private get publicMinimumDate(): Date {
+    return this.normalizePublicCalendarDate(new Date());
+  }
+
+  private get publicMinimumIsoDate(): string {
+    return this.toIsoDate(this.publicMinimumDate);
+  }
+
+  private clampPublicIsoDate(isoDate: string): string {
+    if (!this.isValidIsoDate(isoDate)) {
+      return this.publicMinimumIsoDate;
+    }
+
+    const normalizedDate = this.normalizePublicCalendarDate(new Date(`${isoDate}T00:00:00`));
+    const normalizedIsoDate = this.toIsoDate(normalizedDate);
+    return normalizedIsoDate < this.publicMinimumIsoDate ? this.publicMinimumIsoDate : normalizedIsoDate;
   }
 
   private getActivitiesForDate(isoDate: string): Activity[] {
@@ -2024,10 +2104,8 @@ export class AppComponent implements OnInit {
     }
 
     this.publicProfileState = profile.profileEnabled ? 'ready' : 'disabled';
-
-    if (profile.activities.length > 0) {
-      this.selectDate(profile.activities[0].date);
-    }
+    const firstUpcomingActivity = profile.activities.find((activity) => activity.date >= this.publicMinimumIsoDate);
+    this.selectDate(firstUpcomingActivity?.date ?? this.publicMinimumIsoDate);
   }
 
   private applyCompanyContext(context: CompanyContext): void {
@@ -2200,11 +2278,11 @@ export class AppComponent implements OnInit {
       .map((segment) => segment.trim())
       .filter(Boolean);
 
-    if (pathSegments.length !== 1) {
+    if (pathSegments.length === 0) {
       return '';
     }
 
-    const [candidate] = pathSegments;
+    const candidate = pathSegments[pathSegments.length - 1];
     const normalizedCandidate = candidate.toLowerCase();
 
     if (
@@ -2221,13 +2299,17 @@ export class AppComponent implements OnInit {
   }
 
   private getAuthRouteModeFromLocation(): 'login' | 'register' | null {
-    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    const pathSegments = window.location.pathname
+      .split('/')
+      .map((segment) => segment.trim().toLowerCase())
+      .filter(Boolean);
+    const lastSegment = pathSegments[pathSegments.length - 1] ?? '';
 
-    if (path === '/login') {
+    if (lastSegment === 'login') {
       return 'login';
     }
 
-    if (path === '/register') {
+    if (lastSegment === 'register') {
       return 'register';
     }
 
@@ -2302,6 +2384,10 @@ export class AppComponent implements OnInit {
 
   private normalizeCalendarDate(date: Date): Date {
     return date.getDay() === 0 ? this.addDays(date, -1) : date;
+  }
+
+  private normalizePublicCalendarDate(date: Date): Date {
+    return date.getDay() === 0 ? this.addDays(date, 1) : date;
   }
 
   private isValidIsoDate(value: string): boolean {
