@@ -66,7 +66,6 @@ if ($isCompanyWorkspace) {
         'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date
          FROM activities
          WHERE company_id = :company_id
-           AND is_public = 1
          ORDER BY activity_date, start_time, end_time, title'
     );
     $activitiesStatement->execute([':company_id' => $companyId]);
@@ -83,7 +82,6 @@ if ($isCompanyWorkspace) {
         'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date
          FROM activities
          WHERE user_id = :user_id
-           AND is_public = 1
          ORDER BY activity_date, start_time, end_time, title'
     );
     $activitiesStatement->execute([':user_id' => (int) $user['id']]);
@@ -101,17 +99,19 @@ if ($isCompanyWorkspace) {
 }
 
 $activities = array_map(static function (array $row): array {
+    $isPublic = !empty($row['is_public']);
+
     return [
         'id' => (int) $row['id'],
-        'title' => $row['title'],
+        'title' => $isPublic ? $row['title'] : 'No disponible',
         'startTime' => substr((string) $row['start_time'], 0, 5),
         'endTime' => substr((string) $row['end_time'], 0, 5),
-        'assignee' => $row['assignee'],
-        'visibility' => 'public',
+        'assignee' => $isPublic ? $row['assignee'] : '',
+        'visibility' => $isPublic ? 'public' : 'private',
         'completed' => (bool) $row['completed'],
         'professionalId' => isset($row['professional_id']) ? (int) $row['professional_id'] : null,
-        'location' => $row['location'] ?? '',
-        'description' => $row['description'] ?? '',
+        'location' => $isPublic ? ($row['location'] ?? '') : '',
+        'description' => $isPublic ? ($row['description'] ?? '') : '',
         'date' => $row['activity_date'],
     ];
 }, $activitiesStatement->fetchAll());
