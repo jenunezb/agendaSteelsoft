@@ -158,16 +158,22 @@ function buildBookingTestPreview(
 
     $payload = [
         'recipient' => $recipient,
-        'From' => normalizeTwilioBookingTestAddress(resolveBookingTestSender($config)),
         'To' => normalizeTwilioBookingTestAddress($targetNumber),
     ];
+
+    $messagingServiceSid = trim((string) ($config['twilio_messaging_service_sid'] ?? ''));
+
+    if ($messagingServiceSid !== '') {
+        $payload['MessagingServiceSid'] = $messagingServiceSid;
+    } else {
+        $payload['From'] = normalizeTwilioBookingTestAddress(resolveBookingTestSender($config));
+    }
 
     if ($contentSid !== '') {
         $payload['ContentSid'] = $contentSid;
         $payload['ContentVariables'] = encodeBookingTestContentVariables($contentVariables);
     } else {
-        $payload['Body'] = $message;
-        $payload['warning'] = 'No hay ContentSid configurado para este destinatario; Twilio intentara enviar Body libre.';
+        $payload['warning'] = 'No se enviara: falta una plantilla aprobada para este destinatario.';
     }
 
     return $payload;
@@ -192,13 +198,23 @@ function sendBookingTestNotification(
     $authToken = (string) ($config['twilio_auth_token'] ?? '');
     $from = normalizeTwilioBookingTestAddress(resolveBookingTestSender($config));
     $to = normalizeTwilioBookingTestAddress($targetNumber);
+    $messagingServiceSid = trim((string) ($config['twilio_messaging_service_sid'] ?? ''));
     $contentSid = $contentSidOverride !== '' ? $contentSidOverride : getBookingRecipientContentSid($config, $recipient);
 
-    if ($from === '' || $to === '') {
+    if (($from === '' && $messagingServiceSid === '') || $to === '') {
         return [
             'recipient' => $recipient,
             'success' => false,
             'message' => 'Numero de origen o destino invalido.',
+        ];
+    }
+
+    if ($contentSid === '') {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'skipped' => true,
+            'message' => 'No hay una plantilla de WhatsApp aprobada configurada para este destinatario.',
         ];
     }
 
@@ -207,15 +223,15 @@ function sendBookingTestNotification(
         rawurlencode($accountSid)
     );
     $payload = [
-        'From' => $from,
         'To' => $to,
+        'ContentSid' => $contentSid,
+        'ContentVariables' => encodeBookingTestContentVariables($contentVariables),
     ];
 
-    if ($contentSid !== '') {
-        $payload['ContentSid'] = $contentSid;
-        $payload['ContentVariables'] = encodeBookingTestContentVariables($contentVariables);
-    } else {
-        $payload['Body'] = $message;
+    if ($messagingServiceSid !== '') {
+        $payload['MessagingServiceSid'] = $messagingServiceSid;
+    } elseif ($from !== '') {
+        $payload['From'] = $from;
     }
 
     [$rawResponse, $statusCode, $transportError] = sendBookingTestFormRequest(
@@ -263,7 +279,10 @@ function isBookingTestProviderConfigured(array $config): bool
     return
         trim((string) ($config['twilio_account_sid'] ?? '')) !== ''
         && trim((string) ($config['twilio_auth_token'] ?? '')) !== ''
-        && trim((string) resolveBookingTestSender($config)) !== '';
+        && (
+            trim((string) resolveBookingTestSender($config)) !== ''
+            || trim((string) ($config['twilio_messaging_service_sid'] ?? '')) !== ''
+        );
 }
 
 function buildBookingTestMissingConfig(array $config): array
@@ -279,7 +298,8 @@ function buildBookingTestMissingConfig(array $config): array
         'provider' => 'twilio',
         'twilio_account_sid' => trim((string) ($config['twilio_account_sid'] ?? '')) === '',
         'twilio_auth_token' => trim((string) ($config['twilio_auth_token'] ?? '')) === '',
-        'twilio_whatsapp_from' => trim((string) resolveBookingTestSender($config)) === '',
+        'twilio_sender' => trim((string) resolveBookingTestSender($config)) === ''
+            && trim((string) ($config['twilio_messaging_service_sid'] ?? '')) === '',
     ];
 }
 
@@ -395,10 +415,10 @@ function buildBookingRecipientContent(
                 $timeLabel
             ),
             [
-                '1' => $serviceName,
-                '2' => $dateLabel,
-                '3' => $timeLabel,
-                '4' => $professionalName !== '' ? $professionalName : 'nuestro equipo',
+                '1' => $customerName,
+                '2' => $serviceName,
+                '3' => $dateLabel,
+                '4' => $timeLabel,
             ],
         ],
         default => throw new RuntimeException('Destinatario no soportado para la prueba.'),
@@ -410,7 +430,10 @@ function getBookingRecipientContentSid(array $config, string $recipient): string
     return match ($recipient) {
         'admin' => trim((string) ($config['twilio_booking_admin_content_sid'] ?? '')),
         'professional' => trim((string) ($config['twilio_booking_professional_content_sid'] ?? '')),
-        'customer' => trim((string) ($config['twilio_booking_customer_content_sid'] ?? '')),
+        'customer' => trim((string) (
+            ($config['twilio_template_agendamiento_sid'] ?? '')
+            ?: ($config['twilio_booking_customer_content_sid'] ?? '')
+        )),
         default => '',
     };
 }

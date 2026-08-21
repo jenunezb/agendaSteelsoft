@@ -292,10 +292,10 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
             ),
             'customer',
             buildCustomerBookingContentVariables(
+                $customerName,
                 $serviceName,
                 $dateLabel,
-                $timeLabel,
-                $professionalName
+                $timeLabel
             )
         );
     } else {
@@ -306,6 +306,13 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
             'message' => 'El cliente no envio numero de WhatsApp.',
         ];
     }
+
+    recordBookingWhatsappResults(
+        $pdo,
+        (int) ($booking['id'] ?? 0),
+        (string) ($config['provider'] ?? ''),
+        $results
+    );
 
     return [
         'sent' => array_values(array_filter($results, static fn (array $result): bool => !empty($result['success']))),
@@ -326,7 +333,10 @@ function isBookingWhatsappProviderConfigured(array $config): bool
     return
         trim((string) ($config['twilio_account_sid'] ?? '')) !== ''
         && trim((string) ($config['twilio_auth_token'] ?? '')) !== ''
-        && trim((string) resolveTwilioBookingSender($config)) !== '';
+        && (
+            trim((string) resolveTwilioBookingSender($config)) !== ''
+            || trim((string) ($config['twilio_messaging_service_sid'] ?? '')) !== ''
+        );
 }
 
 function sendBookingNotification(
@@ -403,8 +413,10 @@ function sendTwilioBookingNotification(
     $authToken = (string) ($config['twilio_auth_token'] ?? '');
     $from = normalizeTwilioBookingAddress(resolveTwilioBookingSender($config));
     $to = normalizeTwilioBookingAddress($phone);
+    $messagingServiceSid = trim((string) ($config['twilio_messaging_service_sid'] ?? ''));
+    $recipientContentSid = getBookingRecipientContentSid($config, $recipient);
 
-    if ($from === '' || $to === '') {
+    if (($from === '' && $messagingServiceSid === '') || $to === '') {
         return [
             'recipient' => $recipient,
             'success' => false,
@@ -412,21 +424,29 @@ function sendTwilioBookingNotification(
         ];
     }
 
+    if ($recipientContentSid === '') {
+        return [
+            'recipient' => $recipient,
+            'success' => false,
+            'skipped' => true,
+            'message' => 'No hay una plantilla de WhatsApp aprobada configurada para este destinatario.',
+        ];
+    }
+
     $endpoint = sprintf(
         'https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json',
         rawurlencode($accountSid)
     );
-    $recipientContentSid = getBookingRecipientContentSid($config, $recipient);
     $payload = [
-        'From' => $from,
         'To' => $to,
+        'ContentSid' => $recipientContentSid,
+        'ContentVariables' => encodeTwilioContentVariables($contentVariables),
     ];
 
-    if ($recipientContentSid !== '') {
-        $payload['ContentSid'] = $recipientContentSid;
-        $payload['ContentVariables'] = encodeTwilioContentVariables($contentVariables);
-    } else {
-        $payload['Body'] = $message;
+    if ($messagingServiceSid !== '') {
+        $payload['MessagingServiceSid'] = $messagingServiceSid;
+    } elseif ($from !== '') {
+        $payload['From'] = $from;
     }
 
     [$rawResponse, $statusCode, $transportError] = sendTwilioFormRequest(
@@ -461,7 +481,54 @@ function sendTwilioBookingNotification(
         'success' => true,
         'sid' => is_array($decodedResponse) ? (string) ($decodedResponse['sid'] ?? '') : '',
         'status' => is_array($decodedResponse) ? (string) ($decodedResponse['status'] ?? '') : '',
+        'contentSid' => $recipientContentSid,
     ];
+}
+
+function recordBookingWhatsappResults(PDO $pdo, int $activityId, string $provider, array $results): void
+{
+    if ($activityId <= 0) {
+        return;
+    }
+
+    try {
+        $statement = $pdo->prepare(
+            'INSERT INTO whatsapp_notifications
+                (activity_id, notification_type, recipient, provider, message_sid, delivery_status, error_message, attempted_at)
+             VALUES
+                (:activity_id, "booking_confirmation", :recipient, :provider, :message_sid, :delivery_status, :error_message, NOW())
+             ON DUPLICATE KEY UPDATE
+                provider = VALUES(provider),
+                message_sid = VALUES(message_sid),
+                delivery_status = VALUES(delivery_status),
+                error_message = VALUES(error_message),
+                attempted_at = VALUES(attempted_at)'
+        );
+
+        foreach ($results as $result) {
+            $success = !empty($result['success']);
+            $skipped = !empty($result['skipped']);
+            $status = trim((string) ($result['status'] ?? ''));
+
+            if ($status === '') {
+                $status = $success ? 'sent' : ($skipped ? 'skipped' : 'failed');
+            }
+
+            $statement->execute([
+                ':activity_id' => $activityId,
+                ':recipient' => (string) ($result['recipient'] ?? 'unknown'),
+                ':provider' => $provider,
+                ':message_sid' => (string) ($result['sid'] ?? ''),
+                ':delivery_status' => $status,
+                ':error_message' => $success ? null : (string) ($result['message'] ?? 'Error de envio sin detalle.'),
+            ]);
+        }
+    } catch (Throwable $error) {
+        writeAppLog('whatsapp-notifications', 'No fue posible registrar la trazabilidad del envio.', [
+            'activityId' => $activityId,
+            'error' => $error->getMessage(),
+        ]);
+    }
 }
 
 function resolveTwilioBookingSender(array $config): string
@@ -480,7 +547,10 @@ function getBookingRecipientContentSid(array $config, string $recipient): string
     return match ($recipient) {
         'admin' => trim((string) ($config['twilio_booking_admin_content_sid'] ?? '')),
         'professional' => trim((string) ($config['twilio_booking_professional_content_sid'] ?? '')),
-        'customer' => trim((string) ($config['twilio_booking_customer_content_sid'] ?? '')),
+        'customer' => trim((string) (
+            ($config['twilio_template_agendamiento_sid'] ?? '')
+            ?: ($config['twilio_booking_customer_content_sid'] ?? '')
+        )),
         default => '',
     };
 }
@@ -828,16 +898,16 @@ function buildProfessionalBookingContentVariables(
 }
 
 function buildCustomerBookingContentVariables(
+    string $customerName,
     string $serviceName,
     string $dateLabel,
-    string $timeLabel,
-    string $professionalName
+    string $timeLabel
 ): array {
     return [
-        '1' => $serviceName,
-        '2' => $dateLabel,
-        '3' => $timeLabel,
-        '4' => $professionalName !== '' ? $professionalName : 'nuestro equipo',
+        '1' => $customerName,
+        '2' => $serviceName,
+        '3' => $dateLabel,
+        '4' => $timeLabel,
     ];
 }
 

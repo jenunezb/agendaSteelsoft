@@ -77,6 +77,7 @@ Required Twilio WhatsApp settings:
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_WHATSAPP_FROM`
+- `TWILIO_MESSAGING_SERVICE_SID`
 - `TWILIO_REMINDER_WHATSAPP_FROM` optional override for reminders only
 
 The current implementation sends a plain WhatsApp text message through Twilio. If you use the Twilio Sandbox, the destination number must first join the sandbox.
@@ -98,17 +99,20 @@ With TextMeBot:
 With Twilio:
 
 - `TWILIO_BOOKING_WHATSAPP_FROM` optional override for booking notifications
+- `TWILIO_TEMPLATE_AGENDAMIENTO_SID` approved customer booking confirmation template
 - `TWILIO_BOOKING_ADMIN_CONTENT_SID`
 - `TWILIO_BOOKING_PROFESSIONAL_CONTENT_SID`
 - `TWILIO_BOOKING_CUSTOMER_CONTENT_SID`
 
-If you use Twilio and one of those values is empty, the booking flow falls back to a free-form `Body` for that recipient. That can fail outside the 24-hour customer service window, so production setups should use approved templates for all three.
+Twilio booking notifications are sent only when an approved Content SID exists for that recipient. The flow never falls back to a free-form `Body`, so a missing template skips that notification without blocking the booking.
 
 Template variable mapping used by the booking flow:
 
 - `admin`: `1=service`, `2=date`, `3=time`, `4=customer`, `5=professional`, `6=customer phone`
 - `professional`: `1=professional`, `2=service`, `3=date`, `4=time`, `5=customer`, `6=customer phone`
-- `customer`: `1=service`, `2=date`, `3=time`, `4=professional`
+- `customer`: `1=customer`, `2=service`, `3=date`, `4=time`
+
+Every booking notification attempt is recorded in `whatsapp_notifications` with its recipient, provider, Twilio Message SID, delivery status, error and attempt date.
 
 The repo includes [run-whatsapp-booking-test.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/run-whatsapp-booking-test.php) and [api/send-whatsapp-booking-tests.php](/c:/Users/Julian/Documents/Agenda%20Steelsoft/api/send-whatsapp-booking-tests.php) to preview or send booking notifications without creating a real reservation.
 

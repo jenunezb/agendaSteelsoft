@@ -148,6 +148,20 @@ CALL ensure_column('activities', 'is_public', 'ALTER TABLE activities ADD COLUMN
 CALL ensure_column('activities', 'reminder_minutes', 'ALTER TABLE activities ADD COLUMN reminder_minutes SMALLINT UNSIGNED NULL AFTER description');
 CALL ensure_column('activities', 'reminder_sent_at', 'ALTER TABLE activities ADD COLUMN reminder_sent_at DATETIME NULL AFTER reminder_minutes');
 
+CREATE TABLE IF NOT EXISTS whatsapp_notifications (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  activity_id INT UNSIGNED NOT NULL,
+  notification_type VARCHAR(40) NOT NULL,
+  recipient VARCHAR(30) NOT NULL,
+  provider VARCHAR(30) NOT NULL,
+  message_sid VARCHAR(64) NOT NULL DEFAULT '',
+  delivery_status VARCHAR(30) NOT NULL DEFAULT 'pending',
+  error_message TEXT NULL,
+  attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_whatsapp_activity_notification (activity_id, notification_type, recipient)
+);
+
 CALL ensure_column('general_pendings', 'user_id', 'ALTER TABLE general_pendings ADD COLUMN user_id INT UNSIGNED NULL AFTER id');
 CALL ensure_column('general_pendings', 'company_id', 'ALTER TABLE general_pendings ADD COLUMN company_id INT UNSIGNED NULL AFTER user_id');
 CALL ensure_column('general_pendings', 'professional_id', 'ALTER TABLE general_pendings ADD COLUMN professional_id INT UNSIGNED NULL AFTER company_id');
@@ -177,6 +191,7 @@ CALL ensure_index_name('professional_roles', 'idx_professional_roles_role', 'CRE
 CALL ensure_index_name('company_subscriptions', 'idx_company_subscriptions_company', 'CREATE INDEX idx_company_subscriptions_company ON company_subscriptions (company_id, status)');
 CALL ensure_index_name('activities', 'idx_activities_user_date', 'CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time)');
 CALL ensure_index_name('activities', 'idx_activities_company_date', 'CREATE INDEX idx_activities_company_date ON activities (company_id, activity_date, start_time)');
+CALL ensure_index_name('whatsapp_notifications', 'idx_whatsapp_message_sid', 'CREATE INDEX idx_whatsapp_message_sid ON whatsapp_notifications (message_sid)');
 CALL ensure_index_name('general_pendings', 'idx_general_pendings_user_date', 'CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pending_date)');
 CALL ensure_index_name('general_pendings', 'idx_general_pendings_company_date', 'CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date)');
 CALL ensure_index_name('financial_entries', 'idx_financial_entries_user_date', 'CREATE INDEX idx_financial_entries_user_date ON financial_entries (user_id, entry_date)');

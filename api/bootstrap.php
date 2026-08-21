@@ -282,6 +282,22 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         )'
     );
 
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS whatsapp_notifications (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            activity_id INT UNSIGNED NOT NULL,
+            notification_type VARCHAR(40) NOT NULL,
+            recipient VARCHAR(30) NOT NULL,
+            provider VARCHAR(30) NOT NULL,
+            message_sid VARCHAR(64) NOT NULL DEFAULT "",
+            delivery_status VARCHAR(30) NOT NULL DEFAULT "pending",
+            error_message TEXT NULL,
+            attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_whatsapp_activity_notification (activity_id, notification_type, recipient)
+        )'
+    );
+
     ensureColumnExists(
         $pdo,
         $databaseName,
@@ -549,6 +565,7 @@ function ensureSchema(PDO $pdo, string $databaseName): void
     ensureIndexExists($pdo, $databaseName, 'company_subscriptions', 'idx_company_subscriptions_company', 'CREATE INDEX idx_company_subscriptions_company ON company_subscriptions (company_id, status)');
     ensureIndexExists($pdo, $databaseName, 'activities', 'idx_activities_user_date', 'CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time)');
     ensureIndexExists($pdo, $databaseName, 'activities', 'idx_activities_company_date', 'CREATE INDEX idx_activities_company_date ON activities (company_id, activity_date, start_time)');
+    ensureIndexExists($pdo, $databaseName, 'whatsapp_notifications', 'idx_whatsapp_message_sid', 'CREATE INDEX idx_whatsapp_message_sid ON whatsapp_notifications (message_sid)');
     ensureIndexExists($pdo, $databaseName, 'general_pendings', 'idx_general_pendings_user_date', 'CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pending_date)');
     ensureIndexExists($pdo, $databaseName, 'general_pendings', 'idx_general_pendings_company_date', 'CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date)');
     ensureIndexExists($pdo, $databaseName, 'financial_entries', 'idx_financial_entries_user_date', 'CREATE INDEX idx_financial_entries_user_date ON financial_entries (user_id, entry_date)');
@@ -2093,9 +2110,11 @@ function getWhatsappConfig(): array
         'twilio_account_sid' => (string) getenv('TWILIO_ACCOUNT_SID') ?: (string) ($config['twilio_account_sid'] ?? ''),
         'twilio_auth_token' => (string) getenv('TWILIO_AUTH_TOKEN') ?: (string) ($config['twilio_auth_token'] ?? ''),
         'twilio_whatsapp_from' => (string) getenv('TWILIO_WHATSAPP_FROM') ?: (string) ($config['twilio_whatsapp_from'] ?? ''),
+        'twilio_messaging_service_sid' => (string) getenv('TWILIO_MESSAGING_SERVICE_SID') ?: (string) ($config['twilio_messaging_service_sid'] ?? ''),
         'twilio_reminder_whatsapp_from' => (string) getenv('TWILIO_REMINDER_WHATSAPP_FROM') ?: (string) ($config['twilio_reminder_whatsapp_from'] ?? ''),
         'twilio_booking_whatsapp_from' => (string) getenv('TWILIO_BOOKING_WHATSAPP_FROM') ?: (string) ($config['twilio_booking_whatsapp_from'] ?? ''),
         'twilio_content_sid' => (string) getenv('TWILIO_CONTENT_SID') ?: (string) ($config['twilio_content_sid'] ?? ''),
+        'twilio_template_agendamiento_sid' => (string) getenv('TWILIO_TEMPLATE_AGENDAMIENTO_SID') ?: (string) ($config['twilio_template_agendamiento_sid'] ?? ''),
         'twilio_booking_admin_content_sid' => (string) getenv('TWILIO_BOOKING_ADMIN_CONTENT_SID') ?: (string) ($config['twilio_booking_admin_content_sid'] ?? ''),
         'twilio_booking_professional_content_sid' => (string) getenv('TWILIO_BOOKING_PROFESSIONAL_CONTENT_SID') ?: (string) ($config['twilio_booking_professional_content_sid'] ?? ''),
         'twilio_booking_customer_content_sid' => (string) getenv('TWILIO_BOOKING_CUSTOMER_CONTENT_SID') ?: (string) ($config['twilio_booking_customer_content_sid'] ?? ''),

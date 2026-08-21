@@ -142,6 +142,20 @@ CREATE TABLE IF NOT EXISTS general_pendings (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS whatsapp_notifications (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  activity_id INT UNSIGNED NOT NULL,
+  notification_type VARCHAR(40) NOT NULL,
+  recipient VARCHAR(30) NOT NULL,
+  provider VARCHAR(30) NOT NULL,
+  message_sid VARCHAR(64) NOT NULL DEFAULT '',
+  delivery_status VARCHAR(30) NOT NULL DEFAULT 'pending',
+  error_message TEXT NULL,
+  attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_whatsapp_activity_notification (activity_id, notification_type, recipient)
+);
+
 CREATE TABLE IF NOT EXISTS financial_entries (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NULL,
@@ -170,6 +184,7 @@ CREATE INDEX idx_professional_roles_role ON professional_roles (role_id);
 CREATE INDEX idx_company_subscriptions_company ON company_subscriptions (company_id, status);
 CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time);
 CREATE INDEX idx_activities_company_date ON activities (company_id, activity_date, start_time);
+CREATE INDEX idx_whatsapp_message_sid ON whatsapp_notifications (message_sid);
 CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pending_date);
 CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date);
 CREATE INDEX idx_financial_entries_user_date ON financial_entries (user_id, entry_date);
