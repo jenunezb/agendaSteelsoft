@@ -94,6 +94,8 @@ Helpful test modes:
 
 ## WhatsApp booking notifications
 
+Administrator and professional notifications share the same six-variable team template: service, date, time, customer, professional, and customer phone. Configure its SID in either `TWILIO_BOOKING_ADMIN_CONTENT_SID` or `TWILIO_BOOKING_PROFESSIONAL_CONTENT_SID`; the application reuses it for both recipients.
+
 Public bookings can notify three audiences through the selected provider.
 
 With TextMeBot:

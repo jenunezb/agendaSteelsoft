@@ -398,11 +398,11 @@ function buildBookingRecipientContent(
                 $notes
             ),
             [
-                '1' => $professionalName !== '' ? $professionalName : 'Profesional',
-                '2' => $serviceName,
-                '3' => $dateLabel,
-                '4' => $timeLabel,
-                '5' => $customerName,
+                '1' => $serviceName,
+                '2' => $dateLabel,
+                '3' => $timeLabel,
+                '4' => $customerName,
+                '5' => $professionalName !== '' ? $professionalName : 'Profesional asignado',
                 '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin numero',
             ],
         ],
@@ -427,9 +427,12 @@ function buildBookingRecipientContent(
 
 function getBookingRecipientContentSid(array $config, string $recipient): string
 {
+    $adminSid = trim((string) ($config['twilio_booking_admin_content_sid'] ?? ''));
+    $professionalSid = trim((string) ($config['twilio_booking_professional_content_sid'] ?? ''));
+    $teamSid = $adminSid !== '' ? $adminSid : $professionalSid;
+
     return match ($recipient) {
-        'admin' => trim((string) ($config['twilio_booking_admin_content_sid'] ?? '')),
-        'professional' => trim((string) ($config['twilio_booking_professional_content_sid'] ?? '')),
+        'admin', 'professional' => $teamSid,
         'customer' => trim((string) (
             ($config['twilio_template_agendamiento_sid'] ?? '')
             ?: ($config['twilio_booking_customer_content_sid'] ?? '')
