@@ -138,8 +138,9 @@ function buildBookingTestPreview(
     array $booking
 ): array {
     [$message, $contentVariables] = buildBookingRecipientContent($recipient, $ownerUser, $professional, $booking);
+    $contentSid = $contentSidOverride !== '' ? $contentSidOverride : getBookingRecipientContentSid($config, $recipient);
 
-    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+    if ($contentSid === '') {
         $normalizedNumber = normalizeWhatsappNumber($targetNumber);
 
         return [
@@ -153,8 +154,6 @@ function buildBookingTestPreview(
             ],
         ];
     }
-
-    $contentSid = $contentSidOverride !== '' ? $contentSidOverride : getBookingRecipientContentSid($config, $recipient);
 
     $payload = [
         'recipient' => $recipient,
@@ -189,8 +188,9 @@ function sendBookingTestNotification(
     array $booking
 ): array {
     [$message, $contentVariables] = buildBookingRecipientContent($recipient, $ownerUser, $professional, $booking);
+    $contentSid = $contentSidOverride !== '' ? $contentSidOverride : getBookingRecipientContentSid($config, $recipient);
 
-    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+    if ($contentSid === '') {
         return sendTextmebotBookingTestNotification($config, $recipient, $targetNumber, $message);
     }
 
@@ -199,8 +199,6 @@ function sendBookingTestNotification(
     $from = normalizeTwilioBookingTestAddress(resolveBookingTestSender($config));
     $to = normalizeTwilioBookingTestAddress($targetNumber);
     $messagingServiceSid = trim((string) ($config['twilio_messaging_service_sid'] ?? ''));
-    $contentSid = $contentSidOverride !== '' ? $contentSidOverride : getBookingRecipientContentSid($config, $recipient);
-
     if (($from === '' && $messagingServiceSid === '') || $to === '') {
         return [
             'recipient' => $recipient,
@@ -272,17 +270,22 @@ function sendBookingTestNotification(
 
 function isBookingTestProviderConfigured(array $config): bool
 {
-    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
-        return resolveTextmebotBookingApiKey($config) !== '';
-    }
-
-    return
-        trim((string) ($config['twilio_account_sid'] ?? '')) !== ''
+    $twilioConfigured = trim((string) ($config['twilio_account_sid'] ?? '')) !== ''
         && trim((string) ($config['twilio_auth_token'] ?? '')) !== ''
         && (
             trim((string) resolveBookingTestSender($config)) !== ''
             || trim((string) ($config['twilio_messaging_service_sid'] ?? '')) !== ''
         );
+
+    if ($twilioConfigured) {
+        return true;
+    }
+
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return resolveTextmebotBookingApiKey($config) !== '';
+    }
+
+    return false;
 }
 
 function buildBookingTestMissingConfig(array $config): array

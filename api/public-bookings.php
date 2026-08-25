@@ -332,17 +332,22 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
 
 function isBookingWhatsappProviderConfigured(array $config): bool
 {
-    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
-        return resolveTextmebotBookingApiKey($config) !== '';
-    }
-
-    return
-        trim((string) ($config['twilio_account_sid'] ?? '')) !== ''
+    $twilioConfigured = trim((string) ($config['twilio_account_sid'] ?? '')) !== ''
         && trim((string) ($config['twilio_auth_token'] ?? '')) !== ''
         && (
             trim((string) resolveTwilioBookingSender($config)) !== ''
             || trim((string) ($config['twilio_messaging_service_sid'] ?? '')) !== ''
         );
+
+    if ($twilioConfigured) {
+        return true;
+    }
+
+    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+        return resolveTextmebotBookingApiKey($config) !== '';
+    }
+
+    return false;
 }
 
 function sendBookingNotification(
@@ -352,7 +357,7 @@ function sendBookingNotification(
     string $recipient,
     array $contentVariables
 ): array {
-    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+    if (getBookingRecipientContentSid($config, $recipient) === '') {
         return sendTextmebotBookingNotification($config, $phone, $message, $recipient);
     }
 
