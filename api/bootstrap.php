@@ -501,6 +501,12 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'reminder_sent_at',
         'ALTER TABLE activities ADD COLUMN reminder_sent_at DATETIME NULL AFTER reminder_minutes'
     );
+    ensureColumnExists($pdo, $databaseName, 'activities', 'booking_status', 'ALTER TABLE activities ADD COLUMN booking_status VARCHAR(20) NULL AFTER reminder_sent_at');
+    ensureColumnExists($pdo, $databaseName, 'activities', 'booking_customer_name', 'ALTER TABLE activities ADD COLUMN booking_customer_name VARCHAR(120) NOT NULL DEFAULT "" AFTER booking_status');
+    ensureColumnExists($pdo, $databaseName, 'activities', 'booking_customer_phone', 'ALTER TABLE activities ADD COLUMN booking_customer_phone VARCHAR(30) NOT NULL DEFAULT "" AFTER booking_customer_name');
+    ensureColumnExists($pdo, $databaseName, 'activities', 'booking_confirmation_token', 'ALTER TABLE activities ADD COLUMN booking_confirmation_token CHAR(64) NULL AFTER booking_customer_phone');
+    ensureColumnExists($pdo, $databaseName, 'activities', 'booking_confirmation_sent_at', 'ALTER TABLE activities ADD COLUMN booking_confirmation_sent_at DATETIME NULL AFTER booking_confirmation_token');
+    ensureColumnExists($pdo, $databaseName, 'activities', 'booking_responded_at', 'ALTER TABLE activities ADD COLUMN booking_responded_at DATETIME NULL AFTER booking_confirmation_sent_at');
     ensureColumnExists(
         $pdo,
         $databaseName,
@@ -565,6 +571,7 @@ function ensureSchema(PDO $pdo, string $databaseName): void
     ensureIndexExists($pdo, $databaseName, 'company_subscriptions', 'idx_company_subscriptions_company', 'CREATE INDEX idx_company_subscriptions_company ON company_subscriptions (company_id, status)');
     ensureIndexExists($pdo, $databaseName, 'activities', 'idx_activities_user_date', 'CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time)');
     ensureIndexExists($pdo, $databaseName, 'activities', 'idx_activities_company_date', 'CREATE INDEX idx_activities_company_date ON activities (company_id, activity_date, start_time)');
+    ensureIndexExists($pdo, $databaseName, 'activities', 'idx_activities_booking_token', 'CREATE UNIQUE INDEX idx_activities_booking_token ON activities (booking_confirmation_token)');
     ensureIndexExists($pdo, $databaseName, 'whatsapp_notifications', 'idx_whatsapp_message_sid', 'CREATE INDEX idx_whatsapp_message_sid ON whatsapp_notifications (message_sid)');
     ensureIndexExists($pdo, $databaseName, 'general_pendings', 'idx_general_pendings_user_date', 'CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pending_date)');
     ensureIndexExists($pdo, $databaseName, 'general_pendings', 'idx_general_pendings_company_date', 'CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date)');
@@ -2104,6 +2111,7 @@ function getWhatsappConfig(): array
     return [
         'provider' => $provider,
         'cron_secret' => (string) getenv('WHATSAPP_CRON_SECRET') ?: (string) ($config['whatsapp_cron_secret'] ?? ''),
+        'app_base_url' => rtrim((string) getenv('APP_BASE_URL') ?: (string) ($config['app_base_url'] ?? ''), '/'),
         'textmebot_api_key' => (string) getenv('TEXTMEBOT_API_KEY') ?: (string) ($config['textmebot_api_key'] ?? ''),
         'textmebot_reminder_api_key' => (string) getenv('TEXTMEBOT_REMINDER_API_KEY') ?: (string) ($config['textmebot_reminder_api_key'] ?? ''),
         'textmebot_booking_api_key' => (string) getenv('TEXTMEBOT_BOOKING_API_KEY') ?: (string) ($config['textmebot_booking_api_key'] ?? ''),
@@ -2114,6 +2122,7 @@ function getWhatsappConfig(): array
         'twilio_reminder_whatsapp_from' => (string) getenv('TWILIO_REMINDER_WHATSAPP_FROM') ?: (string) ($config['twilio_reminder_whatsapp_from'] ?? ''),
         'twilio_booking_whatsapp_from' => (string) getenv('TWILIO_BOOKING_WHATSAPP_FROM') ?: (string) ($config['twilio_booking_whatsapp_from'] ?? ''),
         'twilio_content_sid' => (string) getenv('TWILIO_CONTENT_SID') ?: (string) ($config['twilio_content_sid'] ?? ''),
+        'twilio_booking_confirmation_content_sid' => (string) getenv('TWILIO_BOOKING_CONFIRMATION_CONTENT_SID') ?: (string) ($config['twilio_booking_confirmation_content_sid'] ?? ''),
         'twilio_template_agendamiento_sid' => (string) getenv('TWILIO_TEMPLATE_AGENDAMIENTO_SID') ?: (string) ($config['twilio_template_agendamiento_sid'] ?? ''),
         'twilio_booking_admin_content_sid' => (string) getenv('TWILIO_BOOKING_ADMIN_CONTENT_SID') ?: (string) ($config['twilio_booking_admin_content_sid'] ?? ''),
         'twilio_booking_professional_content_sid' => (string) getenv('TWILIO_BOOKING_PROFESSIONAL_CONTENT_SID') ?: (string) ($config['twilio_booking_professional_content_sid'] ?? ''),

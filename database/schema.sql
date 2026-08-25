@@ -124,6 +124,12 @@ CREATE TABLE IF NOT EXISTS activities (
   description TEXT NOT NULL,
   reminder_minutes SMALLINT UNSIGNED NULL,
   reminder_sent_at DATETIME NULL,
+  booking_status VARCHAR(20) NULL,
+  booking_customer_name VARCHAR(120) NOT NULL DEFAULT '',
+  booking_customer_phone VARCHAR(30) NOT NULL DEFAULT '',
+  booking_confirmation_token CHAR(64) NULL,
+  booking_confirmation_sent_at DATETIME NULL,
+  booking_responded_at DATETIME NULL,
   activity_date DATE NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -184,6 +190,7 @@ CREATE INDEX idx_professional_roles_role ON professional_roles (role_id);
 CREATE INDEX idx_company_subscriptions_company ON company_subscriptions (company_id, status);
 CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time);
 CREATE INDEX idx_activities_company_date ON activities (company_id, activity_date, start_time);
+CREATE UNIQUE INDEX idx_activities_booking_token ON activities (booking_confirmation_token);
 CREATE INDEX idx_whatsapp_message_sid ON whatsapp_notifications (message_sid);
 CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pending_date);
 CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date);

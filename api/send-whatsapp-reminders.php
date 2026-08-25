@@ -76,6 +76,27 @@ $statement = $pdo->prepare($query);
 $statement->execute($params);
 
     $activities = $statement->fetchAll();
+
+    if ($activityId <= 0) {
+        $bookingStatement = $pdo->query(
+            'SELECT activities.id, activities.title, activities.start_time, activities.activity_date,
+                    activities.location, 60 AS reminder_minutes,
+                    activities.booking_customer_phone AS whatsapp_number,
+                    activities.booking_customer_name AS user_name,
+                    activities.booking_confirmation_token,
+                    1 AS is_booking_confirmation
+             FROM activities
+             WHERE activities.completed = 0
+               AND activities.booking_status = "pending"
+               AND activities.booking_customer_phone <> ""
+               AND activities.booking_confirmation_token IS NOT NULL
+               AND activities.booking_confirmation_sent_at IS NULL
+               AND TIMESTAMP(activities.activity_date, activities.start_time) > NOW()
+               AND DATE_SUB(TIMESTAMP(activities.activity_date, activities.start_time), INTERVAL 60 MINUTE) <= NOW()
+             ORDER BY activities.activity_date, activities.start_time'
+        );
+        $activities = array_merge($activities, $bookingStatement->fetchAll());
+    }
 }
 $sentCount = 0;
 $errors = [];
@@ -100,11 +121,10 @@ foreach ($activities as $activity) {
 
     if ($response['success']) {
         if ($pdo instanceof PDO && $activityId <= 0 && !$forceSend) {
-            $updateStatement = $pdo->prepare(
-                'UPDATE activities
-                 SET reminder_sent_at = NOW()
-                 WHERE id = :id'
-            );
+            $sentColumn = !empty($activity['is_booking_confirmation'])
+                ? 'booking_confirmation_sent_at'
+                : 'reminder_sent_at';
+            $updateStatement = $pdo->prepare('UPDATE activities SET ' . $sentColumn . ' = NOW() WHERE id = :id');
             $updateStatement->execute([':id' => (int) $activity['id']]);
         }
         $sentCount++;
@@ -129,6 +149,13 @@ jsonResponse([
 
 function sendWhatsappReminder(array $config, array $activity): array
 {
+    if (
+        !empty($activity['is_booking_confirmation'])
+        && trim((string) ($config['twilio_booking_confirmation_content_sid'] ?? '')) !== ''
+    ) {
+        return sendTwilioWhatsappReminder($config, $activity);
+    }
+
     if (($config['provider'] ?? 'textmebot') === 'textmebot') {
         return sendTextmebotWhatsappReminder($config, $activity);
     }
@@ -221,7 +248,9 @@ function sendTwilioWhatsappReminder(array $config, array $activity): array
 
     $from = normalizeTwilioWhatsappAddress($sender);
     $to = normalizeTwilioWhatsappAddress((string) $activity['whatsapp_number']);
-    $contentSid = trim((string) ($config['twilio_content_sid'] ?? ''));
+    $contentSid = !empty($activity['is_booking_confirmation'])
+        ? trim((string) ($config['twilio_booking_confirmation_content_sid'] ?? ''))
+        : trim((string) ($config['twilio_content_sid'] ?? ''));
 
     if ($from === '' || $to === '') {
         return [
@@ -427,7 +456,10 @@ function extractHttpStatusCode(array $responseHeaders): int
 
 function buildWhatsappPayloadPreview(array $config, array $activity): array
 {
-    if (($config['provider'] ?? 'textmebot') === 'textmebot') {
+    $usesTwilioConfirmationTemplate = !empty($activity['is_booking_confirmation'])
+        && trim((string) ($config['twilio_booking_confirmation_content_sid'] ?? '')) !== '';
+
+    if (($config['provider'] ?? 'textmebot') === 'textmebot' && !$usesTwilioConfirmationTemplate) {
         $phone = normalizeWhatsappNumber((string) $activity['whatsapp_number']);
 
         return [
@@ -499,6 +531,20 @@ function buildTwilioWhatsappBody(array $activity): string
         throw new RuntimeException('No fue posible interpretar la fecha del evento.');
     }
 
+    if (!empty($activity['is_booking_confirmation'])) {
+        $baseUrl = resolveConfirmationBaseUrl();
+        $token = rawurlencode((string) ($activity['booking_confirmation_token'] ?? ''));
+        return sprintf(
+            "Hola %s, tu cita es hoy a las %s y falta 1 hora. Responde aquí:\n✅ Confirmar: %s/api/booking-response.php?token=%s&decision=confirm\n❌ Rechazar: %s/api/booking-response.php?token=%s&decision=reject",
+            (string) $activity['user_name'],
+            $date->format('H:i'),
+            $baseUrl,
+            $token,
+            $baseUrl,
+            $token
+        );
+    }
+
     return sprintf(
         'Hola %s, te recordamos "%s" el %s a las %s. Faltan %s.',
         (string) $activity['user_name'],
@@ -507,6 +553,16 @@ function buildTwilioWhatsappBody(array $activity): string
         $date->format('H:i'),
         buildRemainingText((int) $activity['reminder_minutes'])
     );
+}
+
+function resolveConfirmationBaseUrl(): string
+{
+    $config = getWhatsappConfig();
+    $baseUrl = rtrim((string) ($config['app_base_url'] ?? ''), '/');
+    if ($baseUrl === '') {
+        throw new RuntimeException('Configura APP_BASE_URL para enviar enlaces de confirmación.');
+    }
+    return $baseUrl;
 }
 
 function normalizeTwilioWhatsappAddress(string $value): string
@@ -531,10 +587,20 @@ function buildTwilioContentVariablesJson(array $activity): string
         throw new RuntimeException('No fue posible interpretar la fecha del evento.');
     }
 
-    $variables = [
-        '1' => $date->format('d/m'),
-        '2' => $date->format('H:i'),
-    ];
+    if (!empty($activity['is_booking_confirmation'])) {
+        $token = (string) ($activity['booking_confirmation_token'] ?? '');
+        $variables = [
+            '1' => (string) $activity['user_name'],
+            '2' => $date->format('H:i'),
+            '3' => $token,
+            '4' => $token,
+        ];
+    } else {
+        $variables = [
+            '1' => $date->format('d/m'),
+            '2' => $date->format('H:i'),
+        ];
+    }
 
     $json = json_encode($variables, JSON_UNESCAPED_UNICODE);
 

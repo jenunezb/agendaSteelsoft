@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
     'app_timezone' => 'America/Bogota',
+    'app_base_url' => 'https://agenda.steelsoft.com.co',
     'db_host' => 'localhost',
     'db_name' => 'u873298580_agenda',
     'db_user' => 'u873298580_administrador',
@@ -20,6 +21,7 @@ return [
     'twilio_reminder_whatsapp_from' => '',
     'twilio_booking_whatsapp_from' => '',
     'twilio_content_sid' => '',
+    'twilio_booking_confirmation_content_sid' => 'HXe1f3b1d845b6e17d5ff33a3de9b60dd7',
     'twilio_template_agendamiento_sid' => 'HX051c49a09727dda8e76b6731915e542a',
     'twilio_booking_admin_content_sid' => '',
     'twilio_booking_professional_content_sid' => '',

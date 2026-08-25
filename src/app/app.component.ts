@@ -56,6 +56,7 @@ export class AppComponent implements OnInit {
     'Diciembre'
   ];
   protected readonly weeklyRowHeight = 72;
+  protected readonly publicBookingLeadMinutes = 60;
 
   protected currentMonth = this.startOfMonth(new Date());
   protected selectedDate = this.toIsoDate(this.normalizeCalendarDate(new Date()));
@@ -1032,6 +1033,12 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    if (!this.isPublicBookingSlotAvailable(date, startTime)) {
+      this.authError = 'La cita debe reservarse con minimo una hora de anticipacion.';
+      this.authMessage = '';
+      return;
+    }
+
     this.isSubmittingPublicBooking = true;
     this.authError = '';
     this.authMessage = '';
@@ -1166,6 +1173,10 @@ export class AppComponent implements OnInit {
   }
 
   protected openPublicBookingModal(isoDate: string, startTime = ''): void {
+    if (startTime && !this.isPublicBookingSlotAvailable(isoDate, startTime)) {
+      return;
+    }
+
     this.selectDate(isoDate);
     this.authError = '';
     this.authMessage = '';
@@ -1208,6 +1219,28 @@ export class AppComponent implements OnInit {
 
     this.publicBookingForm.date = this.clampPublicIsoDate(this.publicBookingForm.date);
     this.selectDate(this.publicBookingForm.date);
+
+    if (
+      this.publicBookingForm.startTime &&
+      !this.isPublicBookingSlotAvailable(this.publicBookingForm.date, this.publicBookingForm.startTime)
+    ) {
+      this.publicBookingForm.startTime = '';
+    }
+  }
+
+  protected isPublicBookingSlotAvailable(isoDate: string, time: string): boolean {
+    if (!this.isValidIsoDate(isoDate) || !/^\d{2}:\d{2}$/.test(time)) {
+      return false;
+    }
+
+    const slotDateTime = new Date(`${isoDate}T${time}:00`);
+
+    if (Number.isNaN(slotDateTime.getTime())) {
+      return false;
+    }
+
+    const minimumBookingTime = Date.now() + this.publicBookingLeadMinutes * 60_000;
+    return slotDateTime.getTime() >= minimumBookingTime;
   }
 
   protected onActivityServiceChange(): void {

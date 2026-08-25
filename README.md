@@ -50,6 +50,10 @@ The app now uses PHP sessions so each user sees only their own agenda, pending i
 
 ## WhatsApp reminders
 
+Set `APP_BASE_URL` to the public HTTPS origin (for example `https://agenda.example.com`). Public customer bookings receive a confirmation/rejection reminder one hour before the appointment when `api/send-whatsapp-reminders.php` runs each minute. Admin and professional calendars show the customer's current response.
+
+For Twilio, `TWILIO_BOOKING_CONFIRMATION_CONTENT_SID` is optional. When configured, its variables are: `1` customer name, `2` appointment time, and `3`/`4` the secure booking token used by the confirm/reject URL buttons. Without it, the reminder is sent as a free-form message and therefore depends on the active WhatsApp customer-service window.
+
 Activities can now store an optional reminder per event. Each user can register their WhatsApp number in the sidebar and enable notifications. Available lead times are:
 
 - 1 hour before

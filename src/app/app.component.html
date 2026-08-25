@@ -77,7 +77,10 @@
                         <button
                           type="button"
                           class="week-grid-cell week-grid-button"
-                          [attr.aria-label]="'Reservar cita el ' + formatFullDateLabel(day.isoDate) + ' a las ' + formatTimeLabel(time)"
+                          [disabled]="!isPublicBookingSlotAvailable(day.isoDate, time)"
+                          [attr.aria-label]="isPublicBookingSlotAvailable(day.isoDate, time)
+                            ? 'Reservar cita el ' + formatFullDateLabel(day.isoDate) + ' a las ' + formatTimeLabel(time)
+                            : 'Horario no disponible'"
                           (click)="openPublicBookingModal(day.isoDate, time)"
                         ></button>
                       }
@@ -180,7 +183,9 @@
               <select name="publicBookingStartModal" [(ngModel)]="publicBookingForm.startTime" (ngModelChange)="onPublicBookingStartTimeChange()" required>
                 <option value="">Selecciona</option>
                 @for (time of timeOptions; track time) {
-                  <option [value]="time">{{ formatTimeLabel(time) }}</option>
+                  <option [value]="time" [disabled]="!isPublicBookingSlotAvailable(publicBookingForm.date, time)">
+                    {{ formatTimeLabel(time) }}{{ isPublicBookingSlotAvailable(publicBookingForm.date, time) ? '' : ' - No disponible' }}
+                  </option>
                 }
               </select>
             </label>
@@ -1069,6 +1074,11 @@
                   <div class="activity-card-header">
                     <strong>{{ activity.title }}</strong>
                     @if (activity.completed) { <span class="status-badge">Finalizado</span> }
+                    @if (activity.bookingStatus) {
+                      <span class="status-badge" [style.color]="activity.bookingStatus === 'rejected' ? '#8b1e22' : activity.bookingStatus === 'pending' ? '#795600' : null" [style.background]="activity.bookingStatus === 'rejected' ? '#fde2e2' : activity.bookingStatus === 'pending' ? '#fff3c4' : null">
+                        {{ activity.bookingStatus === 'confirmed' ? 'Cliente confirmó' : activity.bookingStatus === 'rejected' ? 'Cliente rechazó' : 'Esperando confirmación' }}
+                      </span>
+                    }
                   </div>
                   <p class="activity-time">{{ formatActivityTimeRange(activity) }}</p>
                   @if (activity.location) { <p class="activity-location">{{ activity.location }}</p> }

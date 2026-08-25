@@ -11,6 +11,8 @@ export interface Activity {
   description: string;
   date: string;
   reminderMinutes: number | null;
+  bookingStatus?: 'pending' | 'confirmed' | 'rejected' | null;
+  bookingRespondedAt?: string | null;
 }
 
 export interface GeneralPending {

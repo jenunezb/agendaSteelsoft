@@ -20,6 +20,7 @@ $customerPhone = trim((string) ($payload['customerPhone'] ?? ''));
 $date = trim((string) ($payload['date'] ?? ''));
 $startTime = trim((string) ($payload['startTime'] ?? ''));
 $notes = trim((string) ($payload['notes'] ?? ''));
+$confirmationToken = bin2hex(random_bytes(32));
 
 if ($username === '' || $serviceId <= 0 || $customerName === '' || $date === '' || $startTime === '') {
     jsonResponse(['message' => 'Completa los datos de la reserva.'], 422);
@@ -33,8 +34,8 @@ if (!isValidBookingTime($startTime)) {
     jsonResponse(['message' => 'La hora de inicio no es valida.'], 422);
 }
 
-if (isPastBookingSlot($date, $startTime)) {
-    jsonResponse(['message' => 'Solo se permiten reservas desde la fecha y hora actual en adelante.'], 422);
+if (isBookingSlotTooSoon($date, $startTime)) {
+    jsonResponse(['message' => 'La cita debe reservarse con minimo una hora de anticipacion.'], 422);
 }
 
 $statement = $pdo->prepare(
@@ -104,8 +105,10 @@ if ($notes !== '') {
 
 $statement = $pdo->prepare(
     'INSERT INTO activities
-    (user_id, company_id, professional_id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes, reminder_sent_at)
-    VALUES (:user_id, :company_id, :professional_id, :title, :start_time, :end_time, :assignee, 0, 0, :location, :description, :activity_date, NULL, NULL)'
+    (user_id, company_id, professional_id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes, reminder_sent_at,
+     booking_status, booking_customer_name, booking_customer_phone, booking_confirmation_token, booking_confirmation_sent_at, booking_responded_at)
+    VALUES (:user_id, :company_id, :professional_id, :title, :start_time, :end_time, :assignee, 0, 0, :location, :description, :activity_date, NULL, NULL,
+     "pending", :customer_name, :customer_phone, :confirmation_token, NULL, NULL)'
 );
 $statement->execute([
     ':user_id' => (int) $user['id'],
@@ -118,6 +121,9 @@ $statement->execute([
     ':location' => '',
     ':description' => implode("\n", $descriptionParts),
     ':activity_date' => $date,
+    ':customer_name' => $customerName,
+    ':customer_phone' => normalizeWhatsappNumber($customerPhone),
+    ':confirmation_token' => $confirmationToken,
 ]);
 
 $activityId = (int) $pdo->lastInsertId();
@@ -772,7 +778,7 @@ function isValidBookingTime(string $time): bool
     return $parsedTime instanceof DateTimeImmutable && $parsedTime->format('H:i') === $normalizedTime;
 }
 
-function isPastBookingSlot(string $date, string $startTime): bool
+function isBookingSlotTooSoon(string $date, string $startTime): bool
 {
     $bookingDateTime = DateTimeImmutable::createFromFormat('Y-m-d H:i', $date . ' ' . substr($startTime, 0, 5));
 
@@ -780,8 +786,8 @@ function isPastBookingSlot(string $date, string $startTime): bool
         return true;
     }
 
-    $now = new DateTimeImmutable('now');
-    return $bookingDateTime < $now;
+    $minimumBookingDateTime = (new DateTimeImmutable('now'))->modify('+1 hour');
+    return $bookingDateTime < $minimumBookingDateTime;
 }
 
 function buildAdminBookingMessage(

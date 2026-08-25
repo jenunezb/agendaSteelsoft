@@ -147,6 +147,12 @@ CALL ensure_column('activities', 'professional_id', 'ALTER TABLE activities ADD 
 CALL ensure_column('activities', 'is_public', 'ALTER TABLE activities ADD COLUMN is_public TINYINT(1) NOT NULL DEFAULT 0 AFTER assignee');
 CALL ensure_column('activities', 'reminder_minutes', 'ALTER TABLE activities ADD COLUMN reminder_minutes SMALLINT UNSIGNED NULL AFTER description');
 CALL ensure_column('activities', 'reminder_sent_at', 'ALTER TABLE activities ADD COLUMN reminder_sent_at DATETIME NULL AFTER reminder_minutes');
+CALL ensure_column('activities', 'booking_status', 'ALTER TABLE activities ADD COLUMN booking_status VARCHAR(20) NULL AFTER reminder_sent_at');
+CALL ensure_column('activities', 'booking_customer_name', 'ALTER TABLE activities ADD COLUMN booking_customer_name VARCHAR(120) NOT NULL DEFAULT '''' AFTER booking_status');
+CALL ensure_column('activities', 'booking_customer_phone', 'ALTER TABLE activities ADD COLUMN booking_customer_phone VARCHAR(30) NOT NULL DEFAULT '''' AFTER booking_customer_name');
+CALL ensure_column('activities', 'booking_confirmation_token', 'ALTER TABLE activities ADD COLUMN booking_confirmation_token CHAR(64) NULL AFTER booking_customer_phone');
+CALL ensure_column('activities', 'booking_confirmation_sent_at', 'ALTER TABLE activities ADD COLUMN booking_confirmation_sent_at DATETIME NULL AFTER booking_confirmation_token');
+CALL ensure_column('activities', 'booking_responded_at', 'ALTER TABLE activities ADD COLUMN booking_responded_at DATETIME NULL AFTER booking_confirmation_sent_at');
 
 CREATE TABLE IF NOT EXISTS whatsapp_notifications (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -191,6 +197,7 @@ CALL ensure_index_name('professional_roles', 'idx_professional_roles_role', 'CRE
 CALL ensure_index_name('company_subscriptions', 'idx_company_subscriptions_company', 'CREATE INDEX idx_company_subscriptions_company ON company_subscriptions (company_id, status)');
 CALL ensure_index_name('activities', 'idx_activities_user_date', 'CREATE INDEX idx_activities_user_date ON activities (user_id, activity_date, start_time)');
 CALL ensure_index_name('activities', 'idx_activities_company_date', 'CREATE INDEX idx_activities_company_date ON activities (company_id, activity_date, start_time)');
+CALL ensure_index_name('activities', 'idx_activities_booking_token', 'CREATE UNIQUE INDEX idx_activities_booking_token ON activities (booking_confirmation_token)');
 CALL ensure_index_name('whatsapp_notifications', 'idx_whatsapp_message_sid', 'CREATE INDEX idx_whatsapp_message_sid ON whatsapp_notifications (message_sid)');
 CALL ensure_index_name('general_pendings', 'idx_general_pendings_user_date', 'CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pending_date)');
 CALL ensure_index_name('general_pendings', 'idx_general_pendings_company_date', 'CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date)');

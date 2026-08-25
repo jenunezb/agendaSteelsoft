@@ -14,7 +14,7 @@ $professionalId = (int) ($user['professionalId'] ?? 0);
 if ($method === 'GET') {
     if ($isProfessionalUser) {
         $statement = $pdo->prepare(
-            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes
+            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes, booking_status, booking_responded_at
              FROM activities
              WHERE company_id = :company_id
                AND professional_id = :professional_id
@@ -26,7 +26,7 @@ if ($method === 'GET') {
         ]);
     } else {
         $statement = $pdo->prepare(
-            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes
+            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes, booking_status, booking_responded_at
              FROM activities
              WHERE company_id = :company_id
              ORDER BY activity_date, start_time, end_time, title'
@@ -48,6 +48,8 @@ if ($method === 'GET') {
             'description' => $row['description'] ?? '',
             'date' => $row['activity_date'],
             'reminderMinutes' => isset($row['reminder_minutes']) ? (int) $row['reminder_minutes'] : null,
+            'bookingStatus' => $row['booking_status'] ?: null,
+            'bookingRespondedAt' => $row['booking_responded_at'] ?: null,
         ];
     }, $statement->fetchAll());
 

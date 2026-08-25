@@ -34,6 +34,8 @@ type RawCompanyService = Partial<CompanyService> & {
 
 type RawActivity = Partial<Activity> & {
   reminder_minutes?: number | string | null;
+  booking_status?: Activity['bookingStatus'];
+  booking_responded_at?: string | null;
 };
 
 type RawAuthUser = Partial<AuthUser> & {
@@ -447,7 +449,9 @@ export class AgendaApiService {
       date: this.normalizeApiDate(activity.date),
       reminderMinutes: this.normalizeReminderMinutes(
         activity.reminderMinutes ?? activity.reminder_minutes
-      )
+      ),
+      bookingStatus: activity.bookingStatus ?? activity.booking_status ?? null,
+      bookingRespondedAt: activity.bookingRespondedAt ?? activity.booking_responded_at ?? null
     };
   }
 
