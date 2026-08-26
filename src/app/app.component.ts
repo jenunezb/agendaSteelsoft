@@ -324,6 +324,10 @@ export class AppComponent implements OnInit {
   }
 
   protected get editingSystemAccount(): SystemAccountSummary | null {
+    if (this.editingSystemAccountId === null) {
+      return null;
+    }
+
     return (
       this.systemAccounts.find((account) => account.companyId === this.editingSystemAccountId) ?? null
     );
