@@ -767,6 +767,7 @@ function getAuthenticatedUser(): ?array
     $statement = getConnection()->prepare(
         'SELECT id, name, username, email
                 , company_id
+                , (SELECT account_type FROM companies WHERE id = users.company_id LIMIT 1) AS account_type
                 , company_role
                 , professional_id
                 , is_system_admin
@@ -791,6 +792,7 @@ function getAuthenticatedUser(): ?array
         'username' => $user['username'],
         'email' => (string) ($user['email'] ?? ''),
         'companyId' => isset($user['company_id']) ? (int) $user['company_id'] : 0,
+        'accountType' => (string) ($user['account_type'] ?? 'business'),
         'companyRole' => (string) ($user['company_role'] ?? ''),
         'professionalId' => isset($user['professional_id']) ? (int) $user['professional_id'] : 0,
         'isSystemAdmin' => !empty($user['is_system_admin']),

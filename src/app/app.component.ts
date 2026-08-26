@@ -258,6 +258,14 @@ export class AppComponent implements OnInit {
     return !this.isSystemAdmin && !this.isProfessionalUser;
   }
 
+  protected get isIndependentUser(): boolean {
+    return (
+      this.isCompanyAdminUser &&
+      (this.currentUser?.accountType === 'independent' ||
+        this.companyContext?.company.accountType === 'independent')
+    );
+  }
+
   protected get showPrivateWorkspace(): boolean {
     return this.isAuthenticated && !this.isPublicProfileMode;
   }
@@ -2622,6 +2630,10 @@ export class AppComponent implements OnInit {
     const customerName = this.activityBookingForm.customerName.trim();
     const customerPhone = this.activityBookingForm.customerPhone.trim();
     const notes = this.newActivity.description.trim();
+
+    if (this.isIndependentUser) {
+      return notes;
+    }
 
     if (selectedService) {
       metadataLines.push(`Servicio: ${selectedService.name}`);

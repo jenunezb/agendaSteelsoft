@@ -702,7 +702,7 @@
       </article>
     </section>
   } @else {
-    @if (isCompanyAdminUser) {
+    @if (isCompanyAdminUser && !isIndependentUser) {
       <nav class="panel company-admin-nav">
         <button type="button" class="company-admin-nav-button" [class.active]="companyAdminTab === 'agenda'" (click)="companyAdminTab = 'agenda'">
           Agenda
@@ -713,7 +713,53 @@
       </nav>
     }
 
-    @if (isCompanyAdminUser && companyAdminTab === 'config') {
+    @if (isIndependentUser) {
+      <section class="enterprise-overview">
+        <article class="panel enterprise-hero-panel">
+          <div class="enterprise-hero-copy">
+            <p class="label">Perfil independiente</p>
+            <h2>Tu agenda personal</h2>
+            <p>Organiza tus actividades, horarios, recordatorios y visibilidad desde un calendario exclusivo para ti.</p>
+          </div>
+        </article>
+
+        <article class="panel enterprise-admin-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="label">Recordatorios personales</p>
+              <h2>Notificaciones por WhatsApp</h2>
+              <p>Registra tu numero para recibir el aviso antes de cada actividad, segun el recordatorio que selecciones.</p>
+            </div>
+          </div>
+
+          @if (notificationSettingsError) {
+            <p class="auth-error">{{ notificationSettingsError }}</p>
+          }
+          @if (notificationSettingsMessage) {
+            <p class="success-message">{{ notificationSettingsMessage }}</p>
+          }
+
+          <form class="pending-form" (ngSubmit)="saveNotificationSettings()">
+            <label>
+              <span>Numero de WhatsApp</span>
+              <input type="tel" name="independentWhatsappNumber" [(ngModel)]="notificationSettingsForm.whatsappNumber" placeholder="Ejemplo: 573001234567" />
+            </label>
+            <label>
+              <span>Recibir recordatorios</span>
+              <select name="independentWhatsappNotificationsEnabled" [(ngModel)]="notificationSettingsForm.whatsappNotificationsEnabled">
+                <option [ngValue]="true">Activados</option>
+                <option [ngValue]="false">Desactivados</option>
+              </select>
+            </label>
+            <button type="submit" [disabled]="isUpdatingNotificationSettings">
+              {{ isUpdatingNotificationSettings ? 'Guardando...' : 'Guardar WhatsApp' }}
+            </button>
+          </form>
+        </article>
+      </section>
+    }
+
+    @if (isCompanyAdminUser && !isIndependentUser && companyAdminTab === 'config') {
       <section class="enterprise-overview">
         <article class="panel enterprise-hero-panel">
           <div class="enterprise-hero-copy">
@@ -1084,7 +1130,9 @@
           <p class="label">{{ isProfessionalUser ? 'Mi agenda' : 'Agenda del dia' }}</p>
           <h2>{{ formatDayLabel(selectedDate) }}</h2>
           <p>
-            {{ isCompanyAdminUser
+            {{ isIndependentUser
+              ? 'Crea o edita una actividad de tu agenda personal.'
+              : isCompanyAdminUser
               ? 'Desde aqui puedes crear o editar una cita para la fecha seleccionada.'
               : 'Estas viendo solo las actividades asignadas a tu calendario.' }}
           </p>
@@ -1095,19 +1143,23 @@
       <div class="activity-modal-body">
         @if (!isSystemAdmin) {
           <form class="activity-form" (ngSubmit)="addActivity()">
+            @if (!isIndependentUser) {
             <label><span>Servicio</span><select name="modalServiceId" [(ngModel)]="activityBookingForm.serviceId" (ngModelChange)="onActivityServiceChange()"><option [ngValue]="0">Selecciona</option>@for (service of activeServiceOptions; track service.id) {<option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</option>}</select></label>
             <label><span>Cliente</span><input type="text" name="modalCustomerName" [(ngModel)]="activityBookingForm.customerName" /></label>
             <label><span>Telefono cliente</span><input type="text" name="modalCustomerPhone" [(ngModel)]="activityBookingForm.customerPhone" /></label>
-            <label><span>Titulo</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" placeholder="Se llena automaticamente si eliges servicio o cliente" /></label>
+            }
+            <label><span>Titulo</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" [placeholder]="isIndependentUser ? 'Escribe el titulo de la actividad' : 'Se llena automaticamente si eliges servicio o cliente'" required /></label>
             <label><span>Fecha</span><input type="date" name="modalDate" [(ngModel)]="newActivity.date" required /></label>
             <label><span>Hora inicio</span><select name="modalStartTime" [(ngModel)]="newActivity.startTime" (ngModelChange)="onActivityStartTimeChange()" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
             <label><span>Hora fin</span><select name="modalEndTime" [(ngModel)]="newActivity.endTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
+            @if (!isIndependentUser) {
             <label><span>Profesional</span><select name="modalAssignee" [(ngModel)]="newActivity.assignee" required>@for (assignee of assigneeOptions; track assignee) {<option [value]="assignee">{{ assignee }}</option>}</select></label>
-            <label><span>Notas</span><textarea name="modalDescription" [(ngModel)]="newActivity.description" rows="3"></textarea></label>
+            }
+            <label><span>{{ isIndependentUser ? 'Descripcion' : 'Notas' }}</span><textarea name="modalDescription" [(ngModel)]="newActivity.description" rows="3"></textarea></label>
             <label><span>Recordatorio</span><select name="modalReminder" [(ngModel)]="newActivity.reminderMinutes">@for (option of reminderOptions; track option.label) {<option [ngValue]="option.value">{{ option.label }}</option>}</select></label>
             <label><span>Visibilidad</span><select name="modalVisibility" [(ngModel)]="newActivity.visibility"><option value="private">Privada</option><option value="public">Publica</option></select></label>
             <div class="form-actions">
-              <button type="submit">{{ isEditingActivity ? 'Guardar cambios' : 'Crear cita' }}</button>
+              <button type="submit">{{ isEditingActivity ? 'Guardar cambios' : (isIndependentUser ? 'Crear actividad' : 'Crear cita') }}</button>
               @if (isEditingActivity) {
                 <button type="button" class="secondary-button" (click)="cancelActivityEdit()">Cancelar edicion</button>
               }
@@ -1120,7 +1172,7 @@
             @for (activity of selectedDateActivities; track trackByActivity($index, activity)) {
               <article class="activity-card" [class.completed]="activity.completed">
                 <div>
-                  @if (!isProfessionalUser) {
+                  @if (!isProfessionalUser && !isIndependentUser) {
                     <span class="assignee-badge" [class]="getAssigneeClassName(activity.assignee)">{{ activity.assignee }}</span>
                   }
                   <div class="activity-card-header">
