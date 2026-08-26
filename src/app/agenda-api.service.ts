@@ -343,6 +343,10 @@ export class AgendaApiService {
     return this.http.put<SystemAccountSummary[]>(`${this.baseUrl}/admin.php`, payload);
   }
 
+  deleteSystemAccount(companyId: number): Observable<SystemAccountSummary[]> {
+    return this.http.delete<SystemAccountSummary[]>(`${this.baseUrl}/admin.php?companyId=${companyId}`);
+  }
+
   createPublicBooking(payload: {
     username: string;
     serviceId: number;

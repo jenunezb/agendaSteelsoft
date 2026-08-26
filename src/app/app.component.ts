@@ -93,6 +93,7 @@ export class AppComponent implements OnInit {
   protected systemAccounts: SystemAccountSummary[] = [];
   protected isLoadingSystemAccounts = false;
   protected isSavingSystemAccount = false;
+  protected deletingSystemAccountId: number | null = null;
   protected verificationToken = '';
   protected authRouteMode: 'login' | 'register' | null = null;
   protected superAdminTab: 'overview' | 'accounts' = 'overview';
@@ -514,6 +515,40 @@ export class AppComponent implements OnInit {
   protected closeSystemAccountEditor(): void {
     this.editingSystemAccountId = null;
     this.isSavingSystemAccount = false;
+  }
+
+  protected deleteSystemAccount(account: SystemAccountSummary): void {
+    if (!account.companyId || account.isSystemAdmin || this.deletingSystemAccountId !== null) {
+      return;
+    }
+
+    const accountName = account.companyName || account.ownerName;
+    const confirmed = window.confirm(
+      `¿Eliminar permanentemente la cuenta "${accountName}"? Se borraran sus usuarios, agenda, servicios y datos asociados. Esta accion no se puede deshacer.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.deletingSystemAccountId = account.companyId;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.agendaApi.deleteSystemAccount(account.companyId).subscribe({
+      next: (accounts) => {
+        this.systemAccounts = accounts;
+        this.deletingSystemAccountId = null;
+        this.companySettingsMessage = `La cuenta "${accountName}" fue eliminada.`;
+        if (this.editingSystemAccountId === account.companyId) {
+          this.closeSystemAccountEditor();
+        }
+      },
+      error: (error) => {
+        this.deletingSystemAccountId = null;
+        this.companySettingsError =
+          error?.error?.message ?? 'No fue posible eliminar la cuenta seleccionada.';
+      }
+    });
   }
 
   protected saveSystemAccount(): void {

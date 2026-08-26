@@ -632,6 +632,14 @@
                             <button type="button" class="secondary-button" (click)="openSystemAccountEditor(account)">
                               Editar plan
                             </button>
+                            <button
+                              type="button"
+                              class="danger-button"
+                              (click)="deleteSystemAccount(account)"
+                              [disabled]="deletingSystemAccountId !== null"
+                            >
+                              {{ deletingSystemAccountId === account.companyId ? 'Eliminando...' : 'Eliminar cuenta' }}
+                            </button>
                           }
                         </div>
                       </td>
@@ -646,14 +654,18 @@
             </div>
 
             @if (editingSystemAccount) {
-              <article class="company-control-card accent">
-                <div class="panel-heading">
-                  <p class="label">Superadmin</p>
-                  <h2>Editar empresa y suscripcion</h2>
-                  <p>{{ editingSystemAccount.companyName || editingSystemAccount.ownerName }}</p>
+              <div class="config-editor-overlay" (click)="closeSystemAccountEditor()">
+              <article class="panel config-editor-modal system-plan-editor-modal" (click)="$event.stopPropagation()">
+                <div class="activity-modal-header">
+                  <div>
+                    <p class="label">Superadmin</p>
+                    <h2>Editar empresa y suscripcion</h2>
+                    <p>{{ editingSystemAccount.companyName || editingSystemAccount.ownerName }}</p>
+                  </div>
+                  <button type="button" class="close-button" (click)="closeSystemAccountEditor()">Cerrar</button>
                 </div>
 
-                <div class="company-settings-layout">
+                <div class="system-plan-editor-layout">
                   <form class="pending-form" (ngSubmit)="saveSystemAccount()">
                     @if (companySettingsError) {
                       <p class="auth-error">{{ companySettingsError }}</p>
@@ -683,6 +695,7 @@
                   </div>
                 </div>
               </article>
+              </div>
             }
           </article>
         }
@@ -704,7 +717,6 @@
       <section class="enterprise-overview">
         <article class="panel enterprise-hero-panel">
           <div class="enterprise-hero-copy">
-            <p class="label">{{ companyContext?.subscription?.planName || 'Plan basico' }}</p>
             <h2>1 administrador + 4 profesionales operativos</h2>
             <p>El administrador no consume los 4 cupos. Desde aqui gestionas visibilidad, notificaciones y accesos individuales.</p>
           </div>
@@ -828,7 +840,7 @@
           <div class="company-control-grid">
             @if (companyConfigEditor === 'role') {
             <div class="config-editor-overlay" (click)="closeCompanyConfigEditor()">
-            <article class="panel config-editor-modal" (click)="$event.stopPropagation()">
+            <article class="panel config-editor-modal config-editor-role" (click)="$event.stopPropagation()">
               <div class="activity-modal-header"><div><p class="label">Especialidad</p><h2>{{ isEditingServiceRole ? 'Editar especialidad' : 'Crear especialidad' }}</h2></div><button type="button" class="close-button" (click)="closeCompanyConfigEditor()">Cerrar</button></div>
               <form class="pending-form" (ngSubmit)="saveServiceRole()">
                 <label><span>Nombre</span><input type="text" name="serviceRoleName" [(ngModel)]="serviceRoleForm.name" required /></label>
@@ -873,7 +885,7 @@
           <div class="company-control-grid">
             @if (companyConfigEditor === 'service') {
             <div class="config-editor-overlay" (click)="closeCompanyConfigEditor()">
-            <article class="panel config-editor-modal" (click)="$event.stopPropagation()">
+            <article class="panel config-editor-modal config-editor-service" (click)="$event.stopPropagation()">
               <div class="activity-modal-header"><div><p class="label">Servicio</p><h2>{{ isEditingService ? 'Editar servicio' : 'Crear servicio' }}</h2></div><button type="button" class="close-button" (click)="closeCompanyConfigEditor()">Cerrar</button></div>
               <form class="pending-form" (ngSubmit)="saveService()">
                 <label><span>Servicio</span><input type="text" name="serviceName" [(ngModel)]="serviceForm.name" required /></label>
@@ -916,7 +928,7 @@
           <div class="company-control-grid">
             @if (companyConfigEditor === 'professional') {
             <div class="config-editor-overlay" (click)="closeCompanyConfigEditor()">
-            <article class="panel config-editor-modal" (click)="$event.stopPropagation()">
+            <article class="panel config-editor-modal config-editor-professional" (click)="$event.stopPropagation()">
               <div class="activity-modal-header"><div><p class="label">Profesional</p><h2>{{ isEditingProfessional ? 'Editar profesional' : 'Crear profesional' }}</h2></div><button type="button" class="close-button" (click)="closeCompanyConfigEditor()">Cerrar</button></div>
               <form class="pending-form" (ngSubmit)="saveProfessional()">
                 <label><span>Nombre</span><input type="text" name="professionalName" [(ngModel)]="professionalForm.name" required /></label>

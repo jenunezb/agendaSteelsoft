@@ -13,6 +13,67 @@ if ($method === 'GET') {
     jsonResponse(getSystemAccountSummaries($pdo));
 }
 
+if ($method === 'DELETE') {
+    $companyId = (int) ($_GET['companyId'] ?? 0);
+
+    if ($companyId <= 0) {
+        jsonResponse(['message' => 'Empresa invalida.'], 422);
+    }
+
+    $companyStatement = $pdo->prepare('SELECT id FROM companies WHERE id = :id LIMIT 1');
+    $companyStatement->execute([':id' => $companyId]);
+
+    if (!$companyStatement->fetch()) {
+        jsonResponse(['message' => 'La cuenta seleccionada no existe.'], 404);
+    }
+
+    $systemAdminStatement = $pdo->prepare(
+        'SELECT COUNT(*) FROM users WHERE company_id = :company_id AND is_system_admin = 1'
+    );
+    $systemAdminStatement->execute([':company_id' => $companyId]);
+
+    if ((int) $systemAdminStatement->fetchColumn() > 0) {
+        jsonResponse(['message' => 'La cuenta del administrador del sistema no se puede eliminar.'], 403);
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $deleteStatements = [
+            'DELETE FROM whatsapp_notifications WHERE activity_id IN (SELECT id FROM activities WHERE company_id = :company_id)',
+            'DELETE FROM professional_roles WHERE professional_id IN (SELECT id FROM professionals WHERE company_id = :company_id)',
+            'DELETE FROM activities WHERE company_id = :company_id',
+            'DELETE FROM general_pendings WHERE company_id = :company_id',
+            'DELETE FROM financial_entries WHERE company_id = :company_id',
+            'DELETE FROM services WHERE company_id = :company_id',
+            'DELETE FROM service_roles WHERE company_id = :company_id',
+            'DELETE FROM users WHERE company_id = :company_id',
+            'DELETE FROM professionals WHERE company_id = :company_id',
+            'DELETE FROM company_subscriptions WHERE company_id = :company_id',
+            'DELETE FROM companies WHERE id = :company_id',
+        ];
+
+        foreach ($deleteStatements as $sql) {
+            $statement = $pdo->prepare($sql);
+            $statement->execute([':company_id' => $companyId]);
+        }
+
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        writeAppLog('admin', 'No fue posible eliminar la cuenta.', [
+            'company_id' => $companyId,
+            'error' => $error->getMessage(),
+        ]);
+        jsonResponse(['message' => 'No fue posible eliminar la cuenta seleccionada.'], 500);
+    }
+
+    jsonResponse(getSystemAccountSummaries($pdo));
+}
+
 if ($method !== 'PUT') {
     jsonResponse(['message' => 'Metodo no permitido.'], 405);
 }
