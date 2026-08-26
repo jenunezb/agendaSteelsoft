@@ -97,6 +97,8 @@ export class AppComponent implements OnInit {
   protected authRouteMode: 'login' | 'register' | null = null;
   protected superAdminTab: 'overview' | 'accounts' = 'overview';
   protected companyAdminTab: 'agenda' | 'config' = 'agenda';
+  protected companyConfigTab: 'general' | 'notifications' | 'roles' | 'services' | 'professionals' = 'general';
+  protected companyConfigEditor: 'role' | 'service' | 'professional' | null = null;
   protected editingSystemAccountId: number | null = null;
   protected isSubmittingPublicBooking = false;
   protected isPublicBookingModalOpen = false;
@@ -650,6 +652,7 @@ export class AppComponent implements OnInit {
         this.isSavingProfessional = false;
         this.updateProfessionalCollection(professional);
         this.resetProfessionalForm();
+        this.companyConfigEditor = null;
         this.companySettingsMessage =
           wasEditing
             ? 'Profesional actualizado.'
@@ -672,10 +675,12 @@ export class AppComponent implements OnInit {
       active: professional.active,
       roleIds: [...professional.roleIds]
     };
+    this.companyConfigEditor = 'professional';
   }
 
   protected cancelProfessionalEdit(): void {
     this.resetProfessionalForm();
+    this.companyConfigEditor = null;
   }
 
   protected removeProfessional(professionalId: number): void {
@@ -759,6 +764,7 @@ export class AppComponent implements OnInit {
         };
         this.isSavingServiceRole = false;
         this.resetServiceRoleForm();
+        this.companyConfigEditor = null;
         this.companySettingsMessage = wasEditing ? 'Especialidad actualizada.' : 'Especialidad creada.';
       },
       error: (error) => {
@@ -778,10 +784,12 @@ export class AppComponent implements OnInit {
       name: role.name,
       active: role.active
     };
+    this.companyConfigEditor = 'role';
   }
 
   protected cancelServiceRoleEdit(): void {
     this.resetServiceRoleForm();
+    this.companyConfigEditor = null;
   }
 
   protected removeServiceRole(roleId: number): void {
@@ -852,6 +860,7 @@ export class AppComponent implements OnInit {
         };
         this.isSavingService = false;
         this.resetServiceForm();
+        this.companyConfigEditor = null;
         this.companySettingsMessage = wasEditing ? 'Servicio actualizado.' : 'Servicio creado.';
       },
       error: (error) => {
@@ -875,10 +884,38 @@ export class AppComponent implements OnInit {
       description: service.description,
       active: service.active
     };
+    this.companyConfigEditor = 'service';
   }
 
   protected cancelServiceEdit(): void {
     this.resetServiceForm();
+    this.companyConfigEditor = null;
+  }
+
+  protected openCompanyConfigEditor(editor: 'role' | 'service' | 'professional'): void {
+    if (editor === 'role') {
+      this.resetServiceRoleForm();
+    } else if (editor === 'service') {
+      this.resetServiceForm();
+    } else {
+      this.resetProfessionalForm();
+    }
+
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.companyConfigEditor = editor;
+  }
+
+  protected closeCompanyConfigEditor(): void {
+    if (this.companyConfigEditor === 'role') {
+      this.resetServiceRoleForm();
+    } else if (this.companyConfigEditor === 'service') {
+      this.resetServiceForm();
+    } else if (this.companyConfigEditor === 'professional') {
+      this.resetProfessionalForm();
+    }
+
+    this.companyConfigEditor = null;
   }
 
   protected removeService(serviceId: number): void {

@@ -405,6 +405,115 @@ body {
   grid-template-columns: 1fr;
 }
 
+.config-section-tabs,
+.enterprise-overview > .enterprise-admin-panel {
+  grid-column: 1 / -1;
+}
+
+.config-section-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  overflow-x: auto;
+}
+
+.config-section-tabs button,
+.primary-action-button {
+  min-height: 42px;
+  padding: 10px 15px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: rgba(10, 10, 10, 0.07);
+  color: #171717;
+  font-weight: 700;
+}
+
+.config-section-tabs button.active,
+.primary-action-button {
+  background: linear-gradient(135deg, #111111, #2b2619);
+  color: #fffdf8;
+}
+
+.enterprise-admin-panel > .panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.config-table-card {
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.config-table-wrap {
+  overflow-x: auto;
+}
+
+.config-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  background: #fffefb;
+}
+
+.config-table th,
+.config-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(10, 10, 10, 0.08);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.config-table th {
+  color: #6c6658;
+  background: #f8f2e3;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.config-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.config-table td > strong,
+.config-table td > small {
+  display: block;
+}
+
+.config-table td > small {
+  max-width: 32ch;
+  margin-top: 4px;
+  color: #6c6658;
+}
+
+.config-table .assignee-badge {
+  margin-bottom: 0;
+}
+
+.config-editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 10, 10, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.config-editor-modal {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.config-editor-modal .pending-form {
+  margin-top: 18px;
+}
+
 .company-control-card.accent {
   background: linear-gradient(180deg, #fbfffb, #edf8ef);
   border-color: rgba(46, 160, 67, 0.18);
@@ -488,6 +597,14 @@ body {
 }
 
 @media (max-width: 720px) {
+  .enterprise-admin-panel > .panel-heading {
+    flex-direction: column;
+  }
+
+  .config-editor-overlay {
+    align-items: end;
+    padding: 12px;
+  }
   .company-control-header {
     flex-direction: column;
     align-items: flex-start;
