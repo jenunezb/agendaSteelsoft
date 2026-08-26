@@ -30,6 +30,7 @@ type RawCompanyService = Partial<CompanyService> & {
   role_id?: number | null;
   role_name?: string | null;
   duration_minutes?: number | string;
+  price?: number | string;
 };
 
 type RawActivity = Partial<Activity> & {
@@ -50,8 +51,6 @@ type RawAuthUser = Partial<AuthUser> & {
   public_url?: string;
   whatsapp_number?: string | null;
   whatsapp_notifications_enabled?: boolean | number;
-  telegram_chat_id?: string | null;
-  telegram_notifications_enabled?: boolean | number;
 };
 
 type RawAuthSession = Omit<AuthSession, 'user'> & {
@@ -156,17 +155,13 @@ export class AgendaApiService {
 
   updateNotificationSettings(
     whatsappNumber: string,
-    whatsappNotificationsEnabled: boolean,
-    telegramChatId: string,
-    telegramNotificationsEnabled: boolean
+    whatsappNotificationsEnabled: boolean
   ): Observable<AuthSession> {
     return this.http
       .put<RawAuthSession>(`${this.baseUrl}/auth.php`, {
         action: 'updateNotifications',
         whatsappNumber,
-        whatsappNotificationsEnabled,
-        telegramChatId,
-        telegramNotificationsEnabled
+        whatsappNotificationsEnabled
       })
       .pipe(map((session) => this.normalizeAuthSession(session)));
   }
@@ -480,10 +475,6 @@ export class AgendaApiService {
       whatsappNotificationsEnabled: Boolean(
         user.whatsappNotificationsEnabled ?? user.whatsapp_notifications_enabled
       ),
-      telegramChatId: user.telegramChatId?.trim() ?? user.telegram_chat_id?.trim() ?? '',
-      telegramNotificationsEnabled: Boolean(
-        user.telegramNotificationsEnabled ?? user.telegram_notifications_enabled
-      ),
       companyId: Number(user.companyId ?? user.company_id) || 0,
       companyRole: user.companyRole?.trim() ?? user.company_role?.trim() ?? '',
       professionalId: Number(user.professionalId ?? (user as RawAuthUser & { professional_id?: number }).professional_id) || 0
@@ -530,6 +521,7 @@ export class AgendaApiService {
       roleName: service.roleName?.trim() ?? service.role_name?.trim() ?? '',
       name: service.name?.trim() ?? '',
       durationMinutes: Number(service.durationMinutes ?? service.duration_minutes) || 0,
+      price: Number(service.price) || 0,
       description: service.description?.trim() ?? '',
       active: Boolean(service.active)
     };

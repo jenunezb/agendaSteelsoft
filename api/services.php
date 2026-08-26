@@ -19,6 +19,7 @@ if ($method === 'POST') {
     $name = trim((string) ($payload['name'] ?? ''));
     $description = trim((string) ($payload['description'] ?? ''));
     $durationMinutes = (int) ($payload['durationMinutes'] ?? 0);
+    $price = (float) ($payload['price'] ?? 0);
     $roleId = (int) ($payload['roleId'] ?? 0);
     $active = !array_key_exists('active', $payload) || !empty($payload['active']);
 
@@ -30,19 +31,24 @@ if ($method === 'POST') {
         jsonResponse(['message' => 'La duracion del servicio debe estar entre 15 y 480 minutos.'], 422);
     }
 
+    if (!is_finite($price) || $price < 0) {
+        jsonResponse(['message' => 'El precio del servicio no puede ser negativo.'], 422);
+    }
+
     if ($roleId <= 0 || findServiceRoleById($pdo, $companyId, $roleId) === null) {
         jsonResponse(['message' => 'Selecciona una especialidad valida para el servicio.'], 422);
     }
 
     $statement = $pdo->prepare(
-        'INSERT INTO services (company_id, role_id, name, duration_minutes, description, active)
-         VALUES (:company_id, :role_id, :name, :duration_minutes, :description, :active)'
+        'INSERT INTO services (company_id, role_id, name, duration_minutes, price, description, active)
+         VALUES (:company_id, :role_id, :name, :duration_minutes, :price, :description, :active)'
     );
     $statement->execute([
         ':company_id' => $companyId,
         ':role_id' => $roleId,
         ':name' => $name,
         ':duration_minutes' => $durationMinutes,
+        ':price' => $price,
         ':description' => $description,
         ':active' => $active ? 1 : 0,
     ]);
@@ -62,6 +68,7 @@ if ($method === 'PUT') {
     $name = trim((string) ($payload['name'] ?? ''));
     $description = trim((string) ($payload['description'] ?? ''));
     $durationMinutes = (int) ($payload['durationMinutes'] ?? 0);
+    $price = (float) ($payload['price'] ?? 0);
     $roleId = (int) ($payload['roleId'] ?? 0);
     $active = !array_key_exists('active', $payload) || !empty($payload['active']);
 
@@ -73,6 +80,10 @@ if ($method === 'PUT') {
         jsonResponse(['message' => 'La duracion del servicio debe estar entre 15 y 480 minutos.'], 422);
     }
 
+    if (!is_finite($price) || $price < 0) {
+        jsonResponse(['message' => 'El precio del servicio no puede ser negativo.'], 422);
+    }
+
     if ($roleId <= 0 || findServiceRoleById($pdo, $companyId, $roleId) === null) {
         jsonResponse(['message' => 'Selecciona una especialidad valida para el servicio.'], 422);
     }
@@ -82,6 +93,7 @@ if ($method === 'PUT') {
          SET role_id = :role_id,
              name = :name,
              duration_minutes = :duration_minutes,
+             price = :price,
              description = :description,
              active = :active
          WHERE id = :id AND company_id = :company_id'
@@ -90,6 +102,7 @@ if ($method === 'PUT') {
         ':role_id' => $roleId,
         ':name' => $name,
         ':duration_minutes' => $durationMinutes,
+        ':price' => $price,
         ':description' => $description,
         ':active' => $active ? 1 : 0,
         ':id' => $id,

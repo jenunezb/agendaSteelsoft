@@ -36,12 +36,13 @@ describe('AppComponent', () => {
           id: 1,
           name: 'Cristian',
           username: 'cristian',
+          email: 'cristian@example.com',
+          emailVerified: true,
+          isSystemAdmin: false,
           profilePublic: false,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '',
-          whatsappNotificationsEnabled: false,
-          telegramChatId: '',
-          telegramNotificationsEnabled: false
+          whatsappNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -65,12 +66,13 @@ describe('AppComponent', () => {
           id: 1,
           name: 'Cristian',
           username: 'cristian',
+          email: 'cristian@example.com',
+          emailVerified: true,
+          isSystemAdmin: false,
           profilePublic: false,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '',
-          whatsappNotificationsEnabled: false,
-          telegramChatId: '',
-          telegramNotificationsEnabled: false
+          whatsappNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -82,12 +84,13 @@ describe('AppComponent', () => {
           id: 1,
           name: 'Cristian',
           username: 'cristian',
+          email: 'cristian@example.com',
+          emailVerified: true,
+          isSystemAdmin: false,
           profilePublic: false,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '',
-          whatsappNotificationsEnabled: false,
-          telegramChatId: '',
-          telegramNotificationsEnabled: false
+          whatsappNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -100,12 +103,13 @@ describe('AppComponent', () => {
           id: 1,
           name: 'Cristian',
           username: 'cristian',
+          email: 'cristian@example.com',
+          emailVerified: true,
+          isSystemAdmin: false,
           profilePublic: true,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '',
-          whatsappNotificationsEnabled: false,
-          telegramChatId: '',
-          telegramNotificationsEnabled: false
+          whatsappNotificationsEnabled: false
         },
         canRegister: false
       })
@@ -117,12 +121,13 @@ describe('AppComponent', () => {
           id: 1,
           name: 'Cristian',
           username: 'cristian',
+          email: 'cristian@example.com',
+          emailVerified: true,
+          isSystemAdmin: false,
           profilePublic: false,
           publicUrl: 'https://agenda.steelsoft.com.co/cristian',
           whatsappNumber: '573001234567',
-          whatsappNotificationsEnabled: true,
-          telegramChatId: '123456789',
-          telegramNotificationsEnabled: true
+          whatsappNotificationsEnabled: true
         },
         canRegister: false
       })
@@ -238,6 +243,8 @@ describe('AppComponent', () => {
           title: 'Pago mensual',
           type: 'income',
           amount: 800000,
+          participationPercentage: null,
+          participantAmount: 0,
           assignee: 'Steelsoft',
           description: 'Cliente recurrente',
           date: '2026-05-06'
@@ -458,6 +465,8 @@ describe('AppComponent', () => {
       title: 'Abono parcial',
       type: 'income' as const,
       amount: 50000,
+      participationPercentage: null,
+      participantAmount: 0,
       assignee: 'Steelsoft',
       description: 'Pago recibido',
       date: undefined as unknown as string

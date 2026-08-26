@@ -58,8 +58,6 @@ export interface AuthUser {
   publicUrl: string;
   whatsappNumber: string;
   whatsappNotificationsEnabled: boolean;
-  telegramChatId: string;
-  telegramNotificationsEnabled: boolean;
   companyId?: number;
   companyRole?: string;
   professionalId?: number;
@@ -149,6 +147,7 @@ export interface CompanyService {
   roleName: string;
   name: string;
   durationMinutes: number;
+  price: number;
   description: string;
   active: boolean;
 }

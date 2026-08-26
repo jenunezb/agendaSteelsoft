@@ -142,21 +142,3 @@ Si usas Twilio Sandbox, recuerda unir primero el numero destino al sandbox antes
 ## 6. Nota importante
 
 El archivo `api/config.php` contiene credenciales reales de base de datos. No lo publiques en un repositorio publico sin protegerlo antes.
-
-## 7. Configurar Telegram
-
-1. Crea un bot en Telegram usando `@BotFather`.
-2. Guarda en `api/config.php` o en variables de entorno:
-   - `telegram_bot_token`
-   - `telegram_bot_username` opcional
-   - `telegram_cron_secret`
-3. Sube `api/send-telegram-reminders.php`.
-4. Haz que cada usuario le escriba primero al bot y luego pegue su `chat_id` en la agenda.
-
-Para probar por URL:
-
-- `https://agenda.steelsoft.com.co/api/send-telegram-reminders.php?key=TU_SECRETO&test_chat_id=123456789`
-
-Para cron por URL:
-
-- `https://agenda.steelsoft.com.co/api/send-telegram-reminders.php?key=TU_SECRETO`

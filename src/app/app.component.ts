@@ -114,9 +114,7 @@ export class AppComponent implements OnInit {
   };
   protected notificationSettingsForm = {
     whatsappNumber: '',
-    whatsappNotificationsEnabled: false,
-    telegramChatId: '',
-    telegramNotificationsEnabled: false
+    whatsappNotificationsEnabled: false
   };
   protected companyProfileForm = {
     name: '',
@@ -156,6 +154,7 @@ export class AppComponent implements OnInit {
     name: '',
     roleId: 0,
     durationMinutes: 60,
+    price: 0,
     description: '',
     active: true
   };
@@ -443,17 +442,9 @@ export class AppComponent implements OnInit {
 
     const whatsappNumber = this.notificationSettingsForm.whatsappNumber.trim();
     const whatsappNotificationsEnabled = this.notificationSettingsForm.whatsappNotificationsEnabled;
-    const telegramChatId = this.notificationSettingsForm.telegramChatId.trim();
-    const telegramNotificationsEnabled = this.notificationSettingsForm.telegramNotificationsEnabled;
 
     if (whatsappNotificationsEnabled && !whatsappNumber) {
       this.notificationSettingsError = 'Ingresa el numero de WhatsApp para activar notificaciones.';
-      this.notificationSettingsMessage = '';
-      return;
-    }
-
-    if (telegramNotificationsEnabled && !telegramChatId) {
-      this.notificationSettingsError = 'Ingresa el chat ID de Telegram para activar notificaciones.';
       this.notificationSettingsMessage = '';
       return;
     }
@@ -464,9 +455,7 @@ export class AppComponent implements OnInit {
     this.agendaApi
       .updateNotificationSettings(
         whatsappNumber,
-        whatsappNotificationsEnabled,
-        telegramChatId,
-        telegramNotificationsEnabled
+        whatsappNotificationsEnabled
       )
       .subscribe({
         next: (session) => {
@@ -824,12 +813,13 @@ export class AppComponent implements OnInit {
       name: this.serviceForm.name.trim(),
       roleId: Number(this.serviceForm.roleId) || 0,
       durationMinutes: Number(this.serviceForm.durationMinutes) || 0,
+      price: Number(this.serviceForm.price) || 0,
       description: this.serviceForm.description.trim(),
       active: this.serviceForm.active
     };
 
-    if (!payload.name || payload.roleId <= 0) {
-      this.companySettingsError = 'Completa nombre y especialidad del servicio.';
+    if (!payload.name || payload.roleId <= 0 || payload.price < 0) {
+      this.companySettingsError = 'Completa nombre y especialidad, e ingresa un precio valido para el servicio.';
       this.companySettingsMessage = '';
       return;
     }
@@ -881,6 +871,7 @@ export class AppComponent implements OnInit {
       name: service.name,
       roleId: service.roleId ?? 0,
       durationMinutes: service.durationMinutes,
+      price: service.price,
       description: service.description,
       active: service.active
     };
@@ -2059,6 +2050,7 @@ export class AppComponent implements OnInit {
       name: '',
       roleId: this.serviceRoles[0]?.id ?? 0,
       durationMinutes: 60,
+      price: 0,
       description: '',
       active: true
     };
@@ -2094,9 +2086,7 @@ export class AppComponent implements OnInit {
     if (this.currentUser) {
       this.notificationSettingsForm = {
         whatsappNumber: this.currentUser.whatsappNumber,
-        whatsappNotificationsEnabled: this.currentUser.whatsappNotificationsEnabled,
-        telegramChatId: this.currentUser.telegramChatId,
-        telegramNotificationsEnabled: this.currentUser.telegramNotificationsEnabled
+        whatsappNotificationsEnabled: this.currentUser.whatsappNotificationsEnabled
       };
       if (this.currentUser.isSystemAdmin) {
         this.companyContext = null;
@@ -2115,9 +2105,7 @@ export class AppComponent implements OnInit {
     this.systemAccounts = [];
     this.notificationSettingsForm = {
       whatsappNumber: '',
-      whatsappNotificationsEnabled: false,
-      telegramChatId: '',
-      telegramNotificationsEnabled: false
+      whatsappNotificationsEnabled: false
     };
     this.resetProfessionalForm();
     this.authMode = 'login';

@@ -266,6 +266,7 @@ function ensureSchema(PDO $pdo, string $databaseName): void
             role_id INT UNSIGNED NULL,
             name VARCHAR(150) NOT NULL,
             duration_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 30,
+            price DECIMAL(12,2) NOT NULL DEFAULT 0,
             description TEXT NOT NULL,
             active TINYINT(1) NOT NULL DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -410,20 +411,8 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'whatsapp_notifications_enabled',
         'ALTER TABLE users ADD COLUMN whatsapp_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER whatsapp_number'
     );
-    ensureColumnExists(
-        $pdo,
-        $databaseName,
-        'users',
-        'telegram_chat_id',
-        'ALTER TABLE users ADD COLUMN telegram_chat_id VARCHAR(30) NOT NULL DEFAULT "" AFTER whatsapp_notifications_enabled'
-    );
-    ensureColumnExists(
-        $pdo,
-        $databaseName,
-        'users',
-        'telegram_notifications_enabled',
-        'ALTER TABLE users ADD COLUMN telegram_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER telegram_chat_id'
-    );
+    dropColumnIfExists($pdo, $databaseName, 'users', 'telegram_notifications_enabled');
+    dropColumnIfExists($pdo, $databaseName, 'users', 'telegram_chat_id');
     ensureColumnExists(
         $pdo,
         $databaseName,
@@ -444,6 +433,13 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'services',
         'duration_minutes',
         'ALTER TABLE services ADD COLUMN duration_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 30 AFTER name'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'services',
+        'price',
+        'ALTER TABLE services ADD COLUMN price DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER duration_minutes'
     );
     ensureColumnExists(
         $pdo,
@@ -604,6 +600,25 @@ function ensureColumnExists(
     }
 }
 
+function dropColumnIfExists(PDO $pdo, string $databaseName, string $tableName, string $columnName): void
+{
+    $statement = $pdo->prepare(
+        'SELECT COUNT(*)
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = :database_name
+           AND TABLE_NAME = :table_name
+           AND COLUMN_NAME = :column_name'
+    );
+    $statement->execute([
+        ':database_name' => $databaseName,
+        ':table_name' => $tableName,
+        ':column_name' => $columnName,
+    ]);
+
+    if ((int) $statement->fetchColumn() > 0) {
+        $pdo->exec(sprintf('ALTER TABLE `%s` DROP COLUMN `%s`', $tableName, $columnName));
+    }
+}
 function ensureIndexExists(
     PDO $pdo,
     string $databaseName,
@@ -759,8 +774,6 @@ function getAuthenticatedUser(): ?array
                 , profile_public
                 , whatsapp_number
                 , whatsapp_notifications_enabled
-                , telegram_chat_id
-                , telegram_notifications_enabled
          FROM users
          WHERE id = :id'
     );
@@ -786,8 +799,6 @@ function getAuthenticatedUser(): ?array
         'publicUrl' => buildPublicProfileUrl((string) $user['username']),
         'whatsappNumber' => (string) ($user['whatsapp_number'] ?? ''),
         'whatsappNotificationsEnabled' => !empty($user['whatsapp_notifications_enabled']),
-        'telegramChatId' => (string) ($user['telegram_chat_id'] ?? ''),
-        'telegramNotificationsEnabled' => !empty($user['telegram_notifications_enabled']),
     ];
 }
 
@@ -842,7 +853,7 @@ function hasUsers(PDO $pdo): bool
 function findUserByUsername(PDO $pdo, string $username): ?array
 {
     $statement = $pdo->prepare(
-        'SELECT id, name, username, email, password_hash, company_id, company_role, professional_id, is_system_admin, email_verified_at, verification_token_hash, verification_token_expires_at, verification_sent_at, profile_public, whatsapp_number, whatsapp_notifications_enabled, telegram_chat_id, telegram_notifications_enabled
+        'SELECT id, name, username, email, password_hash, company_id, company_role, professional_id, is_system_admin, email_verified_at, verification_token_hash, verification_token_expires_at, verification_sent_at, profile_public, whatsapp_number, whatsapp_notifications_enabled
          FROM users
          WHERE username = :username'
     );
@@ -855,7 +866,7 @@ function findUserByUsername(PDO $pdo, string $username): ?array
 function findUserByEmail(PDO $pdo, string $email): ?array
 {
     $statement = $pdo->prepare(
-        'SELECT id, name, username, email, password_hash, company_id, company_role, professional_id, is_system_admin, email_verified_at, verification_token_hash, verification_token_expires_at, verification_sent_at, profile_public, whatsapp_number, whatsapp_notifications_enabled, telegram_chat_id, telegram_notifications_enabled
+        'SELECT id, name, username, email, password_hash, company_id, company_role, professional_id, is_system_admin, email_verified_at, verification_token_hash, verification_token_expires_at, verification_sent_at, profile_public, whatsapp_number, whatsapp_notifications_enabled
          FROM users
          WHERE email = :email'
     );
@@ -868,7 +879,7 @@ function findUserByEmail(PDO $pdo, string $email): ?array
 function findProfessionalUserByProfessionalId(PDO $pdo, int $professionalId): ?array
 {
     $statement = $pdo->prepare(
-        'SELECT id, name, username, email, password_hash, company_id, company_role, professional_id, is_system_admin, email_verified_at, verification_token_hash, verification_token_expires_at, verification_sent_at, profile_public, whatsapp_number, whatsapp_notifications_enabled, telegram_chat_id, telegram_notifications_enabled
+        'SELECT id, name, username, email, password_hash, company_id, company_role, professional_id, is_system_admin, email_verified_at, verification_token_hash, verification_token_expires_at, verification_sent_at, profile_public, whatsapp_number, whatsapp_notifications_enabled
          FROM users
          WHERE professional_id = :professional_id
          LIMIT 1'
@@ -1120,6 +1131,7 @@ function getCompanyServices(PDO $pdo, int $companyId, bool $onlyActive = false):
             sr.name AS role_name,
             s.name,
             s.duration_minutes,
+            s.price,
             s.description,
             s.active
          FROM services s
@@ -1139,6 +1151,7 @@ function getCompanyServices(PDO $pdo, int $companyId, bool $onlyActive = false):
             'roleName' => (string) ($row['role_name'] ?? ''),
             'name' => (string) ($row['name'] ?? ''),
             'durationMinutes' => (int) ($row['duration_minutes'] ?? 30),
+            'price' => (float) ($row['price'] ?? 0),
             'description' => (string) ($row['description'] ?? ''),
             'active' => !empty($row['active']),
         ];
@@ -1165,7 +1178,7 @@ function findServiceRoleById(PDO $pdo, int $companyId, int $roleId): ?array
 function findServiceById(PDO $pdo, int $companyId, int $serviceId): ?array
 {
     $statement = $pdo->prepare(
-        'SELECT s.id, s.company_id, s.role_id, sr.name AS role_name, s.name, s.duration_minutes, s.description, s.active
+        'SELECT s.id, s.company_id, s.role_id, sr.name AS role_name, s.name, s.duration_minutes, s.price, s.description, s.active
          FROM services s
          LEFT JOIN service_roles sr
            ON sr.id = s.role_id
@@ -1190,6 +1203,7 @@ function findServiceById(PDO $pdo, int $companyId, int $serviceId): ?array
         'roleName' => (string) ($service['role_name'] ?? ''),
         'name' => (string) ($service['name'] ?? ''),
         'durationMinutes' => (int) ($service['duration_minutes'] ?? 30),
+        'price' => (float) ($service['price'] ?? 0),
         'description' => (string) ($service['description'] ?? ''),
         'active' => !empty($service['active']),
     ];
@@ -1796,12 +1810,6 @@ function normalizeReminderMinutes(mixed $value): ?int
     return $normalizedValue;
 }
 
-function normalizeTelegramChatId(string $value): string
-{
-    $normalizedValue = preg_replace('/[^0-9-]+/', '', $value) ?? '';
-    return trim($normalizedValue);
-}
-
 function generateEmailVerificationToken(PDO $pdo, int $userId): string
 {
     $token = bin2hex(random_bytes(32));
@@ -2127,16 +2135,5 @@ function getWhatsappConfig(): array
         'twilio_booking_admin_content_sid' => (string) getenv('TWILIO_BOOKING_ADMIN_CONTENT_SID') ?: (string) ($config['twilio_booking_admin_content_sid'] ?? ''),
         'twilio_booking_professional_content_sid' => (string) getenv('TWILIO_BOOKING_PROFESSIONAL_CONTENT_SID') ?: (string) ($config['twilio_booking_professional_content_sid'] ?? ''),
         'twilio_booking_customer_content_sid' => (string) getenv('TWILIO_BOOKING_CUSTOMER_CONTENT_SID') ?: (string) ($config['twilio_booking_customer_content_sid'] ?? ''),
-    ];
-}
-
-function getTelegramConfig(): array
-{
-    $config = require __DIR__ . '/config.php';
-
-    return [
-        'bot_token' => (string) getenv('TELEGRAM_BOT_TOKEN') ?: (string) ($config['telegram_bot_token'] ?? ''),
-        'bot_username' => (string) getenv('TELEGRAM_BOT_USERNAME') ?: (string) ($config['telegram_bot_username'] ?? ''),
-        'cron_secret' => (string) getenv('TELEGRAM_CRON_SECRET') ?: (string) ($config['telegram_cron_secret'] ?? ''),
     ];
 }

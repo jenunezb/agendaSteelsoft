@@ -71,6 +71,26 @@ BEGIN
   END IF;
 END$$
 
+DROP PROCEDURE IF EXISTS drop_column_if_exists$$
+CREATE PROCEDURE drop_column_if_exists(
+  IN p_table VARCHAR(128),
+  IN p_column VARCHAR(128)
+)
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = p_table
+      AND COLUMN_NAME = p_column
+  ) THEN
+    SET @sql = CONCAT('ALTER TABLE `', p_table, '` DROP COLUMN `', p_column, '`');
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END IF;
+END$$
+
 DROP PROCEDURE IF EXISTS ensure_index_name$$
 CREATE PROCEDURE ensure_index_name(
   IN p_table VARCHAR(128),
@@ -111,8 +131,8 @@ CALL ensure_column('users', 'verification_sent_at', 'ALTER TABLE users ADD COLUM
 CALL ensure_column('users', 'profile_public', 'ALTER TABLE users ADD COLUMN profile_public TINYINT(1) NOT NULL DEFAULT 1 AFTER password_hash');
 CALL ensure_column('users', 'whatsapp_number', 'ALTER TABLE users ADD COLUMN whatsapp_number VARCHAR(20) NOT NULL DEFAULT '''' AFTER profile_public');
 CALL ensure_column('users', 'whatsapp_notifications_enabled', 'ALTER TABLE users ADD COLUMN whatsapp_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER whatsapp_number');
-CALL ensure_column('users', 'telegram_chat_id', 'ALTER TABLE users ADD COLUMN telegram_chat_id VARCHAR(30) NOT NULL DEFAULT '''' AFTER whatsapp_notifications_enabled');
-CALL ensure_column('users', 'telegram_notifications_enabled', 'ALTER TABLE users ADD COLUMN telegram_notifications_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER telegram_chat_id');
+CALL drop_column_if_exists('users', 'telegram_notifications_enabled');
+CALL drop_column_if_exists('users', 'telegram_chat_id');
 
 CALL ensure_column('professionals', 'linked_user_id', 'ALTER TABLE professionals ADD COLUMN linked_user_id INT UNSIGNED NULL AFTER phone');
 CREATE TABLE IF NOT EXISTS service_roles (
@@ -129,11 +149,13 @@ CREATE TABLE IF NOT EXISTS services (
   role_id INT UNSIGNED NULL,
   name VARCHAR(150) NOT NULL,
   duration_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 30,
+  price DECIMAL(12,2) NOT NULL DEFAULT 0,
   description TEXT NOT NULL,
   active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+CALL ensure_column('services', 'price', 'ALTER TABLE services ADD COLUMN price DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER duration_minutes');
 CREATE TABLE IF NOT EXISTS professional_roles (
   professional_id INT UNSIGNED NOT NULL,
   role_id INT UNSIGNED NOT NULL,
@@ -205,6 +227,7 @@ CALL ensure_index_name('financial_entries', 'idx_financial_entries_user_date', '
 CALL ensure_index_name('financial_entries', 'idx_financial_entries_company_date', 'CREATE INDEX idx_financial_entries_company_date ON financial_entries (company_id, entry_date)');
 
 DROP PROCEDURE IF EXISTS ensure_column;
+DROP PROCEDURE IF EXISTS drop_column_if_exists;
 DROP PROCEDURE IF EXISTS ensure_index_name;
 
 COMMIT;

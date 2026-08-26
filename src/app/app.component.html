@@ -151,7 +151,7 @@
               <select name="publicBookingServiceModal" [(ngModel)]="publicBookingForm.serviceId" (ngModelChange)="onPublicBookingServiceChange()" required>
                 <option [ngValue]="0">Selecciona</option>
                 @for (service of publicProfileServices; track service.id) {
-                  <option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min</option>
+                  <option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</option>
                 }
               </select>
             </label>
@@ -229,6 +229,10 @@
             <p class="activity-launch-copy">
               Servicio:
               <strong>{{ selectedPublicService?.name || 'Selecciona un servicio' }}</strong>
+            </p>
+            <p class="activity-launch-copy">
+              Precio:
+              <strong>{{ selectedPublicService ? formatCurrency(selectedPublicService.price) : 'Selecciona un servicio' }}</strong>
             </p>
             <p class="activity-launch-copy">
               Inicio:
@@ -443,7 +447,7 @@
             <h2>Politica de privacidad</h2>
             <p>
               Steelsoft Agenda trata la informacion necesaria para prestar el servicio de agenda,
-              organizacion personal y recordatorios operativos por Telegram.
+              organizacion personal y recordatorios operativos.
             </p>
           </div>
           <button type="button" class="close-button" (click)="closePrivacyModal()">Cerrar</button>
@@ -453,7 +457,7 @@
           <section>
             <h3>Datos que recopilamos</h3>
             <p>
-              Nombre, usuario, contrasena cifrada, chat ID de Telegram y los eventos, pendientes,
+              Nombre, usuario, contrasena cifrada y los eventos, pendientes,
               notas y configuraciones creadas por cada usuario.
             </p>
           </section>
@@ -463,14 +467,6 @@
             <p>
               Para autenticar el acceso, guardar la agenda personal, mostrar actividades, gestionar
               pendientes y enviar recordatorios antes de un evento cuando el usuario active esa opcion.
-            </p>
-          </section>
-
-          <section>
-            <h3>Uso de Telegram</h3>
-            <p>
-              Los mensajes se usan unicamente para avisos operativos relacionados con eventos creados
-              por el propio usuario. No utilizamos este canal para spam ni mensajes no solicitados.
             </p>
           </section>
 
@@ -763,14 +759,6 @@
                 <p>Estado actual: {{ companyContext?.company?.status || 'active' }}</p>
               </div>
             </article>
-            <article class="company-control-card accent">
-              <div class="pending-form company-visibility-card">
-                <p class="label">Suscripcion</p>
-                <strong>{{ companyContext?.subscription?.planName || 'Plan gratuito' }}</strong>
-                <p>Codigo: {{ companyContext?.subscription?.planCode || 'free' }}</p>
-                <p>Estado: {{ companyContext?.subscription?.status || 'active' }}</p>
-              </div>
-            </article>
             <article class="company-control-card">
               <form class="pending-form" (ngSubmit)="saveCompanyProfile()">
                 <label><span>Nombre de empresa</span><input type="text" name="companyName" [(ngModel)]="companyProfileForm.name" required /></label>
@@ -804,9 +792,7 @@
           }
           <form class="pending-form" (ngSubmit)="saveNotificationSettings()">
             <label><span>WhatsApp</span><input type="text" name="whatsappNumber" [(ngModel)]="notificationSettingsForm.whatsappNumber" /></label>
-            <label><span>Chat ID Telegram</span><input type="text" name="telegramChatId" [(ngModel)]="notificationSettingsForm.telegramChatId" /></label>
             <label><span>WhatsApp activo</span><select name="whatsappNotificationsEnabled" [(ngModel)]="notificationSettingsForm.whatsappNotificationsEnabled"><option [ngValue]="true">Si</option><option [ngValue]="false">No</option></select></label>
-            <label><span>Telegram activo</span><select name="telegramNotificationsEnabled" [(ngModel)]="notificationSettingsForm.telegramNotificationsEnabled"><option [ngValue]="true">Si</option><option [ngValue]="false">No</option></select></label>
             <button type="submit" [disabled]="isUpdatingNotificationSettings">{{ isUpdatingNotificationSettings ? 'Guardando...' : 'Guardar notificaciones' }}</button>
           </form>
         </article>
@@ -875,6 +861,7 @@
                 <label><span>Servicio</span><input type="text" name="serviceName" [(ngModel)]="serviceForm.name" required /></label>
                 <label><span>Especialidad</span><select name="serviceRoleId" [(ngModel)]="serviceForm.roleId" required><option [ngValue]="0">Selecciona</option>@for (role of serviceRoles; track role.id) {<option [ngValue]="role.id">{{ role.name }}</option>}</select></label>
                 <label><span>Duracion (minutos)</span><input type="number" name="serviceDurationMinutes" [(ngModel)]="serviceForm.durationMinutes" min="15" step="15" required /></label>
+                <label><span>Precio (COP)</span><input type="number" name="servicePrice" [(ngModel)]="serviceForm.price" min="0" step="1000" required /></label>
                 <label><span>Descripcion</span><textarea name="serviceDescription" [(ngModel)]="serviceForm.description" rows="3"></textarea></label>
                 <label><span>Estado</span><select name="serviceActive" [(ngModel)]="serviceForm.active"><option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option></select></label>
                 <div class="form-actions">
@@ -892,7 +879,7 @@
                     <div>
                       <span class="assignee-badge" [class.assignee-steelsoft]="service.active">{{ service.active ? 'Activo' : 'Inactivo' }}</span>
                       <strong>{{ service.name }}</strong>
-                      <p>{{ service.roleName }} · {{ service.durationMinutes }} min</p>
+                      <p>{{ service.roleName }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</p>
                       @if (service.description) { <p>{{ service.description }}</p> }
                     </div>
                     <div class="card-actions">
@@ -1043,7 +1030,7 @@
       <div class="activity-modal-body">
         @if (!isSystemAdmin) {
           <form class="activity-form" (ngSubmit)="addActivity()">
-            <label><span>Servicio</span><select name="modalServiceId" [(ngModel)]="activityBookingForm.serviceId" (ngModelChange)="onActivityServiceChange()"><option [ngValue]="0">Selecciona</option>@for (service of activeServiceOptions; track service.id) {<option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min</option>}</select></label>
+            <label><span>Servicio</span><select name="modalServiceId" [(ngModel)]="activityBookingForm.serviceId" (ngModelChange)="onActivityServiceChange()"><option [ngValue]="0">Selecciona</option>@for (service of activeServiceOptions; track service.id) {<option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</option>}</select></label>
             <label><span>Cliente</span><input type="text" name="modalCustomerName" [(ngModel)]="activityBookingForm.customerName" /></label>
             <label><span>Telefono cliente</span><input type="text" name="modalCustomerPhone" [(ngModel)]="activityBookingForm.customerPhone" /></label>
             <label><span>Titulo</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" placeholder="Se llena automaticamente si eliges servicio o cliente" /></label>

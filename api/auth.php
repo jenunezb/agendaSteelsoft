@@ -60,30 +60,20 @@ if ($method === 'PUT') {
     if ($action === 'updateNotifications') {
         $whatsappNumber = normalizeWhatsappNumber((string) ($payload['whatsappNumber'] ?? ''));
         $whatsappNotificationsEnabled = !empty($payload['whatsappNotificationsEnabled']) ? 1 : 0;
-        $telegramChatId = normalizeTelegramChatId((string) ($payload['telegramChatId'] ?? ''));
-        $telegramNotificationsEnabled = !empty($payload['telegramNotificationsEnabled']) ? 1 : 0;
 
         if ($whatsappNotificationsEnabled && $whatsappNumber === '') {
             jsonResponse(['message' => 'Debes indicar un numero de WhatsApp para activar notificaciones.'], 422);
         }
 
-        if ($telegramNotificationsEnabled && $telegramChatId === '') {
-            jsonResponse(['message' => 'Debes indicar un chat ID de Telegram para activar notificaciones.'], 422);
-        }
-
         $statement = $pdo->prepare(
             'UPDATE users
              SET whatsapp_number = :whatsapp_number,
-                 whatsapp_notifications_enabled = :whatsapp_notifications_enabled,
-                 telegram_chat_id = :telegram_chat_id,
-                 telegram_notifications_enabled = :telegram_notifications_enabled
+                 whatsapp_notifications_enabled = :whatsapp_notifications_enabled
              WHERE id = :id'
         );
         $statement->execute([
             ':whatsapp_number' => $whatsappNumber,
             ':whatsapp_notifications_enabled' => $whatsappNotificationsEnabled,
-            ':telegram_chat_id' => $telegramChatId,
-            ':telegram_notifications_enabled' => $telegramNotificationsEnabled,
             ':id' => $user['id'],
         ]);
     }

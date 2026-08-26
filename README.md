@@ -134,27 +134,6 @@ Examples:
 - `php run-whatsapp-booking-test.php --send --recipient=customer --service-name=Consulta --customer-name=Laura 573001234567`
 - `https://tu-dominio/api/send-whatsapp-booking-tests.php?key=TU_SECRETO&dry_run=1&recipient=all&test_number=573001234567`
 
-## Telegram reminders
-
-The backend also supports free reminders through Telegram bots. Each user can save a Telegram `chat_id` in the sidebar and enable notifications for their events.
-
-Required Telegram settings:
-
-- `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_BOT_USERNAME` optional, useful for onboarding instructions
-- `TELEGRAM_CRON_SECRET` recommended if you trigger the script by URL
-
-Helpful test modes:
-
-- `api/send-telegram-reminders.php?key=TU_SECRETO&dry_run=1` previews the outgoing payload
-- `api/send-telegram-reminders.php?key=TU_SECRETO&test_chat_id=123456789` sends a direct test to a Telegram chat
-- `api/send-telegram-reminders.php?key=TU_SECRETO&activity_id=123&force=1` sends a manual test for a specific activity
-
-Telegram Bot API references:
-
-- `sendMessage`: https://core.telegram.org/bots/api/#sendmessage
-- `getUpdates`: https://core.telegram.org/bots/api/#getupdates
-
 ## Running unit tests
 
 To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
