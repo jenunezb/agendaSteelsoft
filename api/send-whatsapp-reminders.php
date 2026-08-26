@@ -40,6 +40,7 @@ if ($testNumber !== '') {
         'reminder_minutes' => 5,
         'whatsapp_number' => $testNumber,
         'user_name' => 'Steelsoft',
+        'account_type' => 'independent',
     ];
 } else {
     $pdo = getConnection();
@@ -51,9 +52,11 @@ $query = 'SELECT
     activities.location,
     activities.reminder_minutes,
     users.whatsapp_number,
-    users.name AS user_name
+    users.name AS user_name,
+    companies.account_type
  FROM activities
  INNER JOIN users ON users.id = activities.user_id
+ INNER JOIN companies ON companies.id = activities.company_id
  WHERE activities.completed = 0
    AND activities.reminder_minutes IS NOT NULL
    AND users.whatsapp_notifications_enabled = 1
@@ -248,11 +251,10 @@ function sendTwilioWhatsappReminder(array $config, array $activity): array
 
     $from = normalizeTwilioWhatsappAddress($sender);
     $to = normalizeTwilioWhatsappAddress((string) $activity['whatsapp_number']);
-    $contentSid = !empty($activity['is_booking_confirmation'])
-        ? trim((string) ($config['twilio_booking_confirmation_content_sid'] ?? ''))
-        : trim((string) ($config['twilio_content_sid'] ?? ''));
+    $messagingServiceSid = trim((string) ($config['twilio_messaging_service_sid'] ?? ''));
+    $contentSid = resolveTwilioReminderContentSid($config, $activity);
 
-    if ($from === '' || $to === '') {
+    if (($from === '' && $messagingServiceSid === '') || $to === '') {
         return [
             'success' => false,
             'message' => 'Los numeros de origen o destino de Twilio no son validos.',
@@ -264,10 +266,13 @@ function sendTwilioWhatsappReminder(array $config, array $activity): array
         'https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json',
         rawurlencode($accountSid)
     );
-    $requestPayload = [
-        'From' => $from,
-        'To' => $to,
-    ];
+    $requestPayload = ['To' => $to];
+
+    if ($messagingServiceSid !== '') {
+        $requestPayload['MessagingServiceSid'] = $messagingServiceSid;
+    } else {
+        $requestPayload['From'] = $from;
+    }
 
     if ($contentSid !== '') {
         $requestPayload['ContentSid'] = $contentSid;
@@ -480,11 +485,17 @@ function buildWhatsappPayloadPreview(array $config, array $activity): array
     }
 
     $payload = [
-        'From' => normalizeTwilioWhatsappAddress($sender),
         'To' => normalizeTwilioWhatsappAddress((string) $activity['whatsapp_number']),
     ];
+    $messagingServiceSid = trim((string) ($config['twilio_messaging_service_sid'] ?? ''));
 
-    $contentSid = trim((string) ($config['twilio_content_sid'] ?? ''));
+    if ($messagingServiceSid !== '') {
+        $payload['MessagingServiceSid'] = $messagingServiceSid;
+    } else {
+        $payload['From'] = normalizeTwilioWhatsappAddress($sender);
+    }
+
+    $contentSid = resolveTwilioReminderContentSid($config, $activity);
 
     if ($contentSid !== '') {
         $payload['ContentSid'] = $contentSid;
@@ -595,6 +606,13 @@ function buildTwilioContentVariablesJson(array $activity): string
             '3' => $token,
             '4' => $token,
         ];
+    } elseif (($activity['account_type'] ?? '') === 'independent') {
+        $variables = [
+            '1' => (string) $activity['user_name'],
+            '2' => (string) $activity['title'],
+            '3' => $date->format('d/m/Y'),
+            '4' => $date->format('H:i'),
+        ];
     } else {
         $variables = [
             '1' => $date->format('d/m'),
@@ -609,4 +627,17 @@ function buildTwilioContentVariablesJson(array $activity): string
     }
 
     return $json;
+}
+
+function resolveTwilioReminderContentSid(array $config, array $activity): string
+{
+    if (!empty($activity['is_booking_confirmation'])) {
+        return trim((string) ($config['twilio_booking_confirmation_content_sid'] ?? ''));
+    }
+
+    if (($activity['account_type'] ?? '') === 'independent') {
+        return trim((string) ($config['twilio_template_agendamiento_sid'] ?? ''));
+    }
+
+    return trim((string) ($config['twilio_content_sid'] ?? ''));
 }

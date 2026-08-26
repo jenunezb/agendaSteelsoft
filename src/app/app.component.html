@@ -1150,13 +1150,25 @@
             }
             <label><span>Titulo</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" [placeholder]="isIndependentUser ? 'Escribe el titulo de la actividad' : 'Se llena automaticamente si eliges servicio o cliente'" required /></label>
             <label><span>Fecha</span><input type="date" name="modalDate" [(ngModel)]="newActivity.date" required /></label>
-            <label><span>Hora inicio</span><select name="modalStartTime" [(ngModel)]="newActivity.startTime" (ngModelChange)="onActivityStartTimeChange()" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
-            <label><span>Hora fin</span><select name="modalEndTime" [(ngModel)]="newActivity.endTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
+            @if (isIndependentUser) {
+              <label><span>Hora inicio</span><input type="time" name="independentStartTime" [(ngModel)]="newActivity.startTime" step="60" required /></label>
+              <label><span>Hora fin</span><input type="time" name="independentEndTime" [(ngModel)]="newActivity.endTime" step="60" required /></label>
+            } @else {
+              <label><span>Hora inicio</span><select name="modalStartTime" [(ngModel)]="newActivity.startTime" (ngModelChange)="onActivityStartTimeChange()" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
+              <label><span>Hora fin</span><select name="modalEndTime" [(ngModel)]="newActivity.endTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
+            }
             @if (!isIndependentUser) {
             <label><span>Profesional</span><select name="modalAssignee" [(ngModel)]="newActivity.assignee" required>@for (assignee of assigneeOptions; track assignee) {<option [value]="assignee">{{ assignee }}</option>}</select></label>
             }
             <label><span>{{ isIndependentUser ? 'Descripcion' : 'Notas' }}</span><textarea name="modalDescription" [(ngModel)]="newActivity.description" rows="3"></textarea></label>
-            <label><span>Recordatorio</span><select name="modalReminder" [(ngModel)]="newActivity.reminderMinutes">@for (option of reminderOptions; track option.label) {<option [ngValue]="option.value">{{ option.label }}</option>}</select></label>
+            @if (isIndependentUser) {
+              <label>
+                <span>Recordatorio (minutos antes)</span>
+                <input type="number" name="independentReminderMinutes" [(ngModel)]="newActivity.reminderMinutes" min="1" max="1440" step="1" placeholder="Sin notificacion" />
+              </label>
+            } @else {
+              <label><span>Recordatorio</span><select name="modalReminder" [(ngModel)]="newActivity.reminderMinutes">@for (option of reminderOptions; track option.label) {<option [ngValue]="option.value">{{ option.label }}</option>}</select></label>
+            }
             <label><span>Visibilidad</span><select name="modalVisibility" [(ngModel)]="newActivity.visibility"><option value="private">Privada</option><option value="public">Publica</option></select></label>
             <div class="form-actions">
               <button type="submit">{{ isEditingActivity ? 'Guardar cambios' : (isIndependentUser ? 'Crear actividad' : 'Crear cita') }}</button>
