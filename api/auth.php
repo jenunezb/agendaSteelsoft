@@ -40,8 +40,38 @@ if ($method === 'PUT') {
     $payload = getPayload();
     $action = (string) ($payload['action'] ?? '');
 
-    if ($action !== 'updateProfile' && $action !== 'updateNotifications') {
+    if (!in_array($action, ['updateProfile', 'updateNotifications', 'updateIndependentAccount'], true)) {
         jsonResponse(['message' => 'Accion no permitida.'], 422);
+    }
+
+    if ($action === 'updateIndependentAccount') {
+        if (($user['accountType'] ?? '') !== 'independent') {
+            jsonResponse(['message' => 'Esta configuracion solo esta disponible para independientes.'], 403);
+        }
+
+        $name = trim((string) ($payload['name'] ?? ''));
+
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 100) {
+            jsonResponse(['message' => 'El nombre debe tener entre 2 y 100 caracteres.'], 422);
+        }
+
+        try {
+            $pdo->beginTransaction();
+            $statement = $pdo->prepare('UPDATE users SET name = :name WHERE id = :id');
+            $statement->execute([':name' => $name, ':id' => $user['id']]);
+
+            $companyStatement = $pdo->prepare('UPDATE companies SET name = :name WHERE id = :id AND account_type = "independent"');
+            $companyStatement->execute([':name' => $name, ':id' => $user['companyId']]);
+
+            $activityStatement = $pdo->prepare('UPDATE activities SET assignee = :name WHERE user_id = :user_id');
+            $activityStatement->execute([':name' => $name, ':user_id' => $user['id']]);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            jsonResponse(['message' => 'No fue posible actualizar el perfil independiente.'], 500);
+        }
     }
 
     if ($action === 'updateProfile') {

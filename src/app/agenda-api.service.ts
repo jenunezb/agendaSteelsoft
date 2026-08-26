@@ -35,6 +35,7 @@ type RawCompanyService = Partial<CompanyService> & {
 
 type RawActivity = Partial<Activity> & {
   reminder_minutes?: number | string | null;
+  recurrence_type?: Activity['recurrenceType'];
   booking_status?: Activity['bookingStatus'];
   booking_responded_at?: string | null;
 };
@@ -162,6 +163,15 @@ export class AgendaApiService {
         action: 'updateNotifications',
         whatsappNumber,
         whatsappNotificationsEnabled
+      })
+      .pipe(map((session) => this.normalizeAuthSession(session)));
+  }
+
+  updateIndependentAccount(name: string): Observable<AuthSession> {
+    return this.http
+      .put<RawAuthSession>(`${this.baseUrl}/auth.php`, {
+        action: 'updateIndependentAccount',
+        name
       })
       .pipe(map((session) => this.normalizeAuthSession(session)));
   }
@@ -449,6 +459,7 @@ export class AgendaApiService {
       reminderMinutes: this.normalizeReminderMinutes(
         activity.reminderMinutes ?? activity.reminder_minutes
       ),
+      recurrenceType: activity.recurrenceType ?? activity.recurrence_type ?? 'none',
       bookingStatus: activity.bookingStatus ?? activity.booking_status ?? null,
       bookingRespondedAt: activity.bookingRespondedAt ?? activity.booking_responded_at ?? null
     };

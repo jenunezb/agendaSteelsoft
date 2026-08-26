@@ -714,13 +714,50 @@
     }
 
     @if (isIndependentUser) {
+      <nav class="panel company-admin-nav" aria-label="Secciones del perfil independiente">
+        <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'agenda'" (click)="independentTab = 'agenda'">
+          Agenda
+        </button>
+        <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'profile'" (click)="independentTab = 'profile'">
+          Perfil
+        </button>
+      </nav>
+    }
+
+    @if (isIndependentUser && independentTab === 'profile') {
       <section class="enterprise-overview">
         <article class="panel enterprise-hero-panel">
           <div class="enterprise-hero-copy">
             <p class="label">Perfil independiente</p>
-            <h2>Tu agenda personal</h2>
-            <p>Organiza tus actividades, horarios, recordatorios y visibilidad desde un calendario exclusivo para ti.</p>
+            <h2>{{ currentUser?.name }}</h2>
+            <p>Administra la informacion y las preferencias de tu cuenta personal.</p>
           </div>
+        </article>
+
+        <article class="panel enterprise-admin-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="label">Datos personales</p>
+              <h2>Informacion de la cuenta</h2>
+              <p>Puedes actualizar el nombre que aparece en tu agenda y en tus recordatorios.</p>
+            </div>
+          </div>
+
+          @if (independentProfileError) {
+            <p class="auth-error">{{ independentProfileError }}</p>
+          }
+          @if (independentProfileMessage) {
+            <p class="success-message">{{ independentProfileMessage }}</p>
+          }
+
+          <form class="pending-form" (ngSubmit)="saveIndependentProfile()">
+            <label><span>Nombre</span><input type="text" name="independentProfileName" [(ngModel)]="independentProfileForm.name" required /></label>
+            <label><span>Usuario</span><input type="text" [value]="currentUser?.username" readonly /></label>
+            <label><span>Correo</span><input type="email" [value]="currentUser?.email" readonly /></label>
+            <button type="submit" [disabled]="isSavingIndependentProfile">
+              {{ isSavingIndependentProfile ? 'Guardando...' : 'Guardar perfil' }}
+            </button>
+          </form>
         </article>
 
         <article class="panel enterprise-admin-panel">
@@ -1031,7 +1068,7 @@
       </section>
     }
 
-    @if (!isCompanyAdminUser || companyAdminTab === 'agenda') {
+    @if ((!isCompanyAdminUser || companyAdminTab === 'agenda') && (!isIndependentUser || independentTab === 'agenda')) {
     <section class="board public-board" [class.board-professional]="isProfessionalUser || isCompanyAdminUser">
 
       <article class="panel calendar-panel">
@@ -1163,6 +1200,15 @@
             <label><span>{{ isIndependentUser ? 'Descripcion' : 'Notas' }}</span><textarea name="modalDescription" [(ngModel)]="newActivity.description" rows="3"></textarea></label>
             @if (isIndependentUser) {
               <label>
+                <span>Repetir actividad</span>
+                <select name="independentRecurrenceType" [(ngModel)]="newActivity.recurrenceType">
+                  <option value="none">No repetir</option>
+                  <option value="daily">Cada dia</option>
+                  <option value="weekly">Cada semana</option>
+                  <option value="monthly">Cada mes</option>
+                </select>
+              </label>
+              <label>
                 <span>Recordatorio (minutos antes)</span>
                 <input type="number" name="independentReminderMinutes" [(ngModel)]="newActivity.reminderMinutes" min="1" max="1440" step="1" placeholder="Sin notificacion" />
               </label>
@@ -1197,6 +1243,9 @@
                     }
                   </div>
                   <p class="activity-time">{{ formatActivityTimeRange(activity) }}</p>
+                  @if (isIndependentUser && activity.recurrenceType && activity.recurrenceType !== 'none') {
+                    <p class="activity-reminder">Se repite {{ activity.recurrenceType === 'daily' ? 'cada dia' : activity.recurrenceType === 'weekly' ? 'cada semana' : 'cada mes' }}</p>
+                  }
                   @if (activity.location) { <p class="activity-location">{{ activity.location }}</p> }
                   @if (activity.description) { <p>{{ activity.description }}</p> }
                   @if (activity.reminderMinutes !== null) { <p class="activity-reminder">{{ getReminderLabel(activity.reminderMinutes) }}</p> }
@@ -1205,7 +1254,7 @@
                   <div class="activity-actions">
                     <button type="button" (click)="editActivity(activity)">Editar</button>
                     <button type="button" (click)="toggleActivityCompleted(activity.id)">{{ activity.completed ? 'Reabrir' : 'Finalizar' }}</button>
-                    <button type="button" (click)="removeActivity(activity.id)">Eliminar</button>
+                    <button type="button" (click)="removeActivity(activity.id)">{{ isIndependentUser && activity.recurrenceType !== 'none' ? 'Eliminar serie' : 'Eliminar' }}</button>
                   </div>
                 }
               </article>

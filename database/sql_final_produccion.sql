@@ -169,6 +169,8 @@ CALL ensure_column('activities', 'professional_id', 'ALTER TABLE activities ADD 
 CALL ensure_column('activities', 'is_public', 'ALTER TABLE activities ADD COLUMN is_public TINYINT(1) NOT NULL DEFAULT 0 AFTER assignee');
 CALL ensure_column('activities', 'reminder_minutes', 'ALTER TABLE activities ADD COLUMN reminder_minutes SMALLINT UNSIGNED NULL AFTER description');
 CALL ensure_column('activities', 'reminder_sent_at', 'ALTER TABLE activities ADD COLUMN reminder_sent_at DATETIME NULL AFTER reminder_minutes');
+CALL ensure_column('activities', 'recurrence_type', 'ALTER TABLE activities ADD COLUMN recurrence_type VARCHAR(20) NOT NULL DEFAULT "none" AFTER reminder_sent_at');
+CALL ensure_column('activities', 'reminder_sent_for_date', 'ALTER TABLE activities ADD COLUMN reminder_sent_for_date DATE NULL AFTER recurrence_type');
 CALL ensure_column('activities', 'booking_status', 'ALTER TABLE activities ADD COLUMN booking_status VARCHAR(20) NULL AFTER reminder_sent_at');
 CALL ensure_column('activities', 'booking_customer_name', 'ALTER TABLE activities ADD COLUMN booking_customer_name VARCHAR(120) NOT NULL DEFAULT '''' AFTER booking_status');
 CALL ensure_column('activities', 'booking_customer_phone', 'ALTER TABLE activities ADD COLUMN booking_customer_phone VARCHAR(30) NOT NULL DEFAULT '''' AFTER booking_customer_name');

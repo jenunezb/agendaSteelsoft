@@ -123,6 +123,8 @@ CREATE TABLE IF NOT EXISTS activities (
   description TEXT NOT NULL,
   reminder_minutes SMALLINT UNSIGNED NULL,
   reminder_sent_at DATETIME NULL,
+  recurrence_type VARCHAR(20) NOT NULL DEFAULT 'none',
+  reminder_sent_for_date DATE NULL,
   booking_status VARCHAR(20) NULL,
   booking_customer_name VARCHAR(120) NOT NULL DEFAULT '',
   booking_customer_phone VARCHAR(30) NOT NULL DEFAULT '',

@@ -63,7 +63,7 @@ if ($isCompanyWorkspace) {
     $company = $companyStatement->fetch();
 
     $activitiesStatement = $pdo->prepare(
-        'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date
+        'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, recurrence_type
          FROM activities
          WHERE company_id = :company_id
          ORDER BY activity_date, start_time, end_time, title'
@@ -79,7 +79,7 @@ if ($isCompanyWorkspace) {
     $workingHourEnd = isset($company['working_hour_end']) ? (int) $company['working_hour_end'] : 18;
 } else {
     $activitiesStatement = $pdo->prepare(
-        'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date
+        'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, recurrence_type
          FROM activities
          WHERE user_id = :user_id
          ORDER BY activity_date, start_time, end_time, title'
@@ -114,6 +114,7 @@ $activities = array_map(static function (array $row): array {
         'location' => $isPublic ? ($row['location'] ?? '') : '',
         'description' => $isPublic ? ($row['description'] ?? '') : '',
         'date' => $row['activity_date'],
+        'recurrenceType' => (string) ($row['recurrence_type'] ?? 'none'),
     ];
 }, $activitiesStatement->fetchAll());
 

@@ -14,7 +14,7 @@ $professionalId = (int) ($user['professionalId'] ?? 0);
 if ($method === 'GET') {
     if ($isProfessionalUser) {
         $statement = $pdo->prepare(
-            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes, booking_status, booking_responded_at
+            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes, recurrence_type, booking_status, booking_responded_at
              FROM activities
              WHERE company_id = :company_id
                AND professional_id = :professional_id
@@ -26,7 +26,7 @@ if ($method === 'GET') {
         ]);
     } else {
         $statement = $pdo->prepare(
-            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes, booking_status, booking_responded_at
+            'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, reminder_minutes, recurrence_type, booking_status, booking_responded_at
              FROM activities
              WHERE company_id = :company_id
              ORDER BY activity_date, start_time, end_time, title'
@@ -48,6 +48,7 @@ if ($method === 'GET') {
             'description' => $row['description'] ?? '',
             'date' => $row['activity_date'],
             'reminderMinutes' => isset($row['reminder_minutes']) ? (int) $row['reminder_minutes'] : null,
+            'recurrenceType' => (string) ($row['recurrence_type'] ?? 'none'),
             'bookingStatus' => $row['booking_status'] ?: null,
             'bookingRespondedAt' => $row['booking_responded_at'] ?: null,
         ];
@@ -64,6 +65,7 @@ if ($isProfessionalUser && $professionalId <= 0) {
 
 if ($method === 'POST') {
     $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
+    $recurrenceType = normalizeActivityRecurrence($payload['recurrenceType'] ?? 'none', $user);
     $assignment = $isProfessionalUser
         ? [
             'professionalId' => $professionalId,
@@ -77,8 +79,8 @@ if ($method === 'POST') {
         );
     $statement = $pdo->prepare(
         'INSERT INTO activities
-        (user_id, company_id, professional_id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes, reminder_sent_at)
-        VALUES (:user_id, :company_id, :professional_id, :title, :start_time, :end_time, :assignee, :is_public, :completed, :location, :description, :activity_date, :reminder_minutes, NULL)'
+        (user_id, company_id, professional_id, title, start_time, end_time, assignee, is_public, completed, location, description, activity_date, reminder_minutes, reminder_sent_at, recurrence_type, reminder_sent_for_date)
+        VALUES (:user_id, :company_id, :professional_id, :title, :start_time, :end_time, :assignee, :is_public, :completed, :location, :description, :activity_date, :reminder_minutes, NULL, :recurrence_type, NULL)'
     );
 
     $statement->execute([
@@ -95,6 +97,7 @@ if ($method === 'POST') {
         ':description' => trim((string) ($payload['description'] ?? '')),
         ':activity_date' => (string) ($payload['date'] ?? ''),
         ':reminder_minutes' => $reminderMinutes,
+        ':recurrence_type' => $recurrenceType,
     ]);
 
     jsonResponse([
@@ -110,12 +113,14 @@ if ($method === 'POST') {
         'description' => trim((string) ($payload['description'] ?? '')),
         'date' => (string) ($payload['date'] ?? ''),
         'reminderMinutes' => $reminderMinutes,
+        'recurrenceType' => $recurrenceType,
     ], 201);
 }
 
 if ($method === 'PUT') {
     $id = getRequiredId();
     $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
+    $recurrenceType = normalizeActivityRecurrence($payload['recurrenceType'] ?? 'none', $user);
     $assignment = $isProfessionalUser
         ? [
             'professionalId' => $professionalId,
@@ -141,7 +146,9 @@ if ($method === 'PUT') {
              description = :description,
              activity_date = :activity_date,
              reminder_minutes = :reminder_minutes,
-             reminder_sent_at = NULL
+             reminder_sent_at = NULL,
+             recurrence_type = :recurrence_type,
+             reminder_sent_for_date = NULL
          WHERE id = :id
            AND company_id = :company_id' . ($isProfessionalUser ? ' AND professional_id = :scope_professional_id' : '')
     );
@@ -160,6 +167,7 @@ if ($method === 'PUT') {
         ':description' => trim((string) ($payload['description'] ?? '')),
         ':activity_date' => (string) ($payload['date'] ?? ''),
         ':reminder_minutes' => $reminderMinutes,
+        ':recurrence_type' => $recurrenceType,
     ];
 
     if ($isProfessionalUser) {
@@ -185,6 +193,7 @@ if ($method === 'PUT') {
         'description' => trim((string) ($payload['description'] ?? '')),
         'date' => (string) ($payload['date'] ?? ''),
         'reminderMinutes' => $reminderMinutes,
+        'recurrenceType' => $recurrenceType,
     ]);
 }
 
@@ -214,3 +223,15 @@ if ($method === 'DELETE') {
 }
 
 jsonResponse(['message' => 'Metodo no permitido.'], 405);
+
+function normalizeActivityRecurrence(mixed $value, array $user): string
+{
+    if (($user['accountType'] ?? '') !== 'independent') {
+        return 'none';
+    }
+
+    $recurrenceType = strtolower(trim((string) $value));
+    return in_array($recurrenceType, ['daily', 'weekly', 'monthly'], true)
+        ? $recurrenceType
+        : 'none';
+}

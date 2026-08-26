@@ -77,8 +77,11 @@ export class AppComponent implements OnInit {
   protected isPrivacyModalOpen = false;
   protected isUpdatingProfileVisibility = false;
   protected isUpdatingNotificationSettings = false;
+  protected isSavingIndependentProfile = false;
   protected notificationSettingsMessage = '';
   protected notificationSettingsError = '';
+  protected independentProfileMessage = '';
+  protected independentProfileError = '';
   protected companyContext: CompanyContext | null = null;
   protected companySettingsError = '';
   protected companySettingsMessage = '';
@@ -98,6 +101,7 @@ export class AppComponent implements OnInit {
   protected authRouteMode: 'login' | 'register' | null = null;
   protected superAdminTab: 'overview' | 'accounts' = 'overview';
   protected companyAdminTab: 'agenda' | 'config' = 'agenda';
+  protected independentTab: 'agenda' | 'profile' = 'agenda';
   protected companyConfigTab: 'general' | 'notifications' | 'roles' | 'services' | 'professionals' = 'general';
   protected companyConfigEditor: 'role' | 'service' | 'professional' | null = null;
   protected editingSystemAccountId: number | null = null;
@@ -118,6 +122,9 @@ export class AppComponent implements OnInit {
   protected notificationSettingsForm = {
     whatsappNumber: '',
     whatsappNotificationsEnabled: false
+  };
+  protected independentProfileForm = {
+    name: ''
   };
   protected companyProfileForm = {
     name: '',
@@ -484,6 +491,35 @@ export class AppComponent implements OnInit {
             error?.error?.message ?? 'No fue posible guardar la configuracion de notificaciones.';
         }
       });
+  }
+
+  protected saveIndependentProfile(): void {
+    if (!this.isIndependentUser) {
+      return;
+    }
+
+    const name = this.independentProfileForm.name.trim();
+    if (name.length < 2) {
+      this.independentProfileError = 'Ingresa un nombre valido.';
+      this.independentProfileMessage = '';
+      return;
+    }
+
+    this.isSavingIndependentProfile = true;
+    this.independentProfileError = '';
+    this.independentProfileMessage = '';
+    this.agendaApi.updateIndependentAccount(name).subscribe({
+      next: (session) => {
+        this.isSavingIndependentProfile = false;
+        this.applySession(session);
+        this.independentProfileMessage = 'Perfil actualizado correctamente.';
+      },
+      error: (error) => {
+        this.isSavingIndependentProfile = false;
+        this.independentProfileError =
+          error?.error?.message ?? 'No fue posible actualizar el perfil.';
+      }
+    });
   }
 
   protected reloadSystemAccounts(): void {
@@ -1377,7 +1413,8 @@ export class AppComponent implements OnInit {
       location: '',
       description,
       date: this.newActivity.date,
-      reminderMinutes: this.newActivity.reminderMinutes
+      reminderMinutes: this.newActivity.reminderMinutes,
+      recurrenceType: this.isIndependentUser ? (this.newActivity.recurrenceType ?? 'none') : 'none'
     };
 
     const request =
@@ -1402,6 +1439,15 @@ export class AppComponent implements OnInit {
   }
 
   protected removeActivity(activityId: number): void {
+    const activity = this.activities.find((candidate) => candidate.id === activityId);
+    if (
+      activity?.recurrenceType &&
+      activity.recurrenceType !== 'none' &&
+      !window.confirm('¿Eliminar esta actividad y todas sus repeticiones futuras?')
+    ) {
+      return;
+    }
+
     this.agendaApi.deleteActivity(activityId).subscribe(() => {
       this.activities = this.activities.filter((activity) => activity.id !== activityId);
 
@@ -1448,8 +1494,9 @@ export class AppComponent implements OnInit {
       completed: activity.completed,
       location: '',
       description: parsedBookingData.notes,
-      date: activity.date,
-      reminderMinutes: activity.reminderMinutes
+      date: activity.seriesDate ?? activity.date,
+      reminderMinutes: activity.reminderMinutes,
+      recurrenceType: activity.recurrenceType ?? 'none'
     };
     this.syncActivityEndTimeWithService();
     this.selectDate(activity.date);
@@ -1972,7 +2019,32 @@ export class AppComponent implements OnInit {
   }
 
   private getActivitiesForDate(isoDate: string): Activity[] {
-    return this.activities.filter((activity) => activity.date === isoDate);
+    return this.activities
+      .filter((activity) => this.activityOccursOnDate(activity, isoDate))
+      .map((activity) =>
+        activity.date === isoDate ? activity : { ...activity, seriesDate: activity.date, date: isoDate }
+      );
+  }
+
+  private activityOccursOnDate(activity: Activity, isoDate: string): boolean {
+    if (isoDate < activity.date) {
+      return false;
+    }
+
+    const recurrenceType = activity.recurrenceType ?? 'none';
+    if (recurrenceType === 'none') {
+      return activity.date === isoDate;
+    }
+
+    const start = new Date(`${activity.date}T00:00:00`);
+    const target = new Date(`${isoDate}T00:00:00`);
+    if (recurrenceType === 'daily') {
+      return true;
+    }
+    if (recurrenceType === 'weekly') {
+      return start.getDay() === target.getDay();
+    }
+    return start.getDate() === target.getDate();
   }
 
   private loadSession(showLoader = true): void {
@@ -2085,7 +2157,8 @@ export class AppComponent implements OnInit {
       location: activity.location,
       description: activity.description,
       date: activity.date,
-      reminderMinutes: activity.reminderMinutes
+      reminderMinutes: activity.reminderMinutes,
+      recurrenceType: activity.recurrenceType ?? 'none'
     };
   }
 
@@ -2168,6 +2241,7 @@ export class AppComponent implements OnInit {
     this.authMessage = session.message ?? '';
 
     if (this.currentUser) {
+      this.independentProfileForm = { name: this.currentUser.name };
       this.notificationSettingsForm = {
         whatsappNumber: this.currentUser.whatsappNumber,
         whatsappNotificationsEnabled: this.currentUser.whatsappNotificationsEnabled
@@ -2191,6 +2265,7 @@ export class AppComponent implements OnInit {
       whatsappNumber: '',
       whatsappNotificationsEnabled: false
     };
+    this.independentProfileForm = { name: '' };
     this.resetProfessionalForm();
     this.authMode = 'login';
   }
@@ -2454,7 +2529,8 @@ export class AppComponent implements OnInit {
       location: '',
       description: '',
       date: this.selectedDate,
-      reminderMinutes: null
+      reminderMinutes: null,
+      recurrenceType: 'none'
     };
   }
 

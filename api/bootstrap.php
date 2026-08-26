@@ -497,6 +497,8 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'reminder_sent_at',
         'ALTER TABLE activities ADD COLUMN reminder_sent_at DATETIME NULL AFTER reminder_minutes'
     );
+    ensureColumnExists($pdo, $databaseName, 'activities', 'recurrence_type', 'ALTER TABLE activities ADD COLUMN recurrence_type VARCHAR(20) NOT NULL DEFAULT "none" AFTER reminder_sent_at');
+    ensureColumnExists($pdo, $databaseName, 'activities', 'reminder_sent_for_date', 'ALTER TABLE activities ADD COLUMN reminder_sent_for_date DATE NULL AFTER recurrence_type');
     ensureColumnExists($pdo, $databaseName, 'activities', 'booking_status', 'ALTER TABLE activities ADD COLUMN booking_status VARCHAR(20) NULL AFTER reminder_sent_at');
     ensureColumnExists($pdo, $databaseName, 'activities', 'booking_customer_name', 'ALTER TABLE activities ADD COLUMN booking_customer_name VARCHAR(120) NOT NULL DEFAULT "" AFTER booking_status');
     ensureColumnExists($pdo, $databaseName, 'activities', 'booking_customer_phone', 'ALTER TABLE activities ADD COLUMN booking_customer_phone VARCHAR(30) NOT NULL DEFAULT "" AFTER booking_customer_name');

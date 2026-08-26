@@ -11,6 +11,8 @@ export interface Activity {
   description: string;
   date: string;
   reminderMinutes: number | null;
+  recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly';
+  seriesDate?: string;
   bookingStatus?: 'pending' | 'confirmed' | 'rejected' | null;
   bookingRespondedAt?: string | null;
 }

@@ -48,7 +48,7 @@ $query = 'SELECT
     activities.id,
     activities.title,
     activities.start_time,
-    activities.activity_date,
+    CURDATE() AS activity_date,
     activities.location,
     activities.reminder_minutes,
     users.whatsapp_number,
@@ -68,9 +68,16 @@ if ($activityId > 0) {
     $query .= ' AND activities.id = :activity_id';
     $params[':activity_id'] = $activityId;
 } else {
-    $query .= ' AND activities.reminder_sent_at IS NULL
-       AND TIMESTAMP(activities.activity_date, activities.start_time) > NOW()
-       AND DATE_SUB(TIMESTAMP(activities.activity_date, activities.start_time), INTERVAL activities.reminder_minutes MINUTE) <= NOW()';
+    $query .= ' AND activities.activity_date <= CURDATE()
+       AND (
+            activities.recurrence_type = "daily"
+            OR (activities.recurrence_type = "weekly" AND DAYOFWEEK(activities.activity_date) = DAYOFWEEK(CURDATE()))
+            OR (activities.recurrence_type = "monthly" AND DAY(activities.activity_date) = DAY(CURDATE()))
+            OR (activities.recurrence_type = "none" AND activities.activity_date = CURDATE())
+       )
+       AND (activities.reminder_sent_for_date IS NULL OR activities.reminder_sent_for_date <> CURDATE())
+       AND TIMESTAMP(CURDATE(), activities.start_time) > NOW()
+       AND DATE_SUB(TIMESTAMP(CURDATE(), activities.start_time), INTERVAL activities.reminder_minutes MINUTE) <= NOW()';
 }
 
 $query .= ' ORDER BY activities.activity_date, activities.start_time';
@@ -124,11 +131,20 @@ foreach ($activities as $activity) {
 
     if ($response['success']) {
         if ($pdo instanceof PDO && $activityId <= 0 && !$forceSend) {
-            $sentColumn = !empty($activity['is_booking_confirmation'])
-                ? 'booking_confirmation_sent_at'
-                : 'reminder_sent_at';
-            $updateStatement = $pdo->prepare('UPDATE activities SET ' . $sentColumn . ' = NOW() WHERE id = :id');
-            $updateStatement->execute([':id' => (int) $activity['id']]);
+            if (!empty($activity['is_booking_confirmation'])) {
+                $updateStatement = $pdo->prepare('UPDATE activities SET booking_confirmation_sent_at = NOW() WHERE id = :id');
+                $updateStatement->execute([':id' => (int) $activity['id']]);
+            } else {
+                $updateStatement = $pdo->prepare(
+                    'UPDATE activities
+                     SET reminder_sent_at = NOW(), reminder_sent_for_date = :occurrence_date
+                     WHERE id = :id'
+                );
+                $updateStatement->execute([
+                    ':occurrence_date' => (string) $activity['activity_date'],
+                    ':id' => (int) $activity['id'],
+                ]);
+            }
         }
         $sentCount++;
         continue;
