@@ -803,7 +803,10 @@
       <section class="panel personal-reminders-view">
         <div class="reminders-toolbar">
           <div><p class="label">Organizacion personal</p><h2>Pendientes</h2></div>
-          <button type="button" class="add-reminder-button" (click)="openPersonalReminderForm()"><span aria-hidden="true">+</span> Agregar pendiente</button>
+          <div class="reminders-toolbar-actions">
+            <div class="reminder-view-switch" role="group" aria-label="Ver pendientes activos o archivados"><button type="button" [class.active]="personalReminderView === 'active'" (click)="personalReminderView = 'active'">Activos</button><button type="button" [class.active]="personalReminderView === 'archived'" (click)="personalReminderView = 'archived'">Archivados @if (archivedPersonalReminderCount) {<span>{{ archivedPersonalReminderCount }}</span>}</button></div>
+            <button type="button" class="add-reminder-button" (click)="openPersonalReminderForm()"><span aria-hidden="true">+</span> Agregar pendiente</button>
+          </div>
         </div>
         @if (personalReminderError && !isPersonalReminderFormOpen) { <p class="auth-error">{{ personalReminderError }}</p> }
         @if (personalReminderMessage) { <p class="success-message reminder-toast">{{ personalReminderMessage }}</p> }
@@ -811,16 +814,16 @@
           <table class="reminders-table">
             <thead><tr><th>Estado</th><th>Pendiente</th><th>Prioridad</th><th>Fecha limite</th><th>Recordatorio</th><th class="actions-column">Acciones</th></tr></thead>
             <tbody>
-              @for (reminder of personalReminders; track reminder.id) {
+              @for (reminder of visiblePersonalReminders; track reminder.id) {
                 <tr [class.completed-row]="reminder.completed">
                   <td data-label="Estado"><button type="button" class="status-toggle" [class.done]="reminder.completed" (click)="togglePersonalReminder(reminder)" [attr.aria-label]="reminder.completed ? 'Reabrir pendiente' : 'Completar pendiente'"><span>{{ reminder.completed ? '✓' : '' }}</span>{{ reminder.completed ? 'Completado' : 'Pendiente' }}</button></td>
                   <td data-label="Pendiente"><strong class="reminder-title">{{ reminder.title }}</strong>@if (reminder.description) {<small class="reminder-description">{{ reminder.description }}</small>}</td>
                   <td data-label="Prioridad"><span class="priority-chip" [class.priority-high-chip]="reminder.priority === 'high'" [class.priority-low-chip]="reminder.priority === 'low'">{{ getPriorityLabel(reminder.priority) }}</span></td>
                   <td data-label="Fecha limite">{{ reminder.dueDate ? (reminder.dueDate | date:'dd/MM/yyyy') : '—' }}</td>
                   <td data-label="Recordatorio">@if (reminder.whatsappEnabled && reminder.remindAt) {<span class="whatsapp-reminder">WhatsApp · {{ reminder.remindAt | date:'dd/MM/yyyy, h:mm a' }}</span>@if (reminder.reminderSentAt) {<span class="sent-chip">Enviado</span>}} @else {<span class="muted-cell">Sin aviso</span>}</td>
-                  <td data-label="Acciones"><div class="table-actions"><button type="button" class="icon-action" (click)="editPersonalReminder(reminder)" aria-label="Editar pendiente">Editar</button><button type="button" class="icon-action danger-action" (click)="removePersonalReminder(reminder.id)" aria-label="Eliminar pendiente">Eliminar</button></div></td>
+                  <td data-label="Acciones"><div class="table-actions">@if (!reminder.archived) {<button type="button" class="icon-action" (click)="editPersonalReminder(reminder)" aria-label="Editar pendiente">Editar</button>@if (reminder.completed) {<button type="button" class="icon-action archive-action" (click)="setPersonalReminderArchived(reminder, true)" aria-label="Archivar pendiente">Archivar</button>}} @else {<button type="button" class="icon-action archive-action" (click)="setPersonalReminderArchived(reminder, false)" aria-label="Restaurar pendiente">Restaurar</button>}<button type="button" class="icon-action danger-action" (click)="removePersonalReminder(reminder.id)" aria-label="Eliminar pendiente">Eliminar</button></div></td>
                 </tr>
-              } @empty {<tr><td colspan="6"><div class="reminders-empty"><span>✓</span><strong>Todo al dia</strong><p>Agrega un pendiente cuando tengas algo por hacer.</p></div></td></tr>}
+              } @empty {<tr><td colspan="6"><div class="reminders-empty"><span>✓</span><strong>{{ personalReminderView === 'archived' ? 'Sin historial archivado' : 'Todo al dia' }}</strong><p>{{ personalReminderView === 'archived' ? 'Los pendientes que archives aparecerán aquí.' : 'Agrega un pendiente cuando tengas algo por hacer.' }}</p></div></td></tr>}
             </tbody>
           </table>
         </div>

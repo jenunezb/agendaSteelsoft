@@ -15,6 +15,11 @@
 .personal-reminders-view { padding: 0; overflow: hidden; animation: reminderViewIn 0.38s ease-out both; }
 .reminders-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 22px 24px; border-bottom: 1px solid #ece6dc; }
 .reminders-toolbar h2 { margin: 3px 0 0; font-size: 1.65rem; }
+.reminders-toolbar-actions { display: flex; align-items: center; gap: 10px; }
+.reminder-view-switch { display: flex; padding: 4px; border-radius: 12px; background: #eeeae3; }
+.reminder-view-switch button { border: 0; border-radius: 9px; padding: 8px 11px; background: transparent; color: #6f675d; font: 600 .78rem/1 Arial, sans-serif; transition: background .18s ease, color .18s ease, box-shadow .18s ease; }
+.reminder-view-switch button.active { color: #17130d; background: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.08); }
+.reminder-view-switch span { margin-left: 4px; padding: 2px 5px; border-radius: 999px; background: var(--gold); color: #18130a; font-size: .68rem; }
 .add-reminder-button { display: inline-flex; align-items: center; gap: 9px; border: 0; border-radius: 13px; padding: 12px 17px; color: #0a0a0a; background: var(--gold); box-shadow: 0 8px 20px rgba(201, 146, 0, 0.23); transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
 .add-reminder-button span { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #0a0a0a; color: #fff; font: 700 1rem/1 Arial, sans-serif; }
 .add-reminder-button:hover { transform: translateY(-2px); background: #ffc928; box-shadow: 0 12px 26px rgba(201, 146, 0, .3); }
@@ -44,6 +49,8 @@
 .icon-action:hover { transform: translateY(-1px); background: #dfd8ce; }
 .danger-action { color: #96242a; background: #fbe8e8; }
 .danger-action:hover { background: #f4d0d1; }
+.archive-action { color: #755600; background: #fff1c5; }
+.archive-action:hover { background: #f6dfa0; }
 .reminders-empty { display: grid; justify-items: center; padding: 55px 20px; color: #777066; }
 .reminders-empty span { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 10px; border-radius: 50%; background: #f1ead7; color: #a47700; font-size: 1.4rem; }
 .reminders-empty p { margin: 4px 0 0; }
@@ -70,6 +77,9 @@
 
 @media (max-width: 700px) {
   .reminders-toolbar { align-items: stretch; flex-direction: column; }
+  .reminders-toolbar-actions { align-items: stretch; flex-direction: column; }
+  .reminder-view-switch { justify-content: stretch; }
+  .reminder-view-switch button { flex: 1; }
   .add-reminder-button { justify-content: center; }
   .reminders-table { min-width: 0; }
   .reminders-table thead { display: none; }

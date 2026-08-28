@@ -311,6 +311,8 @@ function ensureSchema(PDO $pdo, string $databaseName): void
             whatsapp_enabled TINYINT(1) NOT NULL DEFAULT 0,
             remind_at DATETIME NULL,
             reminder_sent_at DATETIME NULL,
+            archived TINYINT(1) NOT NULL DEFAULT 0,
+            archived_at DATETIME NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )'
@@ -571,6 +573,8 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'participation_percentage',
         'ALTER TABLE financial_entries ADD COLUMN participation_percentage DECIMAL(5,2) NULL AFTER amount'
     );
+    ensureColumnExists($pdo, $databaseName, 'personal_reminders', 'archived', 'ALTER TABLE personal_reminders ADD COLUMN archived TINYINT(1) NOT NULL DEFAULT 0 AFTER reminder_sent_at');
+    ensureColumnExists($pdo, $databaseName, 'personal_reminders', 'archived_at', 'ALTER TABLE personal_reminders ADD COLUMN archived_at DATETIME NULL AFTER archived');
 
     seedDefaultPlans($pdo);
     ensureSystemAdminUser($pdo);
@@ -592,6 +596,7 @@ function ensureSchema(PDO $pdo, string $databaseName): void
     ensureIndexExists($pdo, $databaseName, 'general_pendings', 'idx_general_pendings_company_date', 'CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date)');
     ensureIndexExists($pdo, $databaseName, 'personal_reminders', 'idx_personal_reminders_due', 'CREATE INDEX idx_personal_reminders_due ON personal_reminders (user_id, completed, due_date)');
     ensureIndexExists($pdo, $databaseName, 'personal_reminders', 'idx_personal_reminders_send', 'CREATE INDEX idx_personal_reminders_send ON personal_reminders (whatsapp_enabled, completed, remind_at, reminder_sent_at)');
+    ensureIndexExists($pdo, $databaseName, 'personal_reminders', 'idx_personal_reminders_archive', 'CREATE INDEX idx_personal_reminders_archive ON personal_reminders (user_id, archived, archived_at)');
     ensureIndexExists($pdo, $databaseName, 'financial_entries', 'idx_financial_entries_user_date', 'CREATE INDEX idx_financial_entries_user_date ON financial_entries (user_id, entry_date)');
     ensureIndexExists($pdo, $databaseName, 'financial_entries', 'idx_financial_entries_company_date', 'CREATE INDEX idx_financial_entries_company_date ON financial_entries (company_id, entry_date)');
 }

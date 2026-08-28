@@ -199,12 +199,13 @@ export class AppComponent implements OnInit {
   protected personalReminders: PersonalReminder[] = [];
   protected editingPersonalReminderId: number | null = null;
   protected isPersonalReminderFormOpen = false;
+  protected personalReminderView: 'active' | 'archived' = 'active';
   protected personalReminderMessage = '';
   protected personalReminderError = '';
   protected financialEntries: FinancialEntry[] = [];
   protected newActivity: Omit<Activity, 'id'> = this.buildEmptyActivity();
   protected newGeneralPending: Omit<GeneralPending, 'id'> = this.buildEmptyGeneralPending();
-  protected newPersonalReminder: Omit<PersonalReminder, 'id' | 'reminderSentAt'> = this.buildEmptyPersonalReminder();
+  protected newPersonalReminder: Omit<PersonalReminder, 'id' | 'reminderSentAt' | 'archivedAt'> = this.buildEmptyPersonalReminder();
   protected newFinancialEntry: Omit<FinancialEntry, 'id'> = this.buildEmptyFinancialEntry();
 
   ngOnInit(): void {
@@ -1627,7 +1628,7 @@ export class AppComponent implements OnInit {
   protected editPersonalReminder(reminder: PersonalReminder): void {
     this.editingPersonalReminderId = reminder.id;
     this.newPersonalReminder = { title: reminder.title, description: reminder.description, dueDate: reminder.dueDate,
-      priority: reminder.priority, completed: reminder.completed, whatsappEnabled: reminder.whatsappEnabled, remindAt: reminder.remindAt };
+      priority: reminder.priority, completed: reminder.completed, whatsappEnabled: reminder.whatsappEnabled, remindAt: reminder.remindAt, archived: reminder.archived };
     this.isPersonalReminderFormOpen = true;
   }
 
@@ -1648,7 +1649,7 @@ export class AppComponent implements OnInit {
     this.personalReminderError = '';
     this.personalReminderMessage = '';
     const payload = { title: reminder.title, description: reminder.description, dueDate: reminder.dueDate,
-      priority: reminder.priority, completed: !reminder.completed, whatsappEnabled: reminder.whatsappEnabled, remindAt: reminder.remindAt };
+      priority: reminder.priority, completed: !reminder.completed, whatsappEnabled: reminder.whatsappEnabled, remindAt: reminder.remindAt, archived: reminder.archived };
     this.agendaApi.updatePersonalReminder(reminder.id, payload).subscribe({
       next: (saved) => {
         this.personalReminders = this.personalReminders.map((item) => item.id === saved.id ? saved : item);
@@ -1664,6 +1665,30 @@ export class AppComponent implements OnInit {
       this.personalReminders = this.personalReminders.filter((item) => item.id !== id);
       if (this.editingPersonalReminderId === id) this.resetPersonalReminderForm();
     });
+  }
+
+  protected setPersonalReminderArchived(reminder: PersonalReminder, archived: boolean): void {
+    this.personalReminderError = '';
+    const payload = { title: reminder.title, description: reminder.description, dueDate: reminder.dueDate,
+      priority: reminder.priority, completed: reminder.completed, whatsappEnabled: reminder.whatsappEnabled,
+      remindAt: reminder.remindAt, archived };
+    this.agendaApi.updatePersonalReminder(reminder.id, payload).subscribe({
+      next: (saved) => {
+        this.personalReminders = this.personalReminders.map((item) => item.id === saved.id ? saved : item);
+        this.sortPersonalReminders();
+        this.personalReminderMessage = archived ? 'Pendiente archivado.' : 'Pendiente restaurado.';
+      },
+      error: (error) => this.personalReminderError = error?.error?.message ?? 'No fue posible actualizar el archivo.'
+    });
+  }
+
+  protected get visiblePersonalReminders(): PersonalReminder[] {
+    const archived = this.personalReminderView === 'archived';
+    return this.personalReminders.filter((reminder) => reminder.archived === archived);
+  }
+
+  protected get archivedPersonalReminderCount(): number {
+    return this.personalReminders.filter((reminder) => reminder.archived).length;
   }
 
   protected cancelPersonalReminderEdit(): void { this.closePersonalReminderForm(); }
@@ -2628,8 +2653,8 @@ export class AppComponent implements OnInit {
     };
   }
 
-  private buildEmptyPersonalReminder(): Omit<PersonalReminder, 'id' | 'reminderSentAt'> {
-    return { title: '', description: '', dueDate: null, priority: 'medium', completed: false, whatsappEnabled: false, remindAt: null };
+  private buildEmptyPersonalReminder(): Omit<PersonalReminder, 'id' | 'reminderSentAt' | 'archivedAt'> {
+    return { title: '', description: '', dueDate: null, priority: 'medium', completed: false, whatsappEnabled: false, remindAt: null, archived: false };
   }
 
   private resetPersonalReminderForm(): void {

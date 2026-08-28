@@ -203,11 +203,15 @@ CREATE TABLE IF NOT EXISTS personal_reminders (
   whatsapp_enabled TINYINT(1) NOT NULL DEFAULT 0,
   remind_at DATETIME NULL,
   reminder_sent_at DATETIME NULL,
+  archived TINYINT(1) NOT NULL DEFAULT 0,
+  archived_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CALL ensure_column('general_pendings', 'user_id', 'ALTER TABLE general_pendings ADD COLUMN user_id INT UNSIGNED NULL AFTER id');
+CALL ensure_column('personal_reminders', 'archived', 'ALTER TABLE personal_reminders ADD COLUMN archived TINYINT(1) NOT NULL DEFAULT 0 AFTER reminder_sent_at');
+CALL ensure_column('personal_reminders', 'archived_at', 'ALTER TABLE personal_reminders ADD COLUMN archived_at DATETIME NULL AFTER archived');
 CALL ensure_column('general_pendings', 'company_id', 'ALTER TABLE general_pendings ADD COLUMN company_id INT UNSIGNED NULL AFTER user_id');
 CALL ensure_column('general_pendings', 'professional_id', 'ALTER TABLE general_pendings ADD COLUMN professional_id INT UNSIGNED NULL AFTER company_id');
 
@@ -242,6 +246,7 @@ CALL ensure_index_name('general_pendings', 'idx_general_pendings_user_date', 'CR
 CALL ensure_index_name('general_pendings', 'idx_general_pendings_company_date', 'CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date)');
 CALL ensure_index_name('personal_reminders', 'idx_personal_reminders_due', 'CREATE INDEX idx_personal_reminders_due ON personal_reminders (user_id, completed, due_date)');
 CALL ensure_index_name('personal_reminders', 'idx_personal_reminders_send', 'CREATE INDEX idx_personal_reminders_send ON personal_reminders (whatsapp_enabled, completed, remind_at, reminder_sent_at)');
+CALL ensure_index_name('personal_reminders', 'idx_personal_reminders_archive', 'CREATE INDEX idx_personal_reminders_archive ON personal_reminders (user_id, archived, archived_at)');
 CALL ensure_index_name('financial_entries', 'idx_financial_entries_user_date', 'CREATE INDEX idx_financial_entries_user_date ON financial_entries (user_id, entry_date)');
 CALL ensure_index_name('financial_entries', 'idx_financial_entries_company_date', 'CREATE INDEX idx_financial_entries_company_date ON financial_entries (company_id, entry_date)');
 

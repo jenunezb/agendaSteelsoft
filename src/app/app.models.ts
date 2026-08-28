@@ -36,6 +36,8 @@ export interface PersonalReminder {
   whatsappEnabled: boolean;
   remindAt: string | null;
   reminderSentAt: string | null;
+  archived: boolean;
+  archivedAt: string | null;
 }
 
 export interface FinancialEntry {

@@ -216,11 +216,11 @@ export class AgendaApiService {
     return this.http.get<PersonalReminder[]>(`${this.baseUrl}/personal-reminders.php`);
   }
 
-  createPersonalReminder(reminder: Omit<PersonalReminder, 'id' | 'reminderSentAt'>): Observable<PersonalReminder> {
+  createPersonalReminder(reminder: Omit<PersonalReminder, 'id' | 'reminderSentAt' | 'archivedAt'>): Observable<PersonalReminder> {
     return this.http.post<PersonalReminder>(`${this.baseUrl}/personal-reminders.php`, reminder);
   }
 
-  updatePersonalReminder(id: number, reminder: Omit<PersonalReminder, 'id' | 'reminderSentAt'>): Observable<PersonalReminder> {
+  updatePersonalReminder(id: number, reminder: Omit<PersonalReminder, 'id' | 'reminderSentAt' | 'archivedAt'>): Observable<PersonalReminder> {
     return this.http.put<PersonalReminder>(`${this.baseUrl}/personal-reminders.php?id=${id}`, reminder);
   }
 

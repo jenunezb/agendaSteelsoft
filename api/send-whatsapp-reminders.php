@@ -118,6 +118,7 @@ $statement->execute($params);
              FROM personal_reminders
              INNER JOIN users ON users.id = personal_reminders.user_id
              WHERE personal_reminders.completed = 0
+               AND personal_reminders.archived = 0
                AND personal_reminders.whatsapp_enabled = 1
                AND personal_reminders.remind_at IS NOT NULL
                AND personal_reminders.remind_at <= NOW()

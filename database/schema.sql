@@ -123,6 +123,8 @@ CREATE TABLE IF NOT EXISTS activities (
   description TEXT NOT NULL,
   reminder_minutes SMALLINT UNSIGNED NULL,
   reminder_sent_at DATETIME NULL,
+  archived TINYINT(1) NOT NULL DEFAULT 0,
+  archived_at DATETIME NULL,
   recurrence_type VARCHAR(20) NOT NULL DEFAULT 'none',
   reminder_sent_for_date DATE NULL,
   booking_status VARCHAR(20) NULL,
@@ -212,5 +214,6 @@ CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pendin
 CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date);
 CREATE INDEX idx_personal_reminders_due ON personal_reminders (user_id, completed, due_date);
 CREATE INDEX idx_personal_reminders_send ON personal_reminders (whatsapp_enabled, completed, remind_at, reminder_sent_at);
+CREATE INDEX idx_personal_reminders_archive ON personal_reminders (user_id, archived, archived_at);
 CREATE INDEX idx_financial_entries_user_date ON financial_entries (user_id, entry_date);
 CREATE INDEX idx_financial_entries_company_date ON financial_entries (company_id, entry_date);

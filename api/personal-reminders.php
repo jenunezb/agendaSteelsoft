@@ -14,9 +14,9 @@ if (($user['accountType'] ?? '') !== 'independent') {
 
 if ($method === 'GET') {
     $statement = $pdo->prepare(
-        'SELECT id, title, description, due_date, priority, completed, whatsapp_enabled, remind_at, reminder_sent_at
+        'SELECT id, title, description, due_date, priority, completed, whatsapp_enabled, remind_at, reminder_sent_at, archived, archived_at
          FROM personal_reminders WHERE user_id = :user_id
-         ORDER BY completed, COALESCE(due_date, "9999-12-31"), created_at DESC'
+         ORDER BY archived, completed, COALESCE(due_date, "9999-12-31"), created_at DESC'
     );
     $statement->execute([':user_id' => (int) $user['id']]);
     jsonResponse(array_map('mapPersonalReminder', $statement->fetchAll()));
@@ -30,9 +30,10 @@ if ($method !== 'DELETE' && $title === '') {
 
 if ($method === 'POST') {
     $values = validatePersonalReminder($payload);
+    unset($values[':archived_at_flag']);
     $statement = $pdo->prepare(
-        'INSERT INTO personal_reminders (user_id, title, description, due_date, priority, completed, whatsapp_enabled, remind_at)
-         VALUES (:user_id, :title, :description, :due_date, :priority, :completed, :whatsapp_enabled, :remind_at)'
+        'INSERT INTO personal_reminders (user_id, title, description, due_date, priority, completed, whatsapp_enabled, remind_at, archived)
+         VALUES (:user_id, :title, :description, :due_date, :priority, :completed, :whatsapp_enabled, :remind_at, :archived)'
     );
     $statement->execute([':user_id' => (int) $user['id'], ':title' => $title] + $values);
     $id = (int) $pdo->lastInsertId();
@@ -48,7 +49,8 @@ if ($method === 'PUT') {
         'UPDATE personal_reminders SET
          reminder_sent_at = IF(remind_at <=> :remind_at_compare AND whatsapp_enabled = :whatsapp_compare, reminder_sent_at, NULL),
          title = :title, description = :description, due_date = :due_date,
-         priority = :priority, completed = :completed, whatsapp_enabled = :whatsapp_enabled, remind_at = :remind_at
+         priority = :priority, completed = :completed, whatsapp_enabled = :whatsapp_enabled, remind_at = :remind_at,
+         archived_at = IF(:archived_at_flag = 1, COALESCE(archived_at, NOW()), NULL), archived = :archived
          WHERE id = :id AND user_id = :user_id'
     );
     $statement->execute([':id' => $id, ':user_id' => (int) $user['id'], ':title' => $title,
@@ -79,7 +81,9 @@ function validatePersonalReminder(array $payload): array
     if ($whatsapp && $remindAt === null) jsonResponse(['message' => 'Selecciona fecha y hora para la notificacion.'], 422);
     return [':description' => trim((string) ($payload['description'] ?? '')), ':due_date' => $dueDate,
         ':priority' => $priority, ':completed' => !empty($payload['completed']) ? 1 : 0,
-        ':whatsapp_enabled' => $whatsapp ? 1 : 0, ':remind_at' => $remindAt];
+        ':whatsapp_enabled' => $whatsapp ? 1 : 0, ':remind_at' => $remindAt,
+        ':archived' => !empty($payload['archived']) ? 1 : 0,
+        ':archived_at_flag' => !empty($payload['archived']) ? 1 : 0];
 }
 
 function mapPersonalReminder(array $row): array
@@ -87,5 +91,6 @@ function mapPersonalReminder(array $row): array
     return ['id' => (int) $row['id'], 'title' => (string) $row['title'], 'description' => (string) ($row['description'] ?? ''),
         'dueDate' => $row['due_date'] ?: null, 'priority' => (string) $row['priority'], 'completed' => !empty($row['completed']),
         'whatsappEnabled' => !empty($row['whatsapp_enabled']), 'remindAt' => $row['remind_at'] ? str_replace(' ', 'T', substr($row['remind_at'], 0, 16)) : null,
-        'reminderSentAt' => $row['reminder_sent_at'] ?? null];
+        'reminderSentAt' => $row['reminder_sent_at'] ?? null, 'archived' => !empty($row['archived']),
+        'archivedAt' => $row['archived_at'] ?? null];
 }
