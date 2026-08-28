@@ -48,7 +48,7 @@ if ($method === 'PUT') {
         'UPDATE personal_reminders SET
          reminder_sent_at = IF(remind_at <=> :remind_at_compare AND whatsapp_enabled = :whatsapp_compare, reminder_sent_at, NULL),
          title = :title, description = :description, due_date = :due_date,
-         priority = :priority, completed = :completed, whatsapp_enabled = :whatsapp_enabled, remind_at = :remind_at,
+         priority = :priority, completed = :completed, whatsapp_enabled = :whatsapp_enabled, remind_at = :remind_at
          WHERE id = :id AND user_id = :user_id'
     );
     $statement->execute([':id' => $id, ':user_id' => (int) $user['id'], ':title' => $title,

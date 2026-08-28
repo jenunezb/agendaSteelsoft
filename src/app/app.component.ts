@@ -1629,11 +1629,17 @@ export class AppComponent implements OnInit {
   }
 
   protected togglePersonalReminder(reminder: PersonalReminder): void {
+    this.personalReminderError = '';
+    this.personalReminderMessage = '';
     const payload = { title: reminder.title, description: reminder.description, dueDate: reminder.dueDate,
       priority: reminder.priority, completed: !reminder.completed, whatsappEnabled: reminder.whatsappEnabled, remindAt: reminder.remindAt };
-    this.agendaApi.updatePersonalReminder(reminder.id, payload).subscribe((saved) => {
-      this.personalReminders = this.personalReminders.map((item) => item.id === saved.id ? saved : item);
-      this.sortPersonalReminders();
+    this.agendaApi.updatePersonalReminder(reminder.id, payload).subscribe({
+      next: (saved) => {
+        this.personalReminders = this.personalReminders.map((item) => item.id === saved.id ? saved : item);
+        this.sortPersonalReminders();
+        this.personalReminderMessage = saved.completed ? 'Pendiente completado.' : 'Pendiente reabierto.';
+      },
+      error: (error) => this.personalReminderError = error?.error?.message ?? 'No fue posible actualizar el pendiente.'
     });
   }
 
