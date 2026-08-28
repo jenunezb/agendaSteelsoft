@@ -800,54 +800,29 @@
     }
 
     @if (isIndependentUser && independentTab === 'reminders') {
-      <section class="enterprise-overview personal-reminders-view">
-        <article class="panel enterprise-hero-panel">
-          <div class="enterprise-hero-copy">
-            <p class="label">Recordatorios personales</p>
-            <h2>Mis pendientes</h2>
-            <p>Guarda actividades que no necesitan ocupar un horario en tu agenda y decide si quieres recibir un aviso por WhatsApp.</p>
-          </div>
-          <div class="reminder-summary">
-            <strong>{{ personalReminders.length }}</strong>
-            <span>registrados</span>
-          </div>
-        </article>
-
-        <div class="personal-reminders-layout">
-          <article class="panel enterprise-admin-panel">
-            <div class="panel-heading"><div><p class="label">{{ editingPersonalReminderId ? 'Editar' : 'Nuevo' }}</p><h2>{{ editingPersonalReminderId ? 'Actualizar pendiente' : 'Agregar pendiente' }}</h2></div></div>
-            @if (personalReminderError) { <p class="auth-error">{{ personalReminderError }}</p> }
-            @if (personalReminderMessage) { <p class="success-message">{{ personalReminderMessage }}</p> }
-            <form class="pending-form" (ngSubmit)="savePersonalReminder()">
-              <label><span>Titulo</span><input type="text" name="personalReminderTitle" [(ngModel)]="newPersonalReminder.title" placeholder="Ej. Enviar documentos al contador" required /></label>
-              <label><span>Notas (opcional)</span><textarea name="personalReminderDescription" [(ngModel)]="newPersonalReminder.description" rows="3"></textarea></label>
-              <label><span>Fecha limite (opcional)</span><input type="date" name="personalReminderDueDate" [(ngModel)]="newPersonalReminder.dueDate" /></label>
-              <label><span>Prioridad</span><select name="personalReminderPriority" [(ngModel)]="newPersonalReminder.priority"><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>
-              <label class="reminder-checkbox"><input type="checkbox" name="personalReminderWhatsapp" [(ngModel)]="newPersonalReminder.whatsappEnabled" /><span>Enviar recordatorio por WhatsApp</span></label>
-              @if (newPersonalReminder.whatsappEnabled) {
-                <label><span>Fecha y hora del aviso</span><input type="datetime-local" name="personalReminderAt" [(ngModel)]="newPersonalReminder.remindAt" required /></label>
-                @if (!currentUser?.whatsappNotificationsEnabled || !currentUser?.whatsappNumber) {
-                  <p class="form-hint warning-hint">Para recibirlo debes activar y registrar tu numero en la seccion Perfil.</p>
-                }
-              }
-              <div class="form-actions"><button type="submit">{{ editingPersonalReminderId ? 'Guardar cambios' : 'Crear pendiente' }}</button>@if (editingPersonalReminderId) {<button type="button" class="secondary-button" (click)="cancelPersonalReminderEdit()">Cancelar</button>}</div>
-            </form>
-          </article>
-
-          <article class="panel enterprise-admin-panel">
-            <div class="panel-heading"><div><p class="label">Lista personal</p><h2>Pendientes y completados</h2></div></div>
-            <div class="personal-reminder-list">
+      <section class="panel personal-reminders-view">
+        <div class="reminders-toolbar">
+          <div><p class="label">Organizacion personal</p><h2>Pendientes</h2></div>
+          <button type="button" class="add-reminder-button" (click)="openPersonalReminderForm()"><span aria-hidden="true">+</span> Agregar pendiente</button>
+        </div>
+        @if (personalReminderError && !isPersonalReminderFormOpen) { <p class="auth-error">{{ personalReminderError }}</p> }
+        @if (personalReminderMessage) { <p class="success-message reminder-toast">{{ personalReminderMessage }}</p> }
+        <div class="reminders-table-wrap">
+          <table class="reminders-table">
+            <thead><tr><th>Estado</th><th>Pendiente</th><th>Prioridad</th><th>Fecha limite</th><th>Recordatorio</th><th class="actions-column">Acciones</th></tr></thead>
+            <tbody>
               @for (reminder of personalReminders; track reminder.id) {
-                <article class="personal-reminder-card" [class.completed]="reminder.completed" [class.priority-high]="reminder.priority === 'high'">
-                  <div class="personal-reminder-content"><div class="personal-reminder-heading"><strong>{{ reminder.title }}</strong><span class="priority-chip">{{ getPriorityLabel(reminder.priority) }}</span></div>
-                    @if (reminder.description) { <p>{{ reminder.description }}</p> }
-                    <div class="reminder-meta">@if (reminder.dueDate) {<span>Limite: {{ reminder.dueDate | date:'dd/MM/yyyy' }}</span>} @else {<span>Sin fecha limite</span>} @if (reminder.whatsappEnabled && reminder.remindAt) {<span>WhatsApp: {{ reminder.remindAt | date:'dd/MM/yyyy, h:mm a' }}</span>} @if (reminder.reminderSentAt) {<span class="sent-chip">Enviado</span>}</div>
-                  </div>
-                  <div class="card-actions"><button type="button" (click)="togglePersonalReminder(reminder)">{{ reminder.completed ? 'Reabrir' : 'Completar' }}</button><button type="button" (click)="editPersonalReminder(reminder)">Editar</button><button type="button" (click)="removePersonalReminder(reminder.id)">Eliminar</button></div>
-                </article>
-              } @empty { <p class="empty-state">Todavia no tienes pendientes personales.</p> }
-            </div>
-          </article>
+                <tr [class.completed-row]="reminder.completed">
+                  <td data-label="Estado"><button type="button" class="status-toggle" [class.done]="reminder.completed" (click)="togglePersonalReminder(reminder)" [attr.aria-label]="reminder.completed ? 'Reabrir pendiente' : 'Completar pendiente'"><span>{{ reminder.completed ? '✓' : '' }}</span>{{ reminder.completed ? 'Completado' : 'Pendiente' }}</button></td>
+                  <td data-label="Pendiente"><strong class="reminder-title">{{ reminder.title }}</strong>@if (reminder.description) {<small class="reminder-description">{{ reminder.description }}</small>}</td>
+                  <td data-label="Prioridad"><span class="priority-chip" [class.priority-high-chip]="reminder.priority === 'high'" [class.priority-low-chip]="reminder.priority === 'low'">{{ getPriorityLabel(reminder.priority) }}</span></td>
+                  <td data-label="Fecha limite">{{ reminder.dueDate ? (reminder.dueDate | date:'dd/MM/yyyy') : '—' }}</td>
+                  <td data-label="Recordatorio">@if (reminder.whatsappEnabled && reminder.remindAt) {<span class="whatsapp-reminder">WhatsApp · {{ reminder.remindAt | date:'dd/MM/yyyy, h:mm a' }}</span>@if (reminder.reminderSentAt) {<span class="sent-chip">Enviado</span>}} @else {<span class="muted-cell">Sin aviso</span>}</td>
+                  <td data-label="Acciones"><div class="table-actions"><button type="button" class="icon-action" (click)="editPersonalReminder(reminder)" aria-label="Editar pendiente">Editar</button><button type="button" class="icon-action danger-action" (click)="removePersonalReminder(reminder.id)" aria-label="Eliminar pendiente">Eliminar</button></div></td>
+                </tr>
+              } @empty {<tr><td colspan="6"><div class="reminders-empty"><span>✓</span><strong>Todo al dia</strong><p>Agrega un pendiente cuando tengas algo por hacer.</p></div></td></tr>}
+            </tbody>
+          </table>
         </div>
       </section>
     }
@@ -1214,6 +1189,30 @@
     }
   }
 </main>
+
+@if (isPersonalReminderFormOpen) {
+  <div class="reminder-form-overlay" (click)="closePersonalReminderForm()">
+    <section class="panel reminder-form-modal" role="dialog" aria-modal="true" aria-labelledby="reminder-form-title" (click)="$event.stopPropagation()">
+      <div class="reminder-modal-header">
+        <div><p class="label">{{ editingPersonalReminderId ? 'Editar pendiente' : 'Nuevo pendiente' }}</p><h2 id="reminder-form-title">{{ editingPersonalReminderId ? 'Actualizar información' : '¿Qué tienes por hacer?' }}</h2></div>
+        <button type="button" class="reminder-modal-close" (click)="closePersonalReminderForm()" aria-label="Cerrar formulario">×</button>
+      </div>
+      @if (personalReminderError) { <p class="auth-error">{{ personalReminderError }}</p> }
+      <form class="pending-form reminder-floating-form" (ngSubmit)="savePersonalReminder()">
+        <label class="full-field"><span>Titulo</span><input type="text" name="personalReminderTitle" [(ngModel)]="newPersonalReminder.title" placeholder="Ej. Enviar documentos al contador" required autofocus /></label>
+        <label class="full-field"><span>Notas (opcional)</span><textarea name="personalReminderDescription" [(ngModel)]="newPersonalReminder.description" rows="3" placeholder="Agrega contexto o detalles importantes"></textarea></label>
+        <label><span>Fecha limite (opcional)</span><input type="date" name="personalReminderDueDate" [(ngModel)]="newPersonalReminder.dueDate" /></label>
+        <label><span>Prioridad</span><select name="personalReminderPriority" [(ngModel)]="newPersonalReminder.priority"><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>
+        <label class="reminder-checkbox full-field"><input type="checkbox" name="personalReminderWhatsapp" [(ngModel)]="newPersonalReminder.whatsappEnabled" /><span><strong>Recordarme por WhatsApp</strong><small>Recibirás el aviso en el número configurado en tu perfil.</small></span></label>
+        @if (newPersonalReminder.whatsappEnabled) {
+          <label class="full-field whatsapp-time-field"><span>Fecha y hora del aviso</span><input type="datetime-local" name="personalReminderAt" [(ngModel)]="newPersonalReminder.remindAt" required /></label>
+          @if (!currentUser?.whatsappNotificationsEnabled || !currentUser?.whatsappNumber) {<p class="form-hint warning-hint full-field">Activa los recordatorios y registra tu número en la sección Perfil.</p>}
+        }
+        <div class="form-actions full-field modal-form-actions"><button type="button" class="secondary-button" (click)="cancelPersonalReminderEdit()">Cancelar</button><button type="submit">{{ editingPersonalReminderId ? 'Guardar cambios' : 'Agregar pendiente' }}</button></div>
+      </form>
+    </section>
+  </div>
+}
 
 @if (isActivityPanelOpen) {
   <div class="activity-overlay" (click)="closeActivityPanel()">

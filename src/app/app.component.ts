@@ -198,6 +198,7 @@ export class AppComponent implements OnInit {
   protected generalPendings: GeneralPending[] = [];
   protected personalReminders: PersonalReminder[] = [];
   protected editingPersonalReminderId: number | null = null;
+  protected isPersonalReminderFormOpen = false;
   protected personalReminderMessage = '';
   protected personalReminderError = '';
   protected financialEntries: FinancialEntry[] = [];
@@ -1616,6 +1617,7 @@ export class AppComponent implements OnInit {
           : this.personalReminders.map((item) => item.id === saved.id ? saved : item));
         this.sortPersonalReminders();
         this.resetPersonalReminderForm();
+        this.isPersonalReminderFormOpen = false;
         this.personalReminderMessage = 'Pendiente guardado.';
       },
       error: (error) => this.personalReminderError = error?.error?.message ?? 'No fue posible guardar el pendiente.'
@@ -1626,6 +1628,20 @@ export class AppComponent implements OnInit {
     this.editingPersonalReminderId = reminder.id;
     this.newPersonalReminder = { title: reminder.title, description: reminder.description, dueDate: reminder.dueDate,
       priority: reminder.priority, completed: reminder.completed, whatsappEnabled: reminder.whatsappEnabled, remindAt: reminder.remindAt };
+    this.isPersonalReminderFormOpen = true;
+  }
+
+  protected openPersonalReminderForm(): void {
+    this.resetPersonalReminderForm();
+    this.personalReminderError = '';
+    this.personalReminderMessage = '';
+    this.isPersonalReminderFormOpen = true;
+  }
+
+  protected closePersonalReminderForm(): void {
+    this.isPersonalReminderFormOpen = false;
+    this.personalReminderError = '';
+    this.resetPersonalReminderForm();
   }
 
   protected togglePersonalReminder(reminder: PersonalReminder): void {
@@ -1650,7 +1666,7 @@ export class AppComponent implements OnInit {
     });
   }
 
-  protected cancelPersonalReminderEdit(): void { this.resetPersonalReminderForm(); }
+  protected cancelPersonalReminderEdit(): void { this.closePersonalReminderForm(); }
 
   protected getPriorityLabel(priority: PersonalReminder['priority']): string {
     return priority === 'high' ? 'Alta' : priority === 'low' ? 'Baja' : 'Media';
