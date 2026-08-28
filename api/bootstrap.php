@@ -2153,6 +2153,7 @@ function getWhatsappConfig(): array
         'twilio_reminder_whatsapp_from' => (string) getenv('TWILIO_REMINDER_WHATSAPP_FROM') ?: (string) ($config['twilio_reminder_whatsapp_from'] ?? ''),
         'twilio_booking_whatsapp_from' => (string) getenv('TWILIO_BOOKING_WHATSAPP_FROM') ?: (string) ($config['twilio_booking_whatsapp_from'] ?? ''),
         'twilio_content_sid' => (string) getenv('TWILIO_CONTENT_SID') ?: (string) ($config['twilio_content_sid'] ?? ''),
+        'twilio_personal_reminder_content_sid' => (string) getenv('TWILIO_PERSONAL_REMINDER_CONTENT_SID') ?: (string) ($config['twilio_personal_reminder_content_sid'] ?? ''),
         'twilio_booking_confirmation_content_sid' => (string) getenv('TWILIO_BOOKING_CONFIRMATION_CONTENT_SID') ?: (string) ($config['twilio_booking_confirmation_content_sid'] ?? ''),
         'twilio_template_agendamiento_sid' => (string) getenv('TWILIO_TEMPLATE_AGENDAMIENTO_SID') ?: (string) ($config['twilio_template_agendamiento_sid'] ?? ''),
         'twilio_booking_admin_content_sid' => (string) getenv('TWILIO_BOOKING_ADMIN_CONTENT_SID') ?: (string) ($config['twilio_booking_admin_content_sid'] ?? ''),

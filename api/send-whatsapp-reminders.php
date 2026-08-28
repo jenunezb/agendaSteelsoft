@@ -683,6 +683,10 @@ function resolveTwilioReminderContentSid(array $config, array $activity): string
         return trim((string) ($config['twilio_booking_confirmation_content_sid'] ?? ''));
     }
 
+    if (!empty($activity['is_personal_reminder'])) {
+        return trim((string) ($config['twilio_personal_reminder_content_sid'] ?? ''));
+    }
+
     if (($activity['account_type'] ?? '') === 'independent') {
         return trim((string) ($config['twilio_template_agendamiento_sid'] ?? ''));
     }
