@@ -8,7 +8,7 @@ $pdo = getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuthenticatedUser();
 
-if (($user['account_type'] ?? '') !== 'independent') {
+if (($user['accountType'] ?? '') !== 'independent') {
     jsonResponse(['message' => 'Los recordatorios personales solo estan disponibles para perfiles independientes.'], 403);
 }
 
