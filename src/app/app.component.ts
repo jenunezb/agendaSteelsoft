@@ -13,6 +13,7 @@ import {
   CompanyProfessional,
   FinancialEntry,
   GeneralPending,
+  PersonalReminder,
   PublicProfile,
   ServiceRole,
   SystemAccountSummary,
@@ -101,7 +102,7 @@ export class AppComponent implements OnInit {
   protected authRouteMode: 'login' | 'register' | null = null;
   protected superAdminTab: 'overview' | 'accounts' = 'overview';
   protected companyAdminTab: 'agenda' | 'config' = 'agenda';
-  protected independentTab: 'agenda' | 'profile' = 'agenda';
+  protected independentTab: 'agenda' | 'reminders' | 'profile' = 'agenda';
   protected companyConfigTab: 'general' | 'notifications' | 'roles' | 'services' | 'professionals' = 'general';
   protected companyConfigEditor: 'role' | 'service' | 'professional' | null = null;
   protected editingSystemAccountId: number | null = null;
@@ -195,9 +196,14 @@ export class AppComponent implements OnInit {
   protected editingFinancialEntryId: number | null = null;
   protected activities: Activity[] = [];
   protected generalPendings: GeneralPending[] = [];
+  protected personalReminders: PersonalReminder[] = [];
+  protected editingPersonalReminderId: number | null = null;
+  protected personalReminderMessage = '';
+  protected personalReminderError = '';
   protected financialEntries: FinancialEntry[] = [];
   protected newActivity: Omit<Activity, 'id'> = this.buildEmptyActivity();
   protected newGeneralPending: Omit<GeneralPending, 'id'> = this.buildEmptyGeneralPending();
+  protected newPersonalReminder: Omit<PersonalReminder, 'id' | 'reminderSentAt'> = this.buildEmptyPersonalReminder();
   protected newFinancialEntry: Omit<FinancialEntry, 'id'> = this.buildEmptyFinancialEntry();
 
   ngOnInit(): void {
@@ -1592,6 +1598,58 @@ export class AppComponent implements OnInit {
     this.resetGeneralPendingForm();
   }
 
+  protected savePersonalReminder(): void {
+    const payload = { ...this.newPersonalReminder, title: this.newPersonalReminder.title.trim(), description: this.newPersonalReminder.description.trim() };
+    this.personalReminderError = '';
+    this.personalReminderMessage = '';
+    if (!payload.title || (payload.whatsappEnabled && !payload.remindAt)) {
+      this.personalReminderError = !payload.title ? 'Escribe el titulo del pendiente.' : 'Selecciona cuando quieres recibir el WhatsApp.';
+      return;
+    }
+    const request = this.editingPersonalReminderId === null
+      ? this.agendaApi.createPersonalReminder(payload)
+      : this.agendaApi.updatePersonalReminder(this.editingPersonalReminderId, payload);
+    request.subscribe({
+      next: (saved) => {
+        this.personalReminders = (this.editingPersonalReminderId === null
+          ? [...this.personalReminders, saved]
+          : this.personalReminders.map((item) => item.id === saved.id ? saved : item));
+        this.sortPersonalReminders();
+        this.resetPersonalReminderForm();
+        this.personalReminderMessage = 'Pendiente guardado.';
+      },
+      error: (error) => this.personalReminderError = error?.error?.message ?? 'No fue posible guardar el pendiente.'
+    });
+  }
+
+  protected editPersonalReminder(reminder: PersonalReminder): void {
+    this.editingPersonalReminderId = reminder.id;
+    this.newPersonalReminder = { title: reminder.title, description: reminder.description, dueDate: reminder.dueDate,
+      priority: reminder.priority, completed: reminder.completed, whatsappEnabled: reminder.whatsappEnabled, remindAt: reminder.remindAt };
+  }
+
+  protected togglePersonalReminder(reminder: PersonalReminder): void {
+    const payload = { title: reminder.title, description: reminder.description, dueDate: reminder.dueDate,
+      priority: reminder.priority, completed: !reminder.completed, whatsappEnabled: reminder.whatsappEnabled, remindAt: reminder.remindAt };
+    this.agendaApi.updatePersonalReminder(reminder.id, payload).subscribe((saved) => {
+      this.personalReminders = this.personalReminders.map((item) => item.id === saved.id ? saved : item);
+      this.sortPersonalReminders();
+    });
+  }
+
+  protected removePersonalReminder(id: number): void {
+    this.agendaApi.deletePersonalReminder(id).subscribe(() => {
+      this.personalReminders = this.personalReminders.filter((item) => item.id !== id);
+      if (this.editingPersonalReminderId === id) this.resetPersonalReminderForm();
+    });
+  }
+
+  protected cancelPersonalReminderEdit(): void { this.resetPersonalReminderForm(); }
+
+  protected getPriorityLabel(priority: PersonalReminder['priority']): string {
+    return priority === 'high' ? 'Alta' : priority === 'low' ? 'Baja' : 'Media';
+  }
+
   protected addFinancialEntry(): void {
     const title = this.newFinancialEntry.title.trim();
     const type = this.newFinancialEntry.type;
@@ -2123,6 +2181,7 @@ export class AppComponent implements OnInit {
 
     forkJoin({
       activities: this.agendaApi.getActivities().pipe(catchError(() => of([] as Activity[]))),
+      personalReminders: this.isIndependentUser ? this.agendaApi.getPersonalReminders().pipe(catchError(() => of([] as PersonalReminder[]))) : of([] as PersonalReminder[]),
       generalPendings: this.agendaApi
         .getGeneralPendings()
         .pipe(catchError(() => of([] as GeneralPending[]))),
@@ -2130,8 +2189,10 @@ export class AppComponent implements OnInit {
       companyContext: this.agendaApi
         .getCompanyContext()
         .pipe(catchError(() => of(null as CompanyContext | null)))
-    }).subscribe(({ activities, generalPendings, financialEntries, companyContext }) => {
+    }).subscribe(({ activities, personalReminders, generalPendings, financialEntries, companyContext }) => {
       this.activities = activities.sort((left, right) => this.compareActivities(left, right));
+      this.personalReminders = personalReminders;
+      this.sortPersonalReminders();
       this.generalPendings = generalPendings.sort((left, right) =>
         this.compareGeneralPendings(left, right)
       );
@@ -2543,6 +2604,19 @@ export class AppComponent implements OnInit {
       description: '',
       date: this.toIsoDate(new Date())
     };
+  }
+
+  private buildEmptyPersonalReminder(): Omit<PersonalReminder, 'id' | 'reminderSentAt'> {
+    return { title: '', description: '', dueDate: null, priority: 'medium', completed: false, whatsappEnabled: false, remindAt: null };
+  }
+
+  private resetPersonalReminderForm(): void {
+    this.editingPersonalReminderId = null;
+    this.newPersonalReminder = this.buildEmptyPersonalReminder();
+  }
+
+  private sortPersonalReminders(): void {
+    this.personalReminders.sort((a, b) => Number(a.completed) - Number(b.completed) || (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31'));
   }
 
   private buildEmptyFinancialEntry(): Omit<FinancialEntry, 'id'> {

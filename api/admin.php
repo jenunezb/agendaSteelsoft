@@ -43,6 +43,7 @@ if ($method === 'DELETE') {
             'DELETE FROM whatsapp_notifications WHERE activity_id IN (SELECT id FROM activities WHERE company_id = :company_id)',
             'DELETE FROM professional_roles WHERE professional_id IN (SELECT id FROM professionals WHERE company_id = :company_id)',
             'DELETE FROM activities WHERE company_id = :company_id',
+            'DELETE FROM personal_reminders WHERE user_id IN (SELECT id FROM users WHERE company_id = :company_id)',
             'DELETE FROM general_pendings WHERE company_id = :company_id',
             'DELETE FROM financial_entries WHERE company_id = :company_id',
             'DELETE FROM services WHERE company_id = :company_id',

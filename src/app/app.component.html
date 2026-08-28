@@ -718,6 +718,9 @@
         <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'agenda'" (click)="independentTab = 'agenda'">
           Agenda
         </button>
+        <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'reminders'" (click)="independentTab = 'reminders'">
+          Mis pendientes
+        </button>
         <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'profile'" (click)="independentTab = 'profile'">
           Perfil
         </button>
@@ -793,6 +796,59 @@
             </button>
           </form>
         </article>
+      </section>
+    }
+
+    @if (isIndependentUser && independentTab === 'reminders') {
+      <section class="enterprise-overview personal-reminders-view">
+        <article class="panel enterprise-hero-panel">
+          <div class="enterprise-hero-copy">
+            <p class="label">Recordatorios personales</p>
+            <h2>Mis pendientes</h2>
+            <p>Guarda actividades que no necesitan ocupar un horario en tu agenda y decide si quieres recibir un aviso por WhatsApp.</p>
+          </div>
+          <div class="reminder-summary">
+            <strong>{{ personalReminders.length }}</strong>
+            <span>registrados</span>
+          </div>
+        </article>
+
+        <div class="personal-reminders-layout">
+          <article class="panel enterprise-admin-panel">
+            <div class="panel-heading"><div><p class="label">{{ editingPersonalReminderId ? 'Editar' : 'Nuevo' }}</p><h2>{{ editingPersonalReminderId ? 'Actualizar pendiente' : 'Agregar pendiente' }}</h2></div></div>
+            @if (personalReminderError) { <p class="auth-error">{{ personalReminderError }}</p> }
+            @if (personalReminderMessage) { <p class="success-message">{{ personalReminderMessage }}</p> }
+            <form class="pending-form" (ngSubmit)="savePersonalReminder()">
+              <label><span>Titulo</span><input type="text" name="personalReminderTitle" [(ngModel)]="newPersonalReminder.title" placeholder="Ej. Enviar documentos al contador" required /></label>
+              <label><span>Notas (opcional)</span><textarea name="personalReminderDescription" [(ngModel)]="newPersonalReminder.description" rows="3"></textarea></label>
+              <label><span>Fecha limite (opcional)</span><input type="date" name="personalReminderDueDate" [(ngModel)]="newPersonalReminder.dueDate" /></label>
+              <label><span>Prioridad</span><select name="personalReminderPriority" [(ngModel)]="newPersonalReminder.priority"><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>
+              <label class="reminder-checkbox"><input type="checkbox" name="personalReminderWhatsapp" [(ngModel)]="newPersonalReminder.whatsappEnabled" /><span>Enviar recordatorio por WhatsApp</span></label>
+              @if (newPersonalReminder.whatsappEnabled) {
+                <label><span>Fecha y hora del aviso</span><input type="datetime-local" name="personalReminderAt" [(ngModel)]="newPersonalReminder.remindAt" required /></label>
+                @if (!currentUser?.whatsappNotificationsEnabled || !currentUser?.whatsappNumber) {
+                  <p class="form-hint warning-hint">Para recibirlo debes activar y registrar tu numero en la seccion Perfil.</p>
+                }
+              }
+              <div class="form-actions"><button type="submit">{{ editingPersonalReminderId ? 'Guardar cambios' : 'Crear pendiente' }}</button>@if (editingPersonalReminderId) {<button type="button" class="secondary-button" (click)="cancelPersonalReminderEdit()">Cancelar</button>}</div>
+            </form>
+          </article>
+
+          <article class="panel enterprise-admin-panel">
+            <div class="panel-heading"><div><p class="label">Lista personal</p><h2>Pendientes y completados</h2></div></div>
+            <div class="personal-reminder-list">
+              @for (reminder of personalReminders; track reminder.id) {
+                <article class="personal-reminder-card" [class.completed]="reminder.completed" [class.priority-high]="reminder.priority === 'high'">
+                  <div class="personal-reminder-content"><div class="personal-reminder-heading"><strong>{{ reminder.title }}</strong><span class="priority-chip">{{ getPriorityLabel(reminder.priority) }}</span></div>
+                    @if (reminder.description) { <p>{{ reminder.description }}</p> }
+                    <div class="reminder-meta">@if (reminder.dueDate) {<span>Limite: {{ reminder.dueDate | date:'dd/MM/yyyy' }}</span>} @else {<span>Sin fecha limite</span>} @if (reminder.whatsappEnabled && reminder.remindAt) {<span>WhatsApp: {{ reminder.remindAt | date:'dd/MM/yyyy, h:mm a' }}</span>} @if (reminder.reminderSentAt) {<span class="sent-chip">Enviado</span>}</div>
+                  </div>
+                  <div class="card-actions"><button type="button" (click)="togglePersonalReminder(reminder)">{{ reminder.completed ? 'Reabrir' : 'Completar' }}</button><button type="button" (click)="editPersonalReminder(reminder)">Editar</button><button type="button" (click)="removePersonalReminder(reminder.id)">Eliminar</button></div>
+                </article>
+              } @empty { <p class="empty-state">Todavia no tienes pendientes personales.</p> }
+            </div>
+          </article>
+        </div>
       </section>
     }
 

@@ -11,6 +11,7 @@ import {
   CompanyProfessional,
   FinancialEntry,
   GeneralPending,
+  PersonalReminder,
   PublicProfile,
   ServiceRole,
   SystemAccountSummary
@@ -209,6 +210,22 @@ export class AgendaApiService {
 
   deleteGeneralPending(id: number): Observable<{ success: boolean }> {
     return this.http.delete<{ success: boolean }>(`${this.baseUrl}/pendings.php?id=${id}`);
+  }
+
+  getPersonalReminders(): Observable<PersonalReminder[]> {
+    return this.http.get<PersonalReminder[]>(`${this.baseUrl}/personal-reminders.php`);
+  }
+
+  createPersonalReminder(reminder: Omit<PersonalReminder, 'id' | 'reminderSentAt'>): Observable<PersonalReminder> {
+    return this.http.post<PersonalReminder>(`${this.baseUrl}/personal-reminders.php`, reminder);
+  }
+
+  updatePersonalReminder(id: number, reminder: Omit<PersonalReminder, 'id' | 'reminderSentAt'>): Observable<PersonalReminder> {
+    return this.http.put<PersonalReminder>(`${this.baseUrl}/personal-reminders.php?id=${id}`, reminder);
+  }
+
+  deletePersonalReminder(id: number): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.baseUrl}/personal-reminders.php?id=${id}`);
   }
 
   getFinancialEntries(): Observable<FinancialEntry[]> {

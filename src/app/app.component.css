@@ -12,6 +12,34 @@
   color: var(--text);
 }
 
+.personal-reminders-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(360px, 1.2fr);
+  gap: 20px;
+}
+
+.reminder-summary { display: grid; text-align: center; }
+.reminder-summary strong { font-size: 2rem; color: #8b1e22; }
+.personal-reminder-list { display: grid; gap: 12px; }
+.personal-reminder-card { display: flex; justify-content: space-between; gap: 16px; padding: 16px; border: 1px solid #ddd5cc; border-left: 4px solid #b7a99b; border-radius: 14px; background: #fff; }
+.personal-reminder-card.priority-high { border-left-color: #b52a2f; }
+.personal-reminder-card.completed { opacity: 0.62; background: #f4f1ed; }
+.personal-reminder-card.completed strong { text-decoration: line-through; }
+.personal-reminder-content { min-width: 0; }
+.personal-reminder-heading, .reminder-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.personal-reminder-content p { margin: 8px 0; }
+.priority-chip, .sent-chip { padding: 3px 8px; border-radius: 999px; background: #eee8e1; font-size: 0.75rem; }
+.sent-chip { background: #dcefe3; color: #21633b; }
+.reminder-meta { color: #6e6258; font-size: 0.82rem; }
+.reminder-checkbox { display: flex !important; grid-template-columns: auto 1fr !important; align-items: center; gap: 10px; }
+.reminder-checkbox input { width: auto; }
+.warning-hint { color: #8b5c00; background: #fff5d6; padding: 10px; border-radius: 10px; }
+
+@media (max-width: 850px) {
+  .personal-reminders-layout { grid-template-columns: 1fr; }
+  .personal-reminder-card { flex-direction: column; }
+}
+
 .layout {
   min-height: 100vh;
   max-width: 1660px;

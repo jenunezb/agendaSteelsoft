@@ -106,6 +106,27 @@ $statement->execute($params);
              ORDER BY activities.activity_date, activities.start_time'
         );
         $activities = array_merge($activities, $bookingStatement->fetchAll());
+
+        $personalStatement = $pdo->query(
+            'SELECT personal_reminders.id, personal_reminders.title,
+                    TIME(personal_reminders.remind_at) AS start_time,
+                    DATE(personal_reminders.remind_at) AS activity_date,
+                    "" AS location, 0 AS reminder_minutes,
+                    users.whatsapp_number, users.name AS user_name,
+                    "independent" AS account_type, 1 AS is_personal_reminder,
+                    personal_reminders.due_date
+             FROM personal_reminders
+             INNER JOIN users ON users.id = personal_reminders.user_id
+             WHERE personal_reminders.completed = 0
+               AND personal_reminders.whatsapp_enabled = 1
+               AND personal_reminders.remind_at IS NOT NULL
+               AND personal_reminders.remind_at <= NOW()
+               AND personal_reminders.reminder_sent_at IS NULL
+               AND users.whatsapp_notifications_enabled = 1
+               AND users.whatsapp_number <> ""
+             ORDER BY personal_reminders.remind_at'
+        );
+        $activities = array_merge($activities, $personalStatement->fetchAll());
     }
 }
 $sentCount = 0;
@@ -131,7 +152,10 @@ foreach ($activities as $activity) {
 
     if ($response['success']) {
         if ($pdo instanceof PDO && $activityId <= 0 && !$forceSend) {
-            if (!empty($activity['is_booking_confirmation'])) {
+            if (!empty($activity['is_personal_reminder'])) {
+                $updateStatement = $pdo->prepare('UPDATE personal_reminders SET reminder_sent_at = NOW() WHERE id = :id');
+                $updateStatement->execute([':id' => (int) $activity['id']]);
+            } elseif (!empty($activity['is_booking_confirmation'])) {
                 $updateStatement = $pdo->prepare('UPDATE activities SET booking_confirmation_sent_at = NOW() WHERE id = :id');
                 $updateStatement->execute([':id' => (int) $activity['id']]);
             } else {
@@ -570,6 +594,14 @@ function buildTwilioWhatsappBody(array $activity): string
             $baseUrl,
             $token
         );
+    }
+
+    if (!empty($activity['is_personal_reminder'])) {
+        $dueText = !empty($activity['due_date'])
+            ? ' Fecha limite: ' . (new DateTimeImmutable((string) $activity['due_date']))->format('d/m/Y') . '.'
+            : '';
+        return sprintf('Hola %s, tienes pendiente: "%s".%s Entra a Steelsoft para marcarlo como completado.',
+            (string) $activity['user_name'], (string) $activity['title'], $dueText);
     }
 
     return sprintf(

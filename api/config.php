@@ -20,7 +20,7 @@ return [
     'twilio_messaging_service_sid' => 'MG34ce9977f2237e9bc72b7a95fa339245',
     'twilio_reminder_whatsapp_from' => '',
     'twilio_booking_whatsapp_from' => '',
-    'twilio_content_sid' => '',
+    'twilio_content_sid' => 'HX34460d6aa01b7f08ed2382cf1735f34d',
     'twilio_booking_confirmation_content_sid' => 'HXe1f3b1d845b6e17d5ff33a3de9b60dd7',
     'twilio_template_agendamiento_sid' => 'HX051c49a09727dda8e76b6731915e542a',
     'twilio_booking_admin_content_sid' => 'HX6ca71b1bc7baae08a109fcd50643826c',

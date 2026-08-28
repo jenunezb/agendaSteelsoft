@@ -192,6 +192,21 @@ CREATE TABLE IF NOT EXISTS whatsapp_notifications (
   UNIQUE KEY uq_whatsapp_activity_notification (activity_id, notification_type, recipient)
 );
 
+CREATE TABLE IF NOT EXISTS personal_reminders (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  due_date DATE NULL,
+  priority ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'medium',
+  completed TINYINT(1) NOT NULL DEFAULT 0,
+  whatsapp_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  remind_at DATETIME NULL,
+  reminder_sent_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 CALL ensure_column('general_pendings', 'user_id', 'ALTER TABLE general_pendings ADD COLUMN user_id INT UNSIGNED NULL AFTER id');
 CALL ensure_column('general_pendings', 'company_id', 'ALTER TABLE general_pendings ADD COLUMN company_id INT UNSIGNED NULL AFTER user_id');
 CALL ensure_column('general_pendings', 'professional_id', 'ALTER TABLE general_pendings ADD COLUMN professional_id INT UNSIGNED NULL AFTER company_id');
@@ -225,6 +240,8 @@ CALL ensure_index_name('activities', 'idx_activities_booking_token', 'CREATE UNI
 CALL ensure_index_name('whatsapp_notifications', 'idx_whatsapp_message_sid', 'CREATE INDEX idx_whatsapp_message_sid ON whatsapp_notifications (message_sid)');
 CALL ensure_index_name('general_pendings', 'idx_general_pendings_user_date', 'CREATE INDEX idx_general_pendings_user_date ON general_pendings (user_id, pending_date)');
 CALL ensure_index_name('general_pendings', 'idx_general_pendings_company_date', 'CREATE INDEX idx_general_pendings_company_date ON general_pendings (company_id, pending_date)');
+CALL ensure_index_name('personal_reminders', 'idx_personal_reminders_due', 'CREATE INDEX idx_personal_reminders_due ON personal_reminders (user_id, completed, due_date)');
+CALL ensure_index_name('personal_reminders', 'idx_personal_reminders_send', 'CREATE INDEX idx_personal_reminders_send ON personal_reminders (whatsapp_enabled, completed, remind_at, reminder_sent_at)');
 CALL ensure_index_name('financial_entries', 'idx_financial_entries_user_date', 'CREATE INDEX idx_financial_entries_user_date ON financial_entries (user_id, entry_date)');
 CALL ensure_index_name('financial_entries', 'idx_financial_entries_company_date', 'CREATE INDEX idx_financial_entries_company_date ON financial_entries (company_id, entry_date)');
 

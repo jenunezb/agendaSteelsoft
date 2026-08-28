@@ -26,6 +26,18 @@ export interface GeneralPending {
   date: string;
 }
 
+export interface PersonalReminder {
+  id: number;
+  title: string;
+  description: string;
+  dueDate: string | null;
+  priority: 'low' | 'medium' | 'high';
+  completed: boolean;
+  whatsappEnabled: boolean;
+  remindAt: string | null;
+  reminderSentAt: string | null;
+}
+
 export interface FinancialEntry {
   id: number;
   title: string;
