@@ -149,18 +149,57 @@
           </div>
         </article>
       </section>
+    } @else if (publicProfileState === 'loading') {
+      <section class="public-profile-loading" aria-live="polite">
+        <span class="public-profile-loader" aria-hidden="true"></span>
+        <p>Buscando la agenda...</p>
+      </section>
     } @else {
-      <section class="panel auth-panel">
-        <h2>
-          {{ publicProfileState === 'not-found' ? 'Perfil no encontrado' : 'Perfil no disponible' }}
-        </h2>
-        <p class="activity-launch-copy">
-          @if (publicProfileState === 'not-found') {
-            No encontramos un perfil público para `{{ publicProfileSlug }}`.
-          } @else {
-            Este usuario existe, pero su agenda pública está desactivada.
-          }
-        </p>
+      <section class="public-unavailable-shell">
+        <header class="public-unavailable-header">
+          <a class="public-unavailable-brand" href="/" aria-label="Steelsoft Agenda, volver al inicio">
+            <span>STEEL</span><strong>SOFT</strong><small>AGENDA</small>
+          </a>
+          <a class="public-unavailable-home-link" href="/">Inicio</a>
+        </header>
+
+        <article class="public-unavailable-card" [class.is-not-found]="publicProfileState === 'not-found'">
+          <div class="public-unavailable-visual" aria-hidden="true">
+            <span class="public-unavailable-orbit orbit-one"></span>
+            <span class="public-unavailable-orbit orbit-two"></span>
+            <div class="public-unavailable-calendar">
+              <span class="calendar-ring ring-one"></span>
+              <span class="calendar-ring ring-two"></span>
+              <span class="calendar-dot dot-one"></span>
+              <span class="calendar-dot dot-two"></span>
+              <span class="calendar-dot dot-three"></span>
+              <span class="calendar-dot dot-four"></span>
+              <span class="public-unavailable-symbol">{{ publicProfileState === 'not-found' ? '?' : '⌁' }}</span>
+            </div>
+          </div>
+
+          <div class="public-unavailable-copy">
+            <p class="public-unavailable-eyebrow">
+              {{ publicProfileState === 'not-found' ? 'Enlace no disponible' : 'Agenda privada' }}
+            </p>
+            <h1>
+              {{ publicProfileState === 'not-found' ? 'No encontramos esta agenda' : 'Esta agenda no está disponible al público' }}
+            </h1>
+            <p>
+              @if (publicProfileState === 'not-found') {
+                Es posible que el enlace haya cambiado o ya no exista. Puedes volver al inicio y continuar desde allí.
+              } @else {
+                La persona o empresa decidió mantener su agenda privada por ahora. Cuando vuelva a publicarla, podrás reservar desde este mismo enlace.
+              }
+            </p>
+            <div class="public-unavailable-actions">
+              <a class="public-unavailable-primary" href="/"><span aria-hidden="true">←</span> Volver a la página principal</a>
+              <a class="public-unavailable-secondary" href="/login">Iniciar sesión</a>
+            </div>
+          </div>
+        </article>
+
+        <p class="public-unavailable-footer">Organiza tus citas con calma. Steelsoft Agenda.</p>
       </section>
     }
   </main>

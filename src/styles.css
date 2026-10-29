@@ -1981,6 +1981,188 @@ app-root .public-layout .week-grid-button:not(:disabled)::after {
 }
 app-root .public-layout .week-grid-button:disabled { background: #f4f2ed; box-shadow: none; opacity: .58; }
 
+/* Public profile unavailable state */
+app-root .public-profile-loading {
+  min-height: calc(100vh - 68px);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  color: #706a60;
+}
+app-root .public-profile-loading p { margin: 0; font-size: .84rem; font-weight: 700; }
+app-root .public-profile-loader {
+  width: 38px;
+  height: 38px;
+  border: 3px solid color-mix(in srgb, var(--gold) 18%, #e7e2d8);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: publicProfileSpin .75s linear infinite;
+}
+app-root .public-unavailable-shell {
+  width: min(1040px, 100%);
+  min-height: calc(100vh - 68px);
+  margin-inline: auto;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 28px;
+}
+app-root .public-unavailable-header {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+app-root .public-unavailable-brand {
+  display: inline-flex;
+  align-items: baseline;
+  color: #171717;
+  font: 800 1rem/1 "Segoe UI", Arial, sans-serif;
+  letter-spacing: -.035em;
+  text-decoration: none;
+}
+app-root .public-unavailable-brand strong { color: var(--gold-deep); font-family: inherit; }
+app-root .public-unavailable-brand small { margin-left: 8px; color: #8a8378; font-size: .55rem; letter-spacing: .2em; }
+app-root .public-unavailable-home-link {
+  padding: 9px 13px;
+  border: 1px solid #ddd8ce;
+  border-radius: 999px;
+  color: #5e584f;
+  background: rgba(255,255,255,.62);
+  font-size: .74rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+app-root .public-unavailable-card {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  align-self: center;
+  display: grid;
+  grid-template-columns: minmax(280px, .82fr) minmax(0, 1.18fr);
+  align-items: center;
+  gap: clamp(28px, 6vw, 76px);
+  padding: clamp(34px, 6vw, 76px);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.88);
+  border-radius: 34px;
+  background: rgba(255,255,255,.86);
+  box-shadow: 0 30px 80px rgba(53,44,25,.12);
+  backdrop-filter: blur(18px);
+}
+app-root .public-unavailable-card::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 320px;
+  height: 320px;
+  top: -190px;
+  right: -120px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  filter: blur(2px);
+}
+app-root .public-unavailable-visual {
+  position: relative;
+  min-height: 310px;
+  display: grid;
+  place-items: center;
+}
+app-root .public-unavailable-orbit {
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--gold) 25%, #e8e2d6);
+  border-radius: 50%;
+}
+app-root .public-unavailable-orbit.orbit-one { width: 290px; height: 290px; }
+app-root .public-unavailable-orbit.orbit-two { width: 220px; height: 220px; border-style: dashed; }
+app-root .public-unavailable-calendar {
+  position: relative;
+  width: 172px;
+  height: 184px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--gold) 32%, #ddd7cc);
+  border-radius: 30px;
+  background: linear-gradient(155deg, #fff, color-mix(in srgb, var(--gold) 9%, #fff));
+  box-shadow: 0 24px 50px rgba(68,54,24,.14);
+  transform: rotate(-4deg);
+}
+app-root .public-unavailable-calendar::before {
+  content: "";
+  position: absolute;
+  inset: 48px 19px auto;
+  height: 1px;
+  background: #e6dfd3;
+}
+app-root .calendar-ring {
+  position: absolute;
+  top: -10px;
+  width: 8px;
+  height: 29px;
+  border: 5px solid #fff;
+  border-radius: 8px;
+  background: var(--gold);
+  box-shadow: 0 2px 5px rgba(0,0,0,.08);
+}
+app-root .calendar-ring.ring-one { left: 42px; }
+app-root .calendar-ring.ring-two { right: 42px; }
+app-root .calendar-dot { position: absolute; width: 10px; height: 10px; border-radius: 4px; background: color-mix(in srgb, var(--gold) 22%, #ebe6dc); }
+app-root .calendar-dot.dot-one { left: 28px; top: 70px; }
+app-root .calendar-dot.dot-two { left: 53px; top: 70px; }
+app-root .calendar-dot.dot-three { right: 53px; top: 70px; }
+app-root .calendar-dot.dot-four { right: 28px; top: 70px; }
+app-root .public-unavailable-symbol {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin-top: 43px;
+  border-radius: 19px;
+  color: var(--gold-deep);
+  background: color-mix(in srgb, var(--gold) 18%, #fff);
+  font: 800 1.6rem/1 "Segoe UI", Arial, sans-serif;
+}
+app-root .public-unavailable-card.is-not-found .public-unavailable-symbol { color: #736d63; background: #eeeae3; }
+app-root .public-unavailable-copy { min-width: 0; }
+app-root .public-unavailable-eyebrow {
+  width: fit-content;
+  margin: 0 0 15px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: var(--gold-deep);
+  background: color-mix(in srgb, var(--gold) 13%, #fff);
+  font-size: .66rem;
+  font-weight: 850;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+app-root .public-unavailable-card.is-not-found .public-unavailable-eyebrow { color: #69635a; background: #eeeae3; }
+app-root .public-unavailable-copy h1 {
+  max-width: 13ch;
+  margin: 0;
+  color: #191816;
+  font-size: clamp(2.35rem, 5vw, 4.3rem);
+  line-height: .98;
+  letter-spacing: -.045em;
+}
+app-root .public-unavailable-copy > p:not(.public-unavailable-eyebrow) {
+  max-width: 56ch;
+  margin: 22px 0 0;
+  color: #716b62;
+  font-size: .93rem;
+  line-height: 1.7;
+}
+app-root .public-unavailable-actions { display: flex; align-items: center; gap: 12px; margin-top: 30px; }
+app-root .public-unavailable-actions a { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; font-size: .78rem; font-weight: 850; text-decoration: none; }
+app-root .public-unavailable-primary { gap: 9px; padding: 13px 18px; color: var(--brand-on-primary); background: var(--gold); box-shadow: 0 12px 25px color-mix(in srgb, var(--gold) 24%, transparent); }
+app-root .public-unavailable-primary span { font-size: 1rem; transition: transform .2s ease; }
+app-root .public-unavailable-primary:hover span { transform: translateX(-3px); }
+app-root .public-unavailable-secondary { padding: 13px 16px; border: 1px solid #ded9cf; color: #655f56; background: #fff; }
+app-root .public-unavailable-footer { margin: 0; color: #918a7f; font-size: .68rem; text-align: center; }
+
+@keyframes publicProfileSpin { to { transform: rotate(360deg); } }
+
 @media (max-width: 720px) {
   app-root .public-layout { padding: 12px 10px 34px; }
   app-root .public-calendar-panel { padding: 8px; border-radius: 26px; }
@@ -2001,6 +2183,33 @@ app-root .public-layout .week-grid-button:disabled { background: #f4f2ed; box-sh
   app-root .public-calendar-panel .month-actions button { min-width: 0; width: 100%; }
   app-root .public-calendar-guide { margin-inline: 2px; }
   app-root .public-calendar-guide small { display: none; }
+  app-root .public-unavailable-shell { min-height: calc(100vh - 46px); gap: 16px; }
+  app-root .public-unavailable-header { min-height: 42px; padding-inline: 6px; }
+  app-root .public-unavailable-card { grid-template-columns: minmax(0, 1fr); gap: 17px; padding: 28px 22px 26px; border-radius: 26px; text-align: center; }
+  app-root .public-unavailable-visual { min-height: 205px; }
+  app-root .public-unavailable-orbit.orbit-one { width: 202px; height: 202px; }
+  app-root .public-unavailable-orbit.orbit-two { width: 158px; height: 158px; }
+  app-root .public-unavailable-calendar { width: 120px; height: 132px; border-radius: 23px; }
+  app-root .public-unavailable-calendar::before { inset: 37px 15px auto; }
+  app-root .calendar-ring { top: -8px; height: 22px; border-width: 4px; }
+  app-root .calendar-ring.ring-one { left: 29px; }
+  app-root .calendar-ring.ring-two { right: 29px; }
+  app-root .calendar-dot { width: 7px; height: 7px; border-radius: 3px; }
+  app-root .calendar-dot.dot-one { left: 20px; top: 53px; }
+  app-root .calendar-dot.dot-two { left: 38px; top: 53px; }
+  app-root .calendar-dot.dot-three { right: 38px; top: 53px; }
+  app-root .calendar-dot.dot-four { right: 20px; top: 53px; }
+  app-root .public-unavailable-symbol { width: 44px; height: 44px; margin-top: 33px; border-radius: 15px; font-size: 1.3rem; }
+  app-root .public-unavailable-eyebrow { margin-inline: auto; margin-bottom: 12px; }
+  app-root .public-unavailable-copy h1 { max-width: 14ch; margin-inline: auto; font-size: clamp(2.15rem, 11vw, 3rem); }
+  app-root .public-unavailable-copy > p:not(.public-unavailable-eyebrow) { margin-top: 16px; font-size: .84rem; line-height: 1.55; }
+  app-root .public-unavailable-actions { margin-top: 23px; align-items: stretch; flex-direction: column; }
+  app-root .public-unavailable-actions a { width: 100%; }
+  app-root .public-unavailable-footer { padding-bottom: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  app-root .public-profile-loader { animation: none; }
 }
 
 /* Independent profile and activity privacy */
