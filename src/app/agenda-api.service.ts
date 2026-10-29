@@ -258,12 +258,22 @@ export class AgendaApiService {
   }
 
   updateCompany(
-    company: Pick<CompanyContext['company'], 'name' | 'workingHourStart' | 'workingHourEnd'>
+    company: Pick<CompanyContext['company'], 'name' | 'workingHourStart' | 'workingHourEnd' | 'primaryColor'>
   ): Observable<CompanyContext> {
     return this.http.put<CompanyContext>(`${this.baseUrl}/company.php`, {
       action: 'updateCompany',
       ...company
     });
+  }
+
+  uploadCompanyLogo(file: File): Observable<CompanyContext> {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return this.http.post<CompanyContext>(`${this.baseUrl}/company-branding.php`, formData);
+  }
+
+  deleteCompanyLogo(): Observable<CompanyContext> {
+    return this.http.delete<CompanyContext>(`${this.baseUrl}/company-branding.php`);
   }
 
   updateSubscription(

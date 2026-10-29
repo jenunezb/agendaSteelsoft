@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, HostBinding, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 import { AgendaApiService } from './agenda-api.service';
@@ -31,6 +31,9 @@ type ViewMode = 'month' | 'week';
 })
 export class AppComponent implements OnInit {
   private readonly agendaApi = inject(AgendaApiService);
+  @HostBinding('style.--gold') protected brandPrimaryColor = '#f2b705';
+  @HostBinding('style.--gold-deep') protected brandPrimaryDarkColor = '#c99200';
+  @HostBinding('style.--brand-on-primary') protected brandOnPrimaryColor = '#0a0a0a';
   protected readonly reminderOptions = [
     { value: null, label: 'Sin notificacion' },
     { value: 60, label: '1 hora antes' },
@@ -87,6 +90,8 @@ export class AppComponent implements OnInit {
   protected companySettingsError = '';
   protected companySettingsMessage = '';
   protected isSavingCompanyProfile = false;
+  protected isUpdatingCompanyLogo = false;
+  protected brandLogoUrl = '';
   protected isSavingSubscription = false;
   protected isSavingProfessional = false;
   protected isSavingServiceRole = false;
@@ -130,7 +135,8 @@ export class AppComponent implements OnInit {
   protected companyProfileForm = {
     name: '',
     workingHourStart: 8,
-    workingHourEnd: 18
+    workingHourEnd: 18,
+    primaryColor: '#f2b705'
   };
   protected companySubscriptionForm = {
     planName: 'Basico empresarial',
@@ -188,6 +194,7 @@ export class AppComponent implements OnInit {
     endDate: ''
   };
   protected isActivityPanelOpen = false;
+  protected activityFormError = '';
   protected isPendingPanelOpen = false;
   protected isFinancePanelOpen = false;
   protected viewMode: ViewMode = 'month';
@@ -287,6 +294,17 @@ export class AppComponent implements OnInit {
 
   protected get activeProfileName(): string {
     return this.publicProfileUser?.name ?? this.currentUser?.name ?? 'Agenda';
+  }
+
+  protected get activeBrandName(): string {
+    if (this.isSystemAdmin) {
+      return 'Steelsoft';
+    }
+
+    return this.publicProfileUser?.companyName
+      ?? this.companyContext?.company.name
+      ?? this.currentUser?.name
+      ?? 'Steelsoft';
   }
 
   protected get currentPublicUrl(): string {
@@ -416,6 +434,10 @@ export class AppComponent implements OnInit {
 
   protected get publicBookingMinDate(): string {
     return this.publicMinimumIsoDate;
+  }
+
+  protected get todayIsoDate(): string {
+    return this.toIsoDate(new Date());
   }
 
   protected setAuthMode(mode: 'login' | 'register'): void {
@@ -645,6 +667,7 @@ export class AppComponent implements OnInit {
     const name = this.companyProfileForm.name.trim();
     const workingHourStart = Number(this.companyProfileForm.workingHourStart);
     const workingHourEnd = Number(this.companyProfileForm.workingHourEnd);
+    const primaryColor = this.companyProfileForm.primaryColor.trim().toLowerCase();
 
     if (!name) {
       this.companySettingsError = 'Ingresa el nombre de la empresa.';
@@ -664,6 +687,12 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    if (!/^#[0-9a-f]{6}$/.test(primaryColor)) {
+      this.companySettingsError = 'Selecciona un color principal valido.';
+      this.companySettingsMessage = '';
+      return;
+    }
+
     this.isSavingCompanyProfile = true;
     this.companySettingsError = '';
     this.companySettingsMessage = '';
@@ -671,7 +700,8 @@ export class AppComponent implements OnInit {
       .updateCompany({
         name,
         workingHourStart,
-        workingHourEnd
+        workingHourEnd,
+        primaryColor
       })
       .subscribe({
         next: (context) => {
@@ -684,6 +714,60 @@ export class AppComponent implements OnInit {
           this.companySettingsError = error?.error?.message ?? 'No fue posible actualizar la empresa.';
         }
       });
+  }
+
+  protected previewCompanyColor(color: string): void {
+    if (/^#[0-9a-fA-F]{6}$/.test(color)) {
+      this.setBrandColors(color.toLowerCase());
+    }
+  }
+
+  protected uploadCompanyLogo(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 1_500_000) {
+      this.companySettingsError = 'Usa un logo PNG, JPG o WebP de maximo 1.5 MB.';
+      this.companySettingsMessage = '';
+      return;
+    }
+
+    this.isUpdatingCompanyLogo = true;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.agendaApi.uploadCompanyLogo(file).subscribe({
+      next: (context) => {
+        this.isUpdatingCompanyLogo = false;
+        this.applyCompanyContext(context);
+        this.companySettingsMessage = 'Logo actualizado.';
+      },
+      error: (error) => {
+        this.isUpdatingCompanyLogo = false;
+        this.companySettingsError = error?.error?.message ?? 'No fue posible actualizar el logo.';
+      }
+    });
+  }
+
+  protected deleteCompanyLogo(): void {
+    this.isUpdatingCompanyLogo = true;
+    this.companySettingsError = '';
+    this.companySettingsMessage = '';
+    this.agendaApi.deleteCompanyLogo().subscribe({
+      next: (context) => {
+        this.isUpdatingCompanyLogo = false;
+        this.applyCompanyContext(context);
+        this.companySettingsMessage = 'Logo eliminado.';
+      },
+      error: (error) => {
+        this.isUpdatingCompanyLogo = false;
+        this.companySettingsError = error?.error?.message ?? 'No fue posible eliminar el logo.';
+      }
+    });
   }
 
   protected saveSubscription(): void {
@@ -1112,6 +1196,7 @@ export class AppComponent implements OnInit {
       next: () => {
         this.currentUser = null;
         this.companyContext = null;
+        this.resetBranding();
         this.activities = [];
         this.generalPendings = [];
         this.financialEntries = [];
@@ -1287,7 +1372,12 @@ export class AppComponent implements OnInit {
   }
 
   protected openActivityPanel(isoDate: string): void {
+    if (this.isPastCalendarDate(isoDate)) {
+      return;
+    }
+
     this.selectDate(isoDate);
+    this.activityFormError = '';
     this.isActivityPanelOpen = true;
   }
 
@@ -1362,12 +1452,71 @@ export class AppComponent implements OnInit {
     return slotDateTime.getTime() >= minimumBookingTime;
   }
 
+  protected isPastCalendarDate(isoDate: string): boolean {
+    return this.isValidIsoDate(isoDate) && isoDate < this.todayIsoDate;
+  }
+
+  protected get activityMinimumStartTime(): string {
+    return this.newActivity.date === this.todayIsoDate ? this.currentLocalTime : '00:00';
+  }
+
+  protected isActivityStartTimeSelectable(isoDate: string, time: string): boolean {
+    if (!this.isValidIsoDate(isoDate) || !/^\d{2}:\d{2}$/.test(time)) {
+      return false;
+    }
+
+    if (isoDate < this.todayIsoDate) {
+      return false;
+    }
+
+    return isoDate > this.todayIsoDate || time > this.currentLocalTime;
+  }
+
   protected onActivityServiceChange(): void {
     this.syncActivityEndTimeWithService();
   }
 
   protected onActivityStartTimeChange(): void {
+    if (
+      this.newActivity.startTime
+      && !this.isActivityStartTimeSelectable(this.newActivity.date, this.newActivity.startTime)
+    ) {
+      this.newActivity.startTime = '';
+      this.newActivity.endTime = '';
+      this.activityFormError = 'Para hoy, selecciona una hora posterior a la actual.';
+      return;
+    }
+
+    this.activityFormError = '';
     this.syncActivityEndTimeWithService();
+
+    if (this.newActivity.endTime && !this.isActivityEndTimeSelectable(this.newActivity.endTime)) {
+      this.newActivity.endTime = '';
+      this.activityFormError = 'La hora final debe ser posterior a la hora de inicio.';
+    }
+  }
+
+  protected onActivityEndTimeChange(): void {
+    if (!this.newActivity.endTime) {
+      this.activityFormError = '';
+      return;
+    }
+
+    if (!this.isActivityEndTimeSelectable(this.newActivity.endTime)) {
+      this.newActivity.endTime = '';
+      this.activityFormError = this.newActivity.startTime
+        ? 'La hora final debe ser posterior a la hora de inicio.'
+        : 'Selecciona primero la hora de inicio.';
+      return;
+    }
+
+    this.activityFormError = '';
+  }
+
+  protected isActivityEndTimeSelectable(time: string): boolean {
+    return /^\d{2}:\d{2}$/.test(time)
+      && this.newActivity.startTime !== ''
+      && this.compareTimes(this.newActivity.startTime, time) < 0;
   }
 
   protected closeActivityPanel(): void {
@@ -1397,15 +1546,36 @@ export class AppComponent implements OnInit {
   protected addActivity(): void {
     const title = this.buildActivityTitle();
     const startTime = this.newActivity.startTime;
-    const endTime = this.newActivity.endTime;
+    let endTime = this.newActivity.endTime;
     const assignee = this.newActivity.assignee;
     const description = this.buildActivityDescription();
+    this.activityFormError = '';
 
-    if (!title || !this.newActivity.date || !startTime || !endTime || !assignee) {
+    if (!title || !this.newActivity.date || !startTime || !assignee) {
+      this.activityFormError = 'Completa los datos obligatorios de la cita.';
       return;
     }
 
-    if (this.compareTimes(startTime, endTime) >= 0) {
+    if (this.newActivity.date < this.todayIsoDate) {
+      this.activityFormError = 'No puedes crear una cita en una fecha anterior a hoy.';
+      return;
+    }
+
+    if (!this.isActivityStartTimeSelectable(this.newActivity.date, startTime)) {
+      this.activityFormError = 'Para hoy, selecciona una hora posterior a la actual.';
+      return;
+    }
+
+    if (!endTime) {
+      endTime = this.getEndTimeByDuration(
+        startTime,
+        this.selectedActivityService?.durationMinutes ?? 60
+      );
+      this.newActivity.endTime = endTime;
+    }
+
+    if (!this.isActivityEndTimeSelectable(endTime)) {
+      this.activityFormError = 'La hora final debe ser posterior a la hora de inicio.';
       return;
     }
 
@@ -1433,16 +1603,21 @@ export class AppComponent implements OnInit {
             this.toActivityPayload({ ...activity, id: this.editingActivityId })
           );
 
-    request.subscribe((savedActivity) => {
-      this.activities = (
-        this.editingActivityId === null
-          ? [...this.activities, savedActivity]
-          : this.activities.map((existingActivity) =>
-              existingActivity.id === this.editingActivityId ? savedActivity : existingActivity
-            )
-      ).sort((left, right) => this.compareActivities(left, right));
-      this.selectDate(savedActivity.date);
-      this.resetActivityForm();
+    request.subscribe({
+      next: (savedActivity) => {
+        this.activities = (
+          this.editingActivityId === null
+            ? [...this.activities, savedActivity]
+            : this.activities.map((existingActivity) =>
+                existingActivity.id === this.editingActivityId ? savedActivity : existingActivity
+              )
+        ).sort((left, right) => this.compareActivities(left, right));
+        this.selectDate(savedActivity.date);
+        this.resetActivityForm();
+      },
+      error: (error) => {
+        this.activityFormError = error?.error?.message ?? 'No fue posible guardar la cita.';
+      }
     });
   }
 
@@ -2105,6 +2280,11 @@ export class AppComponent implements OnInit {
     return new Date(`${this.selectedDate}T00:00:00`);
   }
 
+  private get currentLocalTime(): string {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
+
   private get publicMinimumDate(): Date {
     return this.normalizePublicCalendarDate(new Date());
   }
@@ -2217,11 +2397,16 @@ export class AppComponent implements OnInit {
     }
 
     if (this.isProfessionalUser) {
-      this.agendaApi.getActivities().pipe(catchError(() => of([] as Activity[]))).subscribe((activities) => {
+      forkJoin({
+        activities: this.agendaApi.getActivities().pipe(catchError(() => of([] as Activity[]))),
+        companyContext: this.agendaApi.getCompanyContext().pipe(catchError(() => of(null as CompanyContext | null)))
+      }).subscribe(({ activities, companyContext }) => {
         this.activities = activities.sort((left, right) => this.compareActivities(left, right));
         this.generalPendings = [];
         this.financialEntries = [];
-        this.companyContext = null;
+        if (companyContext) {
+          this.applyCompanyContext(companyContext);
+        }
       });
       return;
     }
@@ -2272,6 +2457,7 @@ export class AppComponent implements OnInit {
 
   private resetActivityForm(): void {
     this.editingActivityId = null;
+    this.activityFormError = '';
     this.newActivity = this.buildEmptyActivity();
     this.activityBookingForm = {
       serviceId: 0,
@@ -2357,6 +2543,7 @@ export class AppComponent implements OnInit {
       if (this.currentUser.isSystemAdmin) {
         this.companyContext = null;
         this.systemAccounts = [];
+        this.resetBranding();
       } else if (this.isProfessionalUser) {
         this.companyContext = null;
         this.systemAccounts = [];
@@ -2368,6 +2555,7 @@ export class AppComponent implements OnInit {
     }
 
     this.companyContext = null;
+    this.resetBranding();
     this.systemAccounts = [];
     this.notificationSettingsForm = {
       whatsappNumber: '',
@@ -2386,6 +2574,7 @@ export class AppComponent implements OnInit {
       start: this.normalizeWorkingHour(profile.workingHours?.start, 8),
       end: this.normalizeWorkingHour(profile.workingHours?.end, 18)
     };
+    this.applyBranding(profile.branding);
     this.generalPendings = [];
     this.financialEntries = [];
     this.activities = profile.activities.sort((left, right) => this.compareActivities(left, right));
@@ -2414,8 +2603,13 @@ export class AppComponent implements OnInit {
     this.companyProfileForm = {
       name: context.company.name,
       workingHourStart: context.company.workingHourStart,
-      workingHourEnd: context.company.workingHourEnd
+      workingHourEnd: context.company.workingHourEnd,
+      primaryColor: context.company.primaryColor || '#f2b705'
     };
+    this.applyBranding({
+      primaryColor: context.company.primaryColor,
+      logoUrl: context.company.logoUrl
+    });
     this.companySubscriptionForm = {
       planName: context.subscription.planName,
       planCode: context.subscription.planCode,
@@ -2434,6 +2628,37 @@ export class AppComponent implements OnInit {
     if (!this.serviceForm.name) {
       this.resetServiceForm();
     }
+  }
+
+  private applyBranding(branding?: { primaryColor?: string; logoUrl?: string } | null): void {
+    const primaryColor = branding?.primaryColor?.trim().toLowerCase() ?? '#f2b705';
+    this.setBrandColors(/^#[0-9a-f]{6}$/.test(primaryColor) ? primaryColor : '#f2b705');
+    this.brandLogoUrl = branding?.logoUrl?.trim() ?? '';
+  }
+
+  private resetBranding(): void {
+    this.applyBranding({ primaryColor: '#f2b705', logoUrl: '' });
+  }
+
+  private setBrandColors(primaryColor: string): void {
+    this.brandPrimaryColor = primaryColor;
+    this.brandPrimaryDarkColor = this.scaleHexColor(primaryColor, 0.76);
+    this.brandOnPrimaryColor = this.getContrastColor(primaryColor);
+  }
+
+  private scaleHexColor(color: string, factor: number): string {
+    const channels = [1, 3, 5].map((index) =>
+      Math.max(0, Math.min(255, Math.round(Number.parseInt(color.slice(index, index + 2), 16) * factor)))
+    );
+    return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+  }
+
+  private getContrastColor(color: string): string {
+    const red = Number.parseInt(color.slice(1, 3), 16);
+    const green = Number.parseInt(color.slice(3, 5), 16);
+    const blue = Number.parseInt(color.slice(5, 7), 16);
+    const luminance = (red * 299 + green * 587 + blue * 114) / 255000;
+    return luminance > 0.58 ? '#0a0a0a' : '#ffffff';
   }
 
   private updateProfessionalCollection(professional: CompanyProfessional): void {

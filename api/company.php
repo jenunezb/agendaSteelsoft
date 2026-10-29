@@ -32,6 +32,7 @@ if ($action === 'updateCompany') {
     $name = trim((string) ($payload['name'] ?? ''));
     $workingHourStart = (int) ($payload['workingHourStart'] ?? 8);
     $workingHourEnd = (int) ($payload['workingHourEnd'] ?? 18);
+    $primaryColor = strtolower(trim((string) ($payload['primaryColor'] ?? '#f2b705')));
 
     if ($name === '') {
         jsonResponse(['message' => 'El nombre de la empresa es obligatorio.'], 422);
@@ -45,17 +46,23 @@ if ($action === 'updateCompany') {
         jsonResponse(['message' => 'La hora final debe ser mayor a la hora inicial.'], 422);
     }
 
+    if (!preg_match('/^#[0-9a-f]{6}$/', $primaryColor)) {
+        jsonResponse(['message' => 'El color principal no es valido.'], 422);
+    }
+
     $statement = $pdo->prepare(
         'UPDATE companies
          SET name = :name,
              working_hour_start = :working_hour_start,
-             working_hour_end = :working_hour_end
+             working_hour_end = :working_hour_end,
+             brand_primary_color = :brand_primary_color
          WHERE id = :id'
     );
     $statement->execute([
         ':name' => $name,
         ':working_hour_start' => $workingHourStart,
         ':working_hour_end' => $workingHourEnd,
+        ':brand_primary_color' => $primaryColor,
         ':id' => $companyId,
     ]);
 

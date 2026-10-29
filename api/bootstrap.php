@@ -179,6 +179,10 @@ function ensureSchema(PDO $pdo, string $databaseName): void
             status ENUM("active", "inactive", "suspended") NOT NULL DEFAULT "active",
             working_hour_start TINYINT UNSIGNED NOT NULL DEFAULT 8,
             working_hour_end TINYINT UNSIGNED NOT NULL DEFAULT 18,
+            brand_primary_color VARCHAR(7) NOT NULL DEFAULT "#f2b705",
+            brand_logo_data MEDIUMBLOB NULL,
+            brand_logo_mime VARCHAR(50) NULL,
+            brand_logo_updated_at DATETIME NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )'
@@ -345,6 +349,34 @@ function ensureSchema(PDO $pdo, string $databaseName): void
         'companies',
         'working_hour_end',
         'ALTER TABLE companies ADD COLUMN working_hour_end TINYINT UNSIGNED NOT NULL DEFAULT 18 AFTER working_hour_start'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'companies',
+        'brand_primary_color',
+        'ALTER TABLE companies ADD COLUMN brand_primary_color VARCHAR(7) NOT NULL DEFAULT "#f2b705" AFTER working_hour_end'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'companies',
+        'brand_logo_data',
+        'ALTER TABLE companies ADD COLUMN brand_logo_data MEDIUMBLOB NULL AFTER brand_primary_color'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'companies',
+        'brand_logo_mime',
+        'ALTER TABLE companies ADD COLUMN brand_logo_mime VARCHAR(50) NULL AFTER brand_logo_data'
+    );
+    ensureColumnExists(
+        $pdo,
+        $databaseName,
+        'companies',
+        'brand_logo_updated_at',
+        'ALTER TABLE companies ADD COLUMN brand_logo_updated_at DATETIME NULL AFTER brand_logo_mime'
     );
     ensureColumnExists(
         $pdo,
@@ -925,6 +957,16 @@ function buildPublicProfileUrl(string $username): string
     return sprintf('%s://%s/%s', $scheme, $host, rawurlencode($username));
 }
 
+function buildCompanyLogoUrl(int $companyId, mixed $updatedAt): string
+{
+    if ($companyId <= 0 || $updatedAt === null || trim((string) $updatedAt) === '') {
+        return '';
+    }
+
+    $version = strtotime((string) $updatedAt);
+    return sprintf('/api/company-logo.php?companyId=%d&v=%d', $companyId, $version !== false ? $version : time());
+}
+
 function buildBaseUrl(): string
 {
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -1300,7 +1342,8 @@ function getCompanyContext(PDO $pdo, array $user): array
 {
     $companyId = requireCurrentCompanyId($user);
     $companyStatement = $pdo->prepare(
-        'SELECT id, name, slug, account_type, status, working_hour_start, working_hour_end
+        'SELECT id, name, slug, account_type, status, working_hour_start, working_hour_end,
+                brand_primary_color, brand_logo_updated_at
          FROM companies
          WHERE id = :id'
     );
@@ -1327,6 +1370,8 @@ function getCompanyContext(PDO $pdo, array $user): array
             'status' => (string) $company['status'],
             'workingHourStart' => isset($company['working_hour_start']) ? (int) $company['working_hour_start'] : 8,
             'workingHourEnd' => isset($company['working_hour_end']) ? (int) $company['working_hour_end'] : 18,
+            'primaryColor' => (string) ($company['brand_primary_color'] ?? '#f2b705'),
+            'logoUrl' => buildCompanyLogoUrl((int) $company['id'], $company['brand_logo_updated_at'] ?? null),
         ],
         'subscription' => [
             'id' => isset($subscription['id']) ? (int) $subscription['id'] : 0,

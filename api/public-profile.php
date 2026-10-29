@@ -52,16 +52,19 @@ $companyId = isset($user['company_id']) ? (int) $user['company_id'] : 0;
 $companyRole = (string) ($user['company_role'] ?? '');
 $professionalId = isset($user['professional_id']) ? (int) $user['professional_id'] : 0;
 $isCompanyWorkspace = $companyId > 0 && in_array($companyRole, ['owner', 'admin'], true);
+$company = null;
 
-if ($isCompanyWorkspace) {
+if ($companyId > 0) {
     $companyStatement = $pdo->prepare(
-        'SELECT name, working_hour_start, working_hour_end
+        'SELECT name, working_hour_start, working_hour_end, brand_primary_color, brand_logo_updated_at
          FROM companies
          WHERE id = :company_id'
     );
     $companyStatement->execute([':company_id' => $companyId]);
     $company = $companyStatement->fetch();
+}
 
+if ($isCompanyWorkspace) {
     $activitiesStatement = $pdo->prepare(
         'SELECT id, title, start_time, end_time, assignee, professional_id, is_public, completed, location, description, activity_date, recurrence_type
          FROM activities
@@ -94,9 +97,8 @@ if ($isCompanyWorkspace) {
         ]]
         : [];
     $services = [];
-    $workingHourStart = 8;
-    $workingHourEnd = 18;
-    $company = null;
+    $workingHourStart = isset($company['working_hour_start']) ? (int) $company['working_hour_start'] : 8;
+    $workingHourEnd = isset($company['working_hour_end']) ? (int) $company['working_hour_end'] : 18;
 }
 
 $activities = array_map(static function (array $row): array {
@@ -124,13 +126,17 @@ jsonResponse([
     'user' => [
         'name' => $user['name'],
         'username' => $user['username'],
-        'companyName' => $isCompanyWorkspace ? (string) ($company['name'] ?? $user['name']) : (string) $user['name'],
+        'companyName' => (string) ($company['name'] ?? $user['name']),
         'publicUrl' => buildPublicProfileUrl((string) $user['username']),
         'whatsappNumber' => (string) ($user['whatsapp_number'] ?? ''),
         'whatsappContactUrl' => buildWhatsappClickUrl(
             (string) ($user['whatsapp_number'] ?? ''),
             sprintf('Hola %s, quiero consultar disponibilidad en tu agenda.', $user['name'])
         ),
+    ],
+    'branding' => [
+        'primaryColor' => (string) ($company['brand_primary_color'] ?? '#f2b705'),
+        'logoUrl' => buildCompanyLogoUrl($companyId, $company['brand_logo_updated_at'] ?? null),
     ],
     'activities' => $activities,
     'professionals' => $professionals,

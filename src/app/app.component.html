@@ -13,6 +13,9 @@
         <article class="panel calendar-panel public-calendar-panel">
           <div class="calendar-header">
             <div class="public-calendar-heading">
+              @if (brandLogoUrl) {
+                <img class="public-brand-logo" [src]="brandLogoUrl" [alt]="'Logo de ' + activeBrandName" />
+              }
               <p class="label">Agenda publica semanal</p>
               <h1 class="public-company-name">{{ publicProfileUser?.companyName || activeProfileName }}</h1>
               <h2 class="public-period-label">{{ currentPeriodLabel }}</h2>
@@ -42,6 +45,8 @@
                   class="week-day-heading"
                   [class.today]="day.isToday"
                   [class.selected]="selectedDate === day.isoDate"
+                  [class.past]="isPastCalendarDate(day.isoDate)"
+                  [disabled]="isPastCalendarDate(day.isoDate)"
                   (click)="openActivityPanel(day.isoDate)"
                 >
                   <strong>{{ formatWeekDayHeader(day) }}</strong>
@@ -70,6 +75,7 @@
                   <div
                     class="week-day-column"
                     [class.selected]="selectedDate === day.isoDate"
+                    [class.past]="isPastCalendarDate(day.isoDate)"
                     tabindex="0"
                   >
                     <div class="week-day-grid">
@@ -346,95 +352,217 @@
     </section>
   </main>
   } @else {
-  <main class="layout">
-    <section class="landing-home">
-      <header class="landing-home-topbar panel">
-        <div class="hero-brand">
-          <div class="hero-logo-frame">
-            <img
-              class="hero-logo"
-              src="/steelsoft-wordmark.png"
-              alt="Steelsoft"
-            />
+  <main class="landing-page">
+    <header class="landing-nav">
+      <a class="landing-logo" href="#inicio" aria-label="Steelsoft Agenda, ir al inicio">
+        <span>STEEL</span><strong>SOFT</strong><small>AGENDA</small>
+      </a>
+
+      <nav class="landing-nav-links" aria-label="Navegacion principal">
+        <a href="#funciones">Funciones</a>
+        <a href="#para-quien">Para quien es</a>
+        <a href="#como-funciona">Como funciona</a>
+      </nav>
+
+      <div class="landing-nav-actions">
+        <button type="button" class="landing-login" (click)="navigateToAuth('login')">
+          Iniciar sesion
+        </button>
+        <button type="button" class="landing-primary landing-nav-cta" (click)="navigateToAuth('register')">
+          Crear mi cuenta
+        </button>
+      </div>
+    </header>
+
+    <section class="landing-hero-v2" id="inicio">
+      <div class="landing-hero-copy-v2">
+        <div class="landing-kicker"><span></span> Tu negocio, organizado de verdad</div>
+        <h1>Tu agenda trabaja.<br /><em>Tu negocio crece.</em></h1>
+        <p class="landing-hero-lead">
+          Citas, equipo, recordatorios y finanzas en un solo lugar. Steelsoft te ayuda a dejar atras
+          el desorden y a dedicarle mas tiempo a tus clientes.
+        </p>
+
+        <div class="landing-hero-actions">
+          <button type="button" class="landing-primary landing-main-cta" (click)="navigateToAuth('register')">
+            Empezar ahora
+            <span aria-hidden="true">→</span>
+          </button>
+          <a class="landing-text-link" href="#funciones">Conocer las funciones</a>
+        </div>
+
+        <div class="landing-trust-row" aria-label="Beneficios de acceso">
+          <span><i>✓</i> Sin instalaciones</span>
+          <span><i>✓</i> Acceso desde cualquier dispositivo</span>
+          <span><i>✓</i> Configuracion sencilla</span>
+        </div>
+      </div>
+
+      <div class="product-showcase" aria-label="Vista previa del panel de Steelsoft Agenda">
+        <div class="showcase-glow"></div>
+        <article class="showcase-window">
+          <aside class="showcase-sidebar">
+            <div class="showcase-symbol">S</div>
+            <div class="showcase-side-item active"><span>▦</span> Agenda</div>
+            <div class="showcase-side-item"><span>◷</span> Recordatorios</div>
+            <div class="showcase-side-item"><span>◎</span> Profesionales</div>
+            <div class="showcase-side-item"><span>↗</span> Finanzas</div>
+            <div class="showcase-profile"><b>LM</b><span>Laura M.<small>Administradora</small></span></div>
+          </aside>
+
+          <div class="showcase-main">
+            <div class="showcase-heading">
+              <div><small>Buenos dias, Laura</small><strong>Agenda del equipo</strong></div>
+              <button type="button" tabindex="-1">+ Nueva cita</button>
+            </div>
+
+            <div class="showcase-toolbar">
+              <div><button type="button" tabindex="-1">‹</button><b>Octubre 2026</b><button type="button" tabindex="-1">›</button></div>
+              <span>Semana</span>
+            </div>
+
+            <div class="showcase-calendar">
+              <div class="calendar-time-head"></div>
+              <div class="calendar-day-head"><small>LUN</small><b>26</b></div>
+              <div class="calendar-day-head current"><small>MAR</small><b>27</b></div>
+              <div class="calendar-day-head"><small>MIE</small><b>28</b></div>
+              <div class="calendar-day-head"><small>JUE</small><b>29</b></div>
+              <div class="calendar-day-head"><small>VIE</small><b>30</b></div>
+
+              <div class="calendar-times"><span>8 AM</span><span>10 AM</span><span>12 PM</span><span>2 PM</span><span>4 PM</span></div>
+              <div class="calendar-column">
+                <div class="demo-event event-yellow" style="--event-top: 20%; --event-height: 20%"><b>Corte y color</b><span>Camila R.</span></div>
+              </div>
+              <div class="calendar-column current">
+                <div class="demo-event event-dark" style="--event-top: 3%; --event-height: 23%"><b>Manicure</b><span>Andrea S.</span></div>
+                <div class="demo-event event-mint" style="--event-top: 56%; --event-height: 20%"><b>Tratamiento</b><span>Valentina P.</span></div>
+              </div>
+              <div class="calendar-column">
+                <div class="demo-event event-lilac" style="--event-top: 31%; --event-height: 26%"><b>Consulta</b><span>Santiago M.</span></div>
+              </div>
+              <div class="calendar-column">
+                <div class="demo-event event-yellow" style="--event-top: 10%; --event-height: 20%"><b>Seguimiento</b><span>Marcela G.</span></div>
+                <div class="demo-event event-dark" style="--event-top: 67%; --event-height: 22%"><b>Sesion</b><span>David L.</span></div>
+              </div>
+              <div class="calendar-column">
+                <div class="demo-event event-mint" style="--event-top: 42%; --event-height: 23%"><b>Valoracion</b><span>Juliana C.</span></div>
+              </div>
+            </div>
           </div>
-          <span class="hero-badge">SaaS para empresas que coordinan profesionales</span>
+        </article>
+
+        <div class="showcase-toast">
+          <span>✓</span>
+          <div><strong>Cita confirmada</strong><small>Camila · Hoy, 10:00 AM</small></div>
         </div>
-
-        <nav class="landing-menu">
-          <button type="button" class="secondary-button landing-menu-button" (click)="navigateToAuth('login')">
-            Inicia sesion
-          </button>
-          <button type="button" class="landing-menu-button" (click)="navigateToAuth('register')">
-            Registrate
-          </button>
-        </nav>
-      </header>
-
-      <article class="landing-hero panel landing-home-hero">
-        <div class="hero-copy">
-          <p class="hero-eyebrow">Organiza mejor tu tiempo y tu atencion</p>
-          <h1>Una plataforma para que cada empresa administre sus profesionales desde un solo panel.</h1>
-          <p class="hero-description">
-            El plan basico esta orientado a empresas que necesitan que un administrador controle hasta 4
-            profesionales, sus tareas y su operacion financiera desde un entorno central.
-          </p>
-          <p class="hero-description">
-            Steelsoft Agenda centraliza actividades, responsables, horarios y recordatorios en una sola
-            vista. Esta pensada para negocios y equipos que quieren trabajar con mas orden hoy y quedar
-            listos para abrir autoagendamiento a sus clientes mas adelante.
-          </p>
+        <div class="showcase-mini-card">
+          <small>Resumen de hoy</small><strong>8 citas</strong><span>6 confirmadas</span>
         </div>
-
-        <div class="hero-feature-list hero-feature-list-4">
-          <article class="hero-feature">
-            <strong>Agenda por empresa</strong>
-            <p>Vista mensual y semanal para entender rapido la carga operativa del equipo.</p>
-          </article>
-          <article class="hero-feature">
-            <strong>1 administrador + 4 profesionales</strong>
-            <p>El plan base separa la cuenta administradora de los 4 cupos para profesionales.</p>
-          </article>
-          <article class="hero-feature">
-            <strong>Control financiero</strong>
-            <p>Registra ingresos, egresos y participacion por profesional desde el mismo panel.</p>
-          </article>
-          <article class="hero-feature">
-            <strong>Panel de suscripciones</strong>
-            <p>Administra empresas, planes activos, pagos y cupos de usuarios habilitados.</p>
-          </article>
-        </div>
-
-        <div class="hero-note">
-          <p class="label">Enfoque del producto</p>
-          <p>
-            La plataforma contempla una cuenta administradora del sistema para revisar empresas
-            registradas, independientes, planes, estados y crecimiento de la operacion.
-          </p>
-          <p>
-            Cada nuevo registro inicia con plan gratuito, verifica su correo con token y puede escalar
-            despues segun el numero de profesionales permitidos por suscripcion.
-          </p>
-        </div>
-
-        <section class="hero-enterprise-grid">
-          <article class="hero-enterprise-card">
-            <p class="label">Plan basico</p>
-            <strong>$150.000 COP / mes</strong>
-            <p>Incluye plataforma web, base de datos, mantenimiento basico y acceso administrativo.</p>
-          </article>
-          <article class="hero-enterprise-card">
-            <p class="label">Administrador</p>
-            <strong>1 panel maestro por empresa</strong>
-            <p>Controla agenda, usuarios, tareas, finanzas, recordatorios y configuracion del negocio.</p>
-          </article>
-          <article class="hero-enterprise-card">
-            <p class="label">Escalabilidad</p>
-            <strong>Control de cupos por plan</strong>
-            <p>El sistema queda listo para ampliar planes y permitir mas profesionales por empresa.</p>
-          </article>
-        </section>
-      </article>
+      </div>
     </section>
+
+    <section class="landing-proof-strip" aria-label="Resumen de funciones">
+      <div><span>01</span><p><strong>Agenda compartida</strong>Todo el equipo, siempre sincronizado.</p></div>
+      <div><span>02</span><p><strong>Reservas en linea</strong>Disponibilidad visible para tus clientes.</p></div>
+      <div><span>03</span><p><strong>Recordatorios</strong>Menos olvidos y citas perdidas.</p></div>
+      <div><span>04</span><p><strong>Control financiero</strong>Ingresos y egresos en orden.</p></div>
+    </section>
+
+    <section class="landing-section landing-features" id="funciones">
+      <div class="landing-section-heading">
+        <p class="landing-kicker"><span></span> Todo bajo control</p>
+        <h2>Menos caos.<br />Mas tiempo para crecer.</h2>
+        <p>Las herramientas que necesitas para coordinar tu operacion diaria sin saltar entre chats, cuadernos y hojas de calculo.</p>
+      </div>
+
+      <div class="feature-bento">
+        <article class="feature-card feature-card-large feature-card-dark">
+          <div class="feature-icon">▦</div>
+          <div>
+            <span class="feature-number">01</span>
+            <h3>Una agenda clara para todo tu equipo</h3>
+            <p>Consulta la semana, asigna responsables y entiende la disponibilidad de cada profesional de un vistazo.</p>
+          </div>
+          <div class="mini-week">
+            <div><b>Lun</b><span></span><i></i></div><div class="today"><b>Mar</b><span></span><i></i><em></em></div><div><b>Mie</b><span></span></div><div><b>Jue</b><span></span><i></i></div><div><b>Vie</b><span></span></div>
+          </div>
+        </article>
+
+        <article class="feature-card feature-card-yellow">
+          <div class="feature-icon">◷</div>
+          <span class="feature-number">02</span>
+          <h3>Recordatorios que no se te escapan</h3>
+          <p>Programa avisos y mantente al dia con los pendientes importantes de tu negocio.</p>
+          <div class="reminder-demo"><i>✓</i><span><b>Recordatorio programado</b><small>Enviar por WhatsApp · 9:00 AM</small></span></div>
+        </article>
+
+        <article class="feature-card feature-card-light">
+          <div class="feature-icon">↗</div>
+          <span class="feature-number">03</span>
+          <h3>Tus numeros, sin enredos</h3>
+          <p>Registra ingresos, egresos y participaciones para tener una lectura mas clara de la operacion.</p>
+          <div class="finance-demo"><span style="--bar: 42%"></span><span style="--bar: 68%"></span><span style="--bar: 52%"></span><span style="--bar: 86%"></span><span style="--bar: 72%"></span></div>
+        </article>
+
+        <article class="feature-card feature-card-wide">
+          <div class="feature-wide-copy">
+            <div class="feature-icon">◎</div>
+            <span class="feature-number">04</span>
+            <h3>Cada profesional con su espacio</h3>
+            <p>Organiza servicios, roles y horarios desde un panel central. Cada persona ve lo que necesita para trabajar.</p>
+          </div>
+          <div class="team-demo">
+            <div><b>AR</b><span>Andrea Rojas<small>Estilista</small></span><i>Disponible</i></div>
+            <div><b>CM</b><span>Camilo Mora<small>Barbero</small></span><i>En cita</i></div>
+            <div><b>VS</b><span>Valentina Soto<small>Manicurista</small></span><i>Disponible</i></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="landing-audience" id="para-quien">
+      <div class="audience-copy">
+        <p class="landing-kicker landing-kicker-light"><span></span> Hecho para tu ritmo</p>
+        <h2>Si trabajas con citas,<br /><em>Steelsoft trabaja contigo.</em></h2>
+        <p>Una forma simple de organizar equipos y profesionales independientes, sin convertir la tecnologia en otra tarea mas.</p>
+        <button type="button" class="landing-primary landing-primary-light" (click)="navigateToAuth('register')">Organizar mi agenda <span>→</span></button>
+      </div>
+      <div class="audience-grid">
+        <article><span>✦</span><strong>Centros de estetica</strong><small>Servicios, cabinas y especialistas coordinados.</small></article>
+        <article><span>✂</span><strong>Salones y barberias</strong><small>La disponibilidad de todo el equipo en una sola vista.</small></article>
+        <article><span>♡</span><strong>Consultorios</strong><small>Citas y seguimiento organizados por profesional.</small></article>
+        <article><span>●</span><strong>Independientes</strong><small>Tu tiempo, tus clientes y tus pendientes bajo control.</small></article>
+      </div>
+    </section>
+
+    <section class="landing-section landing-steps" id="como-funciona">
+      <div class="landing-section-heading centered">
+        <p class="landing-kicker"><span></span> Empieza sin complicaciones</p>
+        <h2>Tres pasos. Una agenda en orden.</h2>
+      </div>
+      <div class="steps-grid">
+        <article><span>01</span><div class="step-icon">＋</div><h3>Crea tu cuenta</h3><p>Registra tu negocio o empieza como profesional independiente.</p></article>
+        <article><span>02</span><div class="step-icon">⌁</div><h3>Configura tu equipo</h3><p>Agrega profesionales, servicios, horarios y responsables.</p></article>
+        <article><span>03</span><div class="step-icon">✓</div><h3>Empieza a organizar</h3><p>Agenda citas, activa recordatorios y lleva el control diario.</p></article>
+      </div>
+    </section>
+
+    <section class="landing-final-cta">
+      <div>
+        <p class="landing-kicker landing-kicker-light"><span></span> Menos pendientes. Mas tranquilidad.</p>
+        <h2>Tu proxima cita empieza con una agenda mejor.</h2>
+      </div>
+      <button type="button" class="landing-primary landing-primary-light landing-final-button" (click)="navigateToAuth('register')">
+        Crear mi cuenta <span>→</span>
+      </button>
+      <div class="cta-orbit cta-orbit-one"></div><div class="cta-orbit cta-orbit-two"></div>
+    </section>
+
+    <footer class="landing-footer">
+      <a class="landing-logo" href="#inicio"><span>STEEL</span><strong>SOFT</strong><small>AGENDA</small></a>
+      <p>Agenda, equipo y operacion en un solo lugar.</p>
+      <div><button type="button" (click)="openPrivacyModal()">Privacidad</button><span>© 2026 Steelsoft</span></div>
+    </footer>
   </main>
   }
 
@@ -492,21 +620,30 @@
   }
 } @else {
 <main class="layout">
-  <header class="topbar panel">
-    <div class="brand">
-      <span class="brand-mark">S</span>
-      <div>
-        <p class="label">Steelsoft</p>
-        <h1>Panel empresarial</h1>
+  <header class="topbar panel dashboard-topbar">
+    <div class="brand dashboard-brand">
+      @if (brandLogoUrl && !isSystemAdmin) {
+        <img class="brand-logo" [src]="brandLogoUrl" [alt]="'Logo de ' + activeBrandName" />
+      } @else {
+        <span class="brand-mark">{{ isSystemAdmin ? 'S' : activeBrandName.slice(0, 1).toUpperCase() }}</span>
+      }
+      <div class="dashboard-brand-copy">
+        <p class="label">{{ activeBrandName }}</p>
+        <h1>{{ isSystemAdmin ? 'Panel maestro' : 'Panel de agenda' }}</h1>
+        <p class="dashboard-caption">Tu espacio para organizar el dia con claridad.</p>
       </div>
     </div>
-    <div class="session-summary">
-      <div>
-        <p class="label">Administrador activo</p>
+    <div class="session-summary dashboard-session">
+      <span class="session-avatar" aria-hidden="true">{{ (currentUser?.name || 'U').slice(0, 1).toUpperCase() }}</span>
+      <div class="session-copy">
+        <p class="session-status"><span></span> Sesion activa</p>
         <strong>{{ currentUser?.name }}</strong>
-        <small>{{ currentUser?.username }}</small>
+        <small>&#64;{{ currentUser?.username }}</small>
       </div>
-      <button type="button" class="secondary-button" (click)="logout()">Cerrar sesion</button>
+      <button type="button" class="logout-button" (click)="logout()" aria-label="Cerrar sesion" title="Cerrar sesion">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M10 5H6.8A1.8 1.8 0 0 0 5 6.8v10.4A1.8 1.8 0 0 0 6.8 19H10M14.5 8.5 18 12l-3.5 3.5M9 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Salir</span>
+      </button>
     </div>
   </header>
 
@@ -705,10 +842,10 @@
     @if (isCompanyAdminUser && !isIndependentUser) {
       <nav class="panel company-admin-nav">
         <button type="button" class="company-admin-nav-button" [class.active]="companyAdminTab === 'agenda'" (click)="companyAdminTab = 'agenda'">
-          Agenda
+          <span class="company-nav-icon" aria-hidden="true">▦</span><span>Agenda</span>
         </button>
         <button type="button" class="company-admin-nav-button" [class.active]="companyAdminTab === 'config'" (click)="companyAdminTab = 'config'">
-          Configuracion de empresa
+          <span class="company-nav-icon" aria-hidden="true">⚙</span><span>Configuracion</span>
         </button>
       </nav>
     }
@@ -716,13 +853,13 @@
     @if (isIndependentUser) {
       <nav class="panel company-admin-nav" aria-label="Secciones del perfil independiente">
         <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'agenda'" (click)="independentTab = 'agenda'">
-          Agenda
+          <span class="company-nav-icon" aria-hidden="true">▦</span><span>Agenda</span>
         </button>
         <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'reminders'" (click)="independentTab = 'reminders'">
-          Mis pendientes
+          <span class="company-nav-icon" aria-hidden="true">✓</span><span>Pendientes</span>
         </button>
         <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'profile'" (click)="independentTab = 'profile'">
-          Perfil
+          <span class="company-nav-icon" aria-hidden="true">○</span><span>Perfil</span>
         </button>
       </nav>
     }
@@ -734,6 +871,37 @@
             <p class="label">Perfil independiente</p>
             <h2>{{ currentUser?.name }}</h2>
             <p>Administra la informacion y las preferencias de tu cuenta personal.</p>
+          </div>
+        </article>
+
+        <article class="panel enterprise-admin-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="label">Identidad visual</p>
+              <h2>Personaliza tu agenda</h2>
+              <p>Elige el color principal y el logo que verán tus clientes.</p>
+            </div>
+          </div>
+
+          @if (companySettingsError) {
+            <p class="auth-error">{{ companySettingsError }}</p>
+          }
+          @if (companySettingsMessage) {
+            <p class="success-message">{{ companySettingsMessage }}</p>
+          }
+
+          <div class="independent-branding-grid">
+            <form class="pending-form" (ngSubmit)="saveCompanyProfile()">
+              <label><span>Color principal</span><div class="brand-color-control"><input type="color" name="independentPrimaryColorPicker" [(ngModel)]="companyProfileForm.primaryColor" (ngModelChange)="previewCompanyColor($event)" /><input type="text" name="independentPrimaryColorText" [(ngModel)]="companyProfileForm.primaryColor" (ngModelChange)="previewCompanyColor($event)" maxlength="7" placeholder="#f2b705" /></div></label>
+              <button type="submit" [disabled]="isSavingCompanyProfile">{{ isSavingCompanyProfile ? 'Guardando...' : 'Guardar color' }}</button>
+            </form>
+            <div class="pending-form company-branding-card">
+              <div class="brand-logo-preview" [class.empty]="!brandLogoUrl">
+                @if (brandLogoUrl) {<img [src]="brandLogoUrl" [alt]="'Logo de ' + activeBrandName" />} @else {<span>{{ activeBrandName.slice(0, 1).toUpperCase() }}</span>}
+              </div>
+              <label class="logo-upload-button" [class.disabled]="isUpdatingCompanyLogo"><input type="file" accept="image/png,image/jpeg,image/webp" (change)="uploadCompanyLogo($event)" [disabled]="isUpdatingCompanyLogo" />{{ isUpdatingCompanyLogo ? 'Actualizando...' : (brandLogoUrl ? 'Cambiar logo' : 'Subir logo') }}</label>
+              @if (brandLogoUrl) {<button type="button" class="secondary-button" (click)="deleteCompanyLogo()" [disabled]="isUpdatingCompanyLogo">Eliminar logo</button>}
+            </div>
           </div>
         </article>
 
@@ -900,10 +1068,31 @@
             <article class="company-control-card">
               <form class="pending-form" (ngSubmit)="saveCompanyProfile()">
                 <label><span>Nombre de empresa</span><input type="text" name="companyName" [(ngModel)]="companyProfileForm.name" required /></label>
+                <label class="full-field"><span>Color principal</span><div class="brand-color-control"><input type="color" name="companyPrimaryColorPicker" [(ngModel)]="companyProfileForm.primaryColor" (ngModelChange)="previewCompanyColor($event)" /><input type="text" name="companyPrimaryColorText" [(ngModel)]="companyProfileForm.primaryColor" (ngModelChange)="previewCompanyColor($event)" maxlength="7" placeholder="#f2b705" /></div></label>
                 <label><span>Hora inicial</span><select name="workingHourStart" [(ngModel)]="companyProfileForm.workingHourStart">@for (time of hourOptions; track time) {<option [ngValue]="+time.slice(0, 2)">{{ formatTimeLabel(time) }}</option>}</select></label>
                 <label><span>Hora final</span><select name="workingHourEnd" [(ngModel)]="companyProfileForm.workingHourEnd">@for (time of hourOptions; track time) {<option [ngValue]="+time.slice(0, 2)">{{ formatTimeLabel(time) }}</option>}</select></label>
-                <button type="submit" [disabled]="isSavingCompanyProfile">{{ isSavingCompanyProfile ? 'Guardando...' : 'Guardar empresa y horario' }}</button>
+                <button type="submit" [disabled]="isSavingCompanyProfile">{{ isSavingCompanyProfile ? 'Guardando...' : 'Guardar configuración' }}</button>
               </form>
+            </article>
+            <article class="company-control-card">
+              <div class="pending-form company-branding-card">
+                <p class="label">Logo de marca</p>
+                <div class="brand-logo-preview" [class.empty]="!brandLogoUrl">
+                  @if (brandLogoUrl) {
+                    <img [src]="brandLogoUrl" [alt]="'Logo de ' + activeBrandName" />
+                  } @else {
+                    <span>{{ activeBrandName.slice(0, 1).toUpperCase() }}</span>
+                  }
+                </div>
+                <p>PNG, JPG o WebP. Máximo 1.5 MB.</p>
+                <label class="logo-upload-button" [class.disabled]="isUpdatingCompanyLogo">
+                  <input type="file" accept="image/png,image/jpeg,image/webp" (change)="uploadCompanyLogo($event)" [disabled]="isUpdatingCompanyLogo" />
+                  {{ isUpdatingCompanyLogo ? 'Actualizando...' : (brandLogoUrl ? 'Cambiar logo' : 'Subir logo') }}
+                </label>
+                @if (brandLogoUrl) {
+                  <button type="button" class="secondary-button" (click)="deleteCompanyLogo()" [disabled]="isUpdatingCompanyLogo">Eliminar logo</button>
+                }
+              </div>
             </article>
             <article class="company-control-card">
               <div class="pending-form company-visibility-card">
@@ -1132,7 +1321,7 @@
 
           <div class="calendar-grid">
             @for (day of calendarDays; track trackByIsoDate($index, day)) {
-              <button type="button" class="day-cell" [class.outside]="!day.inCurrentMonth" [class.selected]="selectedDate === day.isoDate" [class.today]="day.isToday" (click)="openActivityPanel(day.isoDate)">
+              <button type="button" class="day-cell" [class.outside]="!day.inCurrentMonth" [class.selected]="selectedDate === day.isoDate" [class.today]="day.isToday" [class.past]="isPastCalendarDate(day.isoDate)" [disabled]="isPastCalendarDate(day.isoDate)" (click)="openActivityPanel(day.isoDate)">
                 <span class="day-number">{{ day.dayNumber }}</span>
                 <div class="mini-list">
                   @for (activity of day.activities.slice(0, 3); track trackByActivity($index, activity)) {
@@ -1147,7 +1336,7 @@
             <div class="week-agenda-header" [style.grid-template-columns]="weekAgendaGridTemplateColumns" [style.min-width]="weekAgendaMinWidth">
               <span class="slot-heading">Hora</span>
               @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
-                <button type="button" class="week-day-heading" [class.today]="day.isToday" [class.selected]="selectedDate === day.isoDate" (click)="openActivityPanel(day.isoDate)">
+                <button type="button" class="week-day-heading" [class.today]="day.isToday" [class.selected]="selectedDate === day.isoDate" [class.past]="isPastCalendarDate(day.isoDate)" [disabled]="isPastCalendarDate(day.isoDate)" (click)="openActivityPanel(day.isoDate)">
                   <strong>{{ formatWeekDayHeader(day) }}</strong>
                   <small>{{ day.activities.length }} actividades</small>
                 </button>
@@ -1163,10 +1352,10 @@
 
               <div class="week-day-columns" [style.grid-template-columns]="weekDayColumnsTemplateColumns" [style.min-width]="weekDayColumnsMinWidth">
                 @for (day of weeklyCalendarDays; track trackByIsoDate($index, day)) {
-                  <div class="week-day-column" [class.selected]="selectedDate === day.isoDate">
+                  <div class="week-day-column" [class.selected]="selectedDate === day.isoDate" [class.past]="isPastCalendarDate(day.isoDate)">
                     <div class="week-day-grid">
                       @for (time of weeklyTimeOptions; track time) {
-                        <button type="button" class="week-grid-cell week-grid-button" [attr.aria-label]="'Abrir agenda del ' + formatFullDateLabel(day.isoDate) + ' a las ' + formatTimeLabel(time)" (click)="openActivityPanel(day.isoDate)"></button>
+                        <button type="button" class="week-grid-cell week-grid-button" [disabled]="!isActivityStartTimeSelectable(day.isoDate, time)" [attr.aria-label]="isActivityStartTimeSelectable(day.isoDate, time) ? 'Abrir agenda del ' + formatFullDateLabel(day.isoDate) + ' a las ' + formatTimeLabel(time) : 'Horario anterior no disponible'" (click)="openActivityPanel(day.isoDate)"></button>
                       }
                     </div>
                     <div class="week-day-activities">
@@ -1238,19 +1427,22 @@
       <div class="activity-modal-body">
         @if (!isSystemAdmin) {
           <form class="activity-form" (ngSubmit)="addActivity()">
+            @if (activityFormError) {
+              <p class="auth-error full-field">{{ activityFormError }}</p>
+            }
             @if (!isIndependentUser) {
             <label><span>Servicio</span><select name="modalServiceId" [(ngModel)]="activityBookingForm.serviceId" (ngModelChange)="onActivityServiceChange()"><option [ngValue]="0">Selecciona</option>@for (service of activeServiceOptions; track service.id) {<option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</option>}</select></label>
             <label><span>Cliente</span><input type="text" name="modalCustomerName" [(ngModel)]="activityBookingForm.customerName" /></label>
             <label><span>Telefono cliente</span><input type="text" name="modalCustomerPhone" [(ngModel)]="activityBookingForm.customerPhone" /></label>
             }
             <label><span>Titulo</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" [placeholder]="isIndependentUser ? 'Escribe el titulo de la actividad' : 'Se llena automaticamente si eliges servicio o cliente'" required /></label>
-            <label><span>Fecha</span><input type="date" name="modalDate" [(ngModel)]="newActivity.date" required /></label>
+            <label><span>Fecha</span><input type="date" name="modalDate" [(ngModel)]="newActivity.date" [min]="todayIsoDate" (ngModelChange)="onActivityStartTimeChange()" required /></label>
             @if (isIndependentUser) {
-              <label><span>Hora inicio</span><input type="time" name="independentStartTime" [(ngModel)]="newActivity.startTime" step="60" required /></label>
-              <label><span>Hora fin</span><input type="time" name="independentEndTime" [(ngModel)]="newActivity.endTime" step="60" required /></label>
+              <label><span>Hora inicio</span><input type="time" name="independentStartTime" [(ngModel)]="newActivity.startTime" [min]="activityMinimumStartTime" (ngModelChange)="onActivityStartTimeChange()" step="60" required /></label>
+              <label><span>Hora fin (opcional)</span><input type="time" name="independentEndTime" [(ngModel)]="newActivity.endTime" [min]="newActivity.startTime" (ngModelChange)="onActivityEndTimeChange()" step="60" /></label>
             } @else {
-              <label><span>Hora inicio</span><select name="modalStartTime" [(ngModel)]="newActivity.startTime" (ngModelChange)="onActivityStartTimeChange()" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
-              <label><span>Hora fin</span><select name="modalEndTime" [(ngModel)]="newActivity.endTime" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time">{{ formatTimeLabel(time) }}</option>}</select></label>
+              <label><span>Hora inicio</span><select name="modalStartTime" [(ngModel)]="newActivity.startTime" (ngModelChange)="onActivityStartTimeChange()" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time" [disabled]="!isActivityStartTimeSelectable(newActivity.date, time)">{{ formatTimeLabel(time) }}{{ isActivityStartTimeSelectable(newActivity.date, time) ? '' : ' - No disponible' }}</option>}</select></label>
+              <label><span>Hora fin (opcional)</span><select name="modalEndTime" [(ngModel)]="newActivity.endTime" (ngModelChange)="onActivityEndTimeChange()"><option value="">Automática</option>@for (time of timeOptions; track time) {<option [value]="time" [disabled]="!isActivityEndTimeSelectable(time)">{{ formatTimeLabel(time) }}{{ isActivityEndTimeSelectable(time) ? '' : ' - No disponible' }}</option>}</select></label>
             }
             @if (!isIndependentUser) {
             <label><span>Profesional</span><select name="modalAssignee" [(ngModel)]="newActivity.assignee" required>@for (assignee of assigneeOptions; track assignee) {<option [value]="assignee">{{ assignee }}</option>}</select></label>

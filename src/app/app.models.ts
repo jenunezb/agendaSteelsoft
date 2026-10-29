@@ -109,6 +109,12 @@ export interface PublicProfile {
     roleNames: string[];
   }>;
   services?: CompanyService[];
+  branding?: BrandIdentity;
+}
+
+export interface BrandIdentity {
+  primaryColor?: string;
+  logoUrl?: string;
 }
 
 export interface WeekGroup {
@@ -124,6 +130,8 @@ export interface CompanyProfile {
   status: 'active' | 'inactive' | 'suspended';
   workingHourStart: number;
   workingHourEnd: number;
+  primaryColor?: string;
+  logoUrl?: string;
 }
 
 export interface CompanySubscription {

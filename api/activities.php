@@ -64,6 +64,24 @@ if ($isProfessionalUser && $professionalId <= 0) {
 }
 
 if ($method === 'POST') {
+    $activityDate = trim((string) ($payload['date'] ?? ''));
+
+    if (!isSchedulableActivityDate($activityDate)) {
+        jsonResponse(['message' => 'No puedes crear una cita en una fecha anterior a hoy.'], 422);
+    }
+
+    $startTime = trim((string) ($payload['startTime'] ?? ''));
+
+    if (!isSchedulableActivityStart($activityDate, $startTime)) {
+        jsonResponse(['message' => 'Para hoy, selecciona una hora posterior a la actual.'], 422);
+    }
+
+    $endTime = resolveActivityEndTime($startTime, (string) ($payload['endTime'] ?? ''));
+
+    if (!isValidActivityTimeRange($startTime, $endTime)) {
+        jsonResponse(['message' => 'La hora final debe ser posterior a la hora de inicio.'], 422);
+    }
+
     $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
     $recurrenceType = normalizeActivityRecurrence($payload['recurrenceType'] ?? 'none', $user);
     $assignment = $isProfessionalUser
@@ -88,14 +106,14 @@ if ($method === 'POST') {
         ':company_id' => $companyId,
         ':professional_id' => $assignment['professionalId'],
         ':title' => trim((string) ($payload['title'] ?? '')),
-        ':start_time' => (string) ($payload['startTime'] ?? ''),
-        ':end_time' => (string) ($payload['endTime'] ?? ''),
+        ':start_time' => $startTime,
+        ':end_time' => $endTime,
         ':assignee' => $assignment['assignee'],
         ':is_public' => ($payload['visibility'] ?? 'private') === 'public' ? 1 : 0,
         ':completed' => !empty($payload['completed']) ? 1 : 0,
         ':location' => trim((string) ($payload['location'] ?? '')),
         ':description' => trim((string) ($payload['description'] ?? '')),
-        ':activity_date' => (string) ($payload['date'] ?? ''),
+        ':activity_date' => $activityDate,
         ':reminder_minutes' => $reminderMinutes,
         ':recurrence_type' => $recurrenceType,
     ]);
@@ -103,22 +121,73 @@ if ($method === 'POST') {
     jsonResponse([
         'id' => (int) $pdo->lastInsertId(),
         'title' => trim((string) ($payload['title'] ?? '')),
-        'startTime' => (string) ($payload['startTime'] ?? ''),
-        'endTime' => (string) ($payload['endTime'] ?? ''),
+        'startTime' => $startTime,
+        'endTime' => $endTime,
         'assignee' => $assignment['assignee'],
         'professionalId' => $assignment['professionalId'],
         'visibility' => ($payload['visibility'] ?? 'private') === 'public' ? 'public' : 'private',
         'completed' => !empty($payload['completed']),
         'location' => trim((string) ($payload['location'] ?? '')),
         'description' => trim((string) ($payload['description'] ?? '')),
-        'date' => (string) ($payload['date'] ?? ''),
+        'date' => $activityDate,
         'reminderMinutes' => $reminderMinutes,
         'recurrenceType' => $recurrenceType,
     ], 201);
 }
 
+function isSchedulableActivityDate(string $date): bool
+{
+    $parsedDate = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+
+    return $parsedDate instanceof DateTimeImmutable
+        && $parsedDate->format('Y-m-d') === $date
+        && $date >= (new DateTimeImmutable('today'))->format('Y-m-d');
+}
+
+function isSchedulableActivityStart(string $date, string $time): bool
+{
+    $normalizedTime = substr($time, 0, 5);
+    $dateTime = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $normalizedTime);
+
+    return $dateTime instanceof DateTimeImmutable
+        && $dateTime->format('Y-m-d H:i') === $date . ' ' . $normalizedTime
+        && $dateTime > new DateTimeImmutable('now');
+}
+
+function resolveActivityEndTime(string $startTime, string $endTime): string
+{
+    $normalizedEndTime = substr(trim($endTime), 0, 5);
+
+    if ($normalizedEndTime !== '') {
+        return $normalizedEndTime;
+    }
+
+    $start = DateTimeImmutable::createFromFormat('!H:i', substr($startTime, 0, 5));
+    return $start instanceof DateTimeImmutable ? $start->modify('+1 hour')->format('H:i') : '';
+}
+
+function isValidActivityTimeRange(string $startTime, string $endTime): bool
+{
+    $normalizedStartTime = substr($startTime, 0, 5);
+    $start = DateTimeImmutable::createFromFormat('!H:i', $normalizedStartTime);
+    $end = DateTimeImmutable::createFromFormat('!H:i', $endTime);
+
+    return $start instanceof DateTimeImmutable
+        && $end instanceof DateTimeImmutable
+        && $start->format('H:i') === $normalizedStartTime
+        && $end->format('H:i') === $endTime
+        && $endTime > $normalizedStartTime;
+}
+
 if ($method === 'PUT') {
     $id = getRequiredId();
+    $startTime = trim((string) ($payload['startTime'] ?? ''));
+    $endTime = resolveActivityEndTime($startTime, (string) ($payload['endTime'] ?? ''));
+
+    if (!isValidActivityTimeRange($startTime, $endTime)) {
+        jsonResponse(['message' => 'La hora final debe ser posterior a la hora de inicio.'], 422);
+    }
+
     $reminderMinutes = normalizeReminderMinutes($payload['reminderMinutes'] ?? null);
     $recurrenceType = normalizeActivityRecurrence($payload['recurrenceType'] ?? 'none', $user);
     $assignment = $isProfessionalUser
@@ -157,8 +226,8 @@ if ($method === 'PUT') {
         ':id' => $id,
         ':company_id' => $companyId,
         ':title' => trim((string) ($payload['title'] ?? '')),
-        ':start_time' => (string) ($payload['startTime'] ?? ''),
-        ':end_time' => (string) ($payload['endTime'] ?? ''),
+        ':start_time' => $startTime,
+        ':end_time' => $endTime,
         ':professional_id' => $assignment['professionalId'],
         ':assignee' => $assignment['assignee'],
         ':is_public' => ($payload['visibility'] ?? 'private') === 'public' ? 1 : 0,
@@ -183,8 +252,8 @@ if ($method === 'PUT') {
     jsonResponse([
         'id' => $id,
         'title' => trim((string) ($payload['title'] ?? '')),
-        'startTime' => (string) ($payload['startTime'] ?? ''),
-        'endTime' => (string) ($payload['endTime'] ?? ''),
+        'startTime' => $startTime,
+        'endTime' => $endTime,
         'assignee' => $assignment['assignee'],
         'professionalId' => $assignment['professionalId'],
         'visibility' => ($payload['visibility'] ?? 'private') === 'public' ? 'public' : 'private',

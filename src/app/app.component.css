@@ -3,6 +3,7 @@
   --black-soft: #171717;
   --gold: #f2b705;
   --gold-deep: #c99200;
+  --brand-on-primary: #0a0a0a;
   --text: #171717;
   --muted: #6c6658;
   --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.07);
@@ -20,8 +21,8 @@
 .reminder-view-switch button { border: 0; border-radius: 9px; padding: 8px 11px; background: transparent; color: #6f675d; font: 600 .78rem/1 Arial, sans-serif; transition: background .18s ease, color .18s ease, box-shadow .18s ease; }
 .reminder-view-switch button.active { color: #17130d; background: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.08); }
 .reminder-view-switch span { margin-left: 4px; padding: 2px 5px; border-radius: 999px; background: var(--gold); color: #18130a; font-size: .68rem; }
-.add-reminder-button { display: inline-flex; align-items: center; gap: 9px; border: 0; border-radius: 13px; padding: 12px 17px; color: #0a0a0a; background: var(--gold); box-shadow: 0 8px 20px rgba(201, 146, 0, 0.23); transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
-.add-reminder-button span { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #0a0a0a; color: #fff; font: 700 1rem/1 Arial, sans-serif; }
+.add-reminder-button { display: inline-flex; align-items: center; gap: 9px; border: 0; border-radius: 13px; padding: 12px 17px; color: var(--brand-on-primary); background: var(--gold); box-shadow: 0 8px 20px rgba(201, 146, 0, 0.23); transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+.add-reminder-button span { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(255, 255, 255, .82); color: var(--gold-deep); font: 700 1rem/1 Arial, sans-serif; }
 .add-reminder-button:hover { transform: translateY(-2px); background: #ffc928; box-shadow: 0 12px 26px rgba(201, 146, 0, .3); }
 .reminder-toast { margin: 14px 24px 0; animation: reminderToastIn .3s ease-out both; }
 .reminders-table-wrap { overflow-x: auto; }
@@ -201,9 +202,9 @@ h1 {
 }
 
 .company-admin-nav-button.active {
-  background: var(--black-soft);
-  color: #fff8eb;
-  border-color: transparent;
+  background: color-mix(in srgb, var(--gold) 20%, #ffffff);
+  color: var(--gold-deep);
+  border-color: color-mix(in srgb, var(--gold) 38%, #ded8cc);
 }
 
 .auth-panel {
@@ -593,9 +594,20 @@ button:disabled {
   display: grid;
   place-items: center;
   background: linear-gradient(180deg, var(--gold), var(--gold-deep));
-  color: var(--black);
+  color: var(--brand-on-primary);
   font-size: 1.3rem;
   font-weight: 700;
+}
+
+.brand-logo {
+  width: 72px;
+  height: 58px;
+  border-radius: 14px;
+  object-fit: contain;
+  padding: 5px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
 }
 
 .menu {
@@ -619,7 +631,7 @@ button:disabled {
 
 .menu a:hover {
   background: var(--gold);
-  color: var(--black);
+  color: var(--brand-on-primary);
   transform: translateY(-1px);
 }
 
@@ -805,14 +817,14 @@ button {
     border-color 0.16s ease;
 }
 
-.month-actions button,
 .activity-form button,
 .pending-form button,
 .view-switch button {
-  background: var(--black);
-  color: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--gold) 34%, #ded8cc);
+  background: color-mix(in srgb, var(--gold) 16%, #ffffff);
+  color: var(--gold-deep);
   padding: 10px 14px;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--gold) 11%, transparent);
 }
 
 .auth-form button {
@@ -820,11 +832,11 @@ button {
   margin-top: 4px;
   padding: 12px 16px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #111111, #2b2619);
-  color: #fffdf8;
+  background: color-mix(in srgb, var(--gold) 20%, #ffffff);
+  color: var(--gold-deep);
   font-size: 0.95rem;
   font-weight: 700;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--gold) 13%, transparent);
 }
 
 .month-actions button:hover,
@@ -832,7 +844,7 @@ button {
 .pending-form button:hover,
 .view-switch button:hover {
   background: var(--gold);
-  color: var(--black);
+  color: var(--brand-on-primary);
   box-shadow: 0 12px 24px rgba(242, 183, 5, 0.2);
 }
 
@@ -844,7 +856,7 @@ button {
 
 .view-switch button.active {
   background: var(--gold);
-  color: var(--black);
+  color: var(--brand-on-primary);
 }
 
 .selected-day {
@@ -1091,8 +1103,31 @@ button {
   padding: 18px;
 }
 
+.public-calendar-panel .calendar-header {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) auto minmax(80px, 1fr);
+  align-items: start;
+}
+
 .public-calendar-heading {
   display: grid;
+  gap: 5px;
+  grid-column: 2;
+  justify-items: center;
+  text-align: center;
+}
+
+.public-brand-logo {
+  width: min(280px, 72vw);
+  height: 104px;
+  object-fit: contain;
+  object-position: center;
+  margin-bottom: 10px;
+}
+
+.public-calendar-panel .calendar-controls {
+  grid-column: 3;
+  justify-self: end;
 }
 
 .public-company-name {
@@ -1161,6 +1196,18 @@ button {
   opacity: 0.4;
 }
 
+.day-cell.past {
+  border-color: rgba(0, 0, 0, 0.05);
+  background: #f1f1ee;
+  filter: grayscale(0.7);
+  opacity: 0.42;
+}
+
+.day-cell.past .day-number {
+  background: #777;
+  color: #fff;
+}
+
 .day-cell.selected {
   border-color: var(--gold);
   box-shadow: 0 14px 28px rgba(242, 183, 5, 0.17);
@@ -1176,8 +1223,8 @@ button {
   border-radius: 50%;
   display: inline-grid;
   place-items: center;
-  background: var(--black);
-  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 18%, #ffffff);
+  color: var(--gold-deep);
   font-weight: 700;
   font-size: 0.88rem;
 }
@@ -1185,7 +1232,99 @@ button {
 .day-cell.today .day-number,
 .day-cell.selected .day-number {
   background: var(--gold);
-  color: var(--black);
+  color: var(--brand-on-primary);
+}
+
+.brand-color-control {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.brand-color-control input[type='color'] {
+  width: 56px;
+  min-height: 46px;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.company-branding-card {
+  align-content: start;
+}
+
+.independent-branding-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.company-branding-card > p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.brand-logo-preview {
+  width: 100%;
+  min-height: 128px;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px dashed color-mix(in srgb, var(--gold) 55%, #b6b0a3);
+  background: color-mix(in srgb, var(--gold) 8%, #ffffff);
+}
+
+.brand-logo-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 92px;
+  object-fit: contain;
+}
+
+.brand-logo-preview span {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--gold);
+  color: var(--brand-on-primary);
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.logo-upload-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--gold) 34%, #ded8cc);
+  background: color-mix(in srgb, var(--gold) 18%, #ffffff);
+  color: var(--gold-deep);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logo-upload-button.disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.logo-upload-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .independent-branding-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .mini-list {
@@ -1233,9 +1372,10 @@ button {
   place-items: center;
   padding: 8px 6px;
   border-radius: 12px;
-  background: linear-gradient(180deg, var(--black-soft), var(--black));
-  color: var(--gold);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14);
+  border: 1px solid color-mix(in srgb, var(--gold) 24%, #ddd8cd);
+  background: color-mix(in srgb, var(--gold) 10%, #ffffff);
+  color: var(--gold-deep);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.04);
   font-size: 0.75rem;
   line-height: 1.1;
 }
@@ -1262,6 +1402,13 @@ button {
 .week-day-heading.selected {
   border-color: var(--gold);
   box-shadow: 0 10px 20px rgba(242, 183, 5, 0.14);
+}
+
+.week-day-heading.past {
+  border-color: rgba(0, 0, 0, 0.05);
+  background: #f1f1ee;
+  filter: grayscale(0.7);
+  opacity: 0.46;
 }
 
 .week-slot {
@@ -1303,6 +1450,16 @@ button {
   background: transparent;
   text-align: left;
   overflow: hidden;
+}
+
+.week-day-column.past {
+  filter: grayscale(0.75);
+  opacity: 0.48;
+}
+
+.week-day-column.past .week-grid-cell {
+  background: #eeeeea;
+  border-color: transparent;
 }
 
 .week-day-grid {
@@ -1635,6 +1792,21 @@ button {
 
   .public-calendar-panel {
     padding: 14px;
+  }
+
+  .public-calendar-panel .calendar-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .public-calendar-panel .calendar-controls {
+    justify-self: stretch;
+  }
+
+  .public-brand-logo {
+    width: min(260px, 82vw);
+    height: 92px;
   }
 
   .side-column {
