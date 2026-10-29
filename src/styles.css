@@ -2002,3 +2002,80 @@ app-root .public-layout .week-grid-button:disabled { background: #f4f2ed; box-sh
   app-root .public-calendar-guide { margin-inline: 2px; }
   app-root .public-calendar-guide small { display: none; }
 }
+
+/* Independent profile and activity privacy */
+app-root .independent-visibility-panel { overflow: hidden; }
+app-root .independent-visibility-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid #e4e0d8;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fbfaf7, #f4f1ea);
+}
+app-root .independent-visibility-card.is-public {
+  border-color: color-mix(in srgb, var(--gold) 28%, #ded8cc);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--gold) 12%, #ffffff), #ffffff);
+}
+app-root .independent-visibility-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  background: #ebe7df;
+  color: #756f65;
+  font: 850 1.35rem/1 "Segoe UI", Arial, sans-serif;
+}
+app-root .independent-visibility-card.is-public .independent-visibility-icon { background: color-mix(in srgb, var(--gold) 22%, #ffffff); color: var(--gold-deep); }
+app-root .independent-visibility-copy { min-width: 0; }
+app-root .independent-visibility-copy h2 { margin: 5px 0 7px; font-size: 1.25rem; }
+app-root .independent-visibility-copy > p:last-of-type { max-width: 62ch; margin: 0; color: #777168; font-size: .82rem; line-height: 1.5; }
+app-root .independent-public-link { width: fit-content; margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; color: var(--gold-deep); font-size: .78rem; font-weight: 800; text-decoration: none; }
+app-root .profile-visibility-toggle {
+  min-height: 44px;
+  padding: 11px 16px;
+  border: 1px solid color-mix(in srgb, var(--gold) 26%, #ddd7cb);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--gold) 14%, #ffffff);
+  color: var(--gold-deep);
+  font: 750 .8rem/1 "Segoe UI", Arial, sans-serif;
+  box-shadow: none;
+}
+app-root .profile-visibility-toggle.is-public { background: #fff7f7; border-color: #ecdada; color: #915757; }
+
+app-root .activity-visibility-picker { margin: 0; padding: 0; border: 0; }
+app-root .activity-visibility-picker legend { margin-bottom: 8px; color: #292722; font-size: .82rem; font-weight: 800; }
+app-root .activity-visibility-options { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+app-root .activity-visibility-options > label {
+  position: relative;
+  min-width: 0;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid #e0ddd6;
+  border-radius: 15px;
+  background: #faf9f6;
+  cursor: pointer;
+}
+app-root .activity-visibility-options > label.active { border-color: color-mix(in srgb, var(--gold) 42%, #d7d1c6); background: color-mix(in srgb, var(--gold) 12%, #ffffff); box-shadow: 0 7px 18px color-mix(in srgb, var(--gold) 9%, transparent); }
+app-root .activity-visibility-options input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+app-root .activity-visibility-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: #ece9e2; color: #716b62; font: 850 1rem/1 "Segoe UI", Arial, sans-serif; }
+app-root .activity-visibility-options > label.active .activity-visibility-icon { background: var(--gold); color: var(--brand-on-primary); }
+app-root .activity-visibility-copy { min-width: 0; display: grid; gap: 3px; }
+app-root .activity-visibility-copy strong { color: #292722; font: 800 .86rem/1.2 "Segoe UI", Arial, sans-serif; }
+app-root .activity-visibility-copy small { color: #817b72; font-size: .7rem; line-height: 1.25; }
+app-root .activity-visibility-badge { padding: 4px 8px; border-radius: 999px; background: #eeeae3; color: #6f6960; font-size: .65rem; font-weight: 800; }
+app-root .activity-visibility-badge.is-public { background: color-mix(in srgb, var(--gold) 17%, #ffffff); color: var(--gold-deep); }
+
+@media (max-width: 720px) {
+  app-root .independent-visibility-card { grid-template-columns: auto minmax(0, 1fr); gap: 13px; padding: 15px; }
+  app-root .independent-visibility-icon { width: 46px; height: 46px; border-radius: 14px; }
+  app-root .profile-visibility-toggle { grid-column: 1 / -1; width: 100%; }
+  app-root .activity-visibility-options { grid-template-columns: 1fr; }
+}

@@ -933,6 +933,27 @@
           </div>
         </article>
 
+        <article class="panel enterprise-admin-panel independent-visibility-panel">
+          <div class="independent-visibility-card" [class.is-public]="currentUser?.profilePublic">
+            <span class="independent-visibility-icon" aria-hidden="true">{{ currentUser?.profilePublic ? '◎' : '◇' }}</span>
+            <div class="independent-visibility-copy">
+              <p class="label">Agenda pública</p>
+              <h2>{{ currentUser?.profilePublic ? 'Tu agenda está visible' : 'Tu agenda es privada' }}</h2>
+              <p>
+                {{ currentUser?.profilePublic
+                  ? 'Tus clientes pueden abrir tu enlace y ver únicamente las actividades que marques como públicas.'
+                  : 'Solo tú puedes acceder a tu agenda. Actívala cuando quieras compartir horarios con tus clientes.' }}
+              </p>
+              @if (currentUser?.profilePublic && currentPublicUrl) {
+                <a class="independent-public-link" [href]="currentPublicUrl" target="_blank" rel="noopener">Ver mi agenda pública <span aria-hidden="true">↗</span></a>
+              }
+            </div>
+            <button type="button" class="profile-visibility-toggle" [class.is-public]="currentUser?.profilePublic" (click)="toggleProfileVisibility()" [disabled]="isUpdatingProfileVisibility">
+              {{ isUpdatingProfileVisibility ? 'Actualizando...' : (currentUser?.profilePublic ? 'Hacer privada' : 'Hacer pública') }}
+            </button>
+          </div>
+        </article>
+
         <article class="panel enterprise-admin-panel">
           <div class="panel-heading">
             <div>
@@ -1468,6 +1489,21 @@
             @if (isIndependentUser) {
               <label><span>Hora inicio</span><input type="time" name="independentStartTime" [(ngModel)]="newActivity.startTime" [min]="activityMinimumStartTime" (ngModelChange)="onActivityStartTimeChange()" step="60" required /></label>
               <label><span>Hora fin (opcional)</span><input type="time" name="independentEndTime" [(ngModel)]="newActivity.endTime" [min]="newActivity.startTime" (ngModelChange)="onActivityEndTimeChange()" step="60" /></label>
+              <fieldset class="activity-visibility-picker full-field">
+                <legend>¿Quién puede ver esta actividad?</legend>
+                <div class="activity-visibility-options">
+                  <label [class.active]="newActivity.visibility === 'private'">
+                    <input type="radio" name="independentVisibility" value="private" [(ngModel)]="newActivity.visibility" />
+                    <span class="activity-visibility-icon" aria-hidden="true">◇</span>
+                    <span class="activity-visibility-copy"><strong>Privada</strong><small>Solo tú puedes verla.</small></span>
+                  </label>
+                  <label [class.active]="newActivity.visibility === 'public'">
+                    <input type="radio" name="independentVisibility" value="public" [(ngModel)]="newActivity.visibility" />
+                    <span class="activity-visibility-icon" aria-hidden="true">◎</span>
+                    <span class="activity-visibility-copy"><strong>Pública</strong><small>Visible para tus clientes.</small></span>
+                  </label>
+                </div>
+              </fieldset>
             } @else {
               <label><span>Hora inicio</span><select name="modalStartTime" [(ngModel)]="newActivity.startTime" (ngModelChange)="onActivityStartTimeChange()" required><option value="">Selecciona</option>@for (time of timeOptions; track time) {<option [value]="time" [disabled]="!isActivityStartTimeSelectable(newActivity.date, time)">{{ formatTimeLabel(time) }}{{ isActivityStartTimeSelectable(newActivity.date, time) ? '' : ' - No disponible' }}</option>}</select></label>
               <label><span>Hora fin (opcional)</span><select name="modalEndTime" [(ngModel)]="newActivity.endTime" (ngModelChange)="onActivityEndTimeChange()"><option value="">Automática</option>@for (time of timeOptions; track time) {<option [value]="time" [disabled]="!isActivityEndTimeSelectable(time)">{{ formatTimeLabel(time) }}{{ isActivityEndTimeSelectable(time) ? '' : ' - No disponible' }}</option>}</select></label>
@@ -1493,7 +1529,9 @@
             } @else {
               <label><span>Recordatorio</span><select name="modalReminder" [(ngModel)]="newActivity.reminderMinutes">@for (option of reminderOptions; track option.label) {<option [ngValue]="option.value">{{ option.label }}</option>}</select></label>
             }
-            <label><span>Visibilidad</span><select name="modalVisibility" [(ngModel)]="newActivity.visibility"><option value="private">Privada</option><option value="public">Pública</option></select></label>
+            @if (!isIndependentUser) {
+              <label><span>Visibilidad</span><select name="modalVisibility" [(ngModel)]="newActivity.visibility"><option value="private">Privada</option><option value="public">Pública</option></select></label>
+            }
             <div class="form-actions">
               <button type="submit">{{ isEditingActivity ? 'Guardar cambios' : (isIndependentUser ? 'Crear actividad' : 'Crear cita') }}</button>
               @if (isEditingActivity) {
@@ -1513,6 +1551,9 @@
                   }
                   <div class="activity-card-header">
                     <strong>{{ activity.title }}</strong>
+                    @if (isIndependentUser) {
+                      <span class="activity-visibility-badge" [class.is-public]="activity.visibility === 'public'">{{ activity.visibility === 'public' ? 'Pública' : 'Privada' }}</span>
+                    }
                     @if (activity.completed) { <span class="status-badge">Finalizado</span> }
                     @if (activity.bookingStatus) {
                       <span class="status-badge" [style.color]="activity.bookingStatus === 'rejected' ? '#8b1e22' : activity.bookingStatus === 'pending' ? '#795600' : null" [style.background]="activity.bookingStatus === 'rejected' ? '#fde2e2' : activity.bookingStatus === 'pending' ? '#fff3c4' : null">
