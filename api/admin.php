@@ -17,7 +17,7 @@ if ($method === 'DELETE') {
     $companyId = (int) ($_GET['companyId'] ?? 0);
 
     if ($companyId <= 0) {
-        jsonResponse(['message' => 'Empresa invalida.'], 422);
+        jsonResponse(['message' => 'Empresa inválida.'], 422);
     }
 
     $companyStatement = $pdo->prepare('SELECT id FROM companies WHERE id = :id LIMIT 1');
@@ -76,7 +76,7 @@ if ($method === 'DELETE') {
 }
 
 if ($method !== 'PUT') {
-    jsonResponse(['message' => 'Metodo no permitido.'], 405);
+    jsonResponse(['message' => 'Método no permitido.'], 405);
 }
 
 $payload = getPayload();
@@ -90,19 +90,19 @@ $professionalLimit = max(4, (int) ($payload['professionalLimit'] ?? 4));
 $renewalDay = isset($payload['renewalDay']) && $payload['renewalDay'] !== '' ? (int) $payload['renewalDay'] : null;
 
 if ($companyId <= 0) {
-    jsonResponse(['message' => 'Empresa invalida.'], 422);
+    jsonResponse(['message' => 'Empresa inválida.'], 422);
 }
 
 if (!in_array($companyStatus, ['active', 'inactive', 'suspended'], true)) {
-    jsonResponse(['message' => 'Estado de empresa invalido.'], 422);
+    jsonResponse(['message' => 'Estado de empresa inválido.'], 422);
 }
 
 if ($planName === '' || $planCode === '') {
-    jsonResponse(['message' => 'El plan debe incluir nombre y codigo.'], 422);
+    jsonResponse(['message' => 'El plan debe incluir nombre y código.'], 422);
 }
 
 if (!in_array($subscriptionStatus, ['active', 'trial', 'suspended', 'cancelled'], true)) {
-    jsonResponse(['message' => 'Estado de suscripcion invalido.'], 422);
+    jsonResponse(['message' => 'Estado de suscripción inválido.'], 422);
 }
 
 if ($monthlyPrice < 0) {
@@ -110,7 +110,7 @@ if ($monthlyPrice < 0) {
 }
 
 if ($renewalDay !== null && ($renewalDay < 1 || $renewalDay > 31)) {
-    jsonResponse(['message' => 'El dia de renovacion debe estar entre 1 y 31.'], 422);
+    jsonResponse(['message' => 'El día de renovación debe estar entre 1 y 31.'], 422);
 }
 
 if (countActiveProfessionals($pdo, $companyId) > $professionalLimit) {
@@ -120,7 +120,7 @@ if (countActiveProfessionals($pdo, $companyId) > $professionalLimit) {
 $subscription = getCurrentSubscription($pdo, $companyId);
 
 if ($subscription === null) {
-    jsonResponse(['message' => 'Suscripcion no encontrada para esta empresa.'], 404);
+    jsonResponse(['message' => 'Suscripción no encontrada para esta empresa.'], 404);
 }
 
 $companyStatement = $pdo->prepare(

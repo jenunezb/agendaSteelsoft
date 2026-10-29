@@ -56,7 +56,7 @@ if ($method === 'POST') {
                 $accountAccess['token']
             );
         } catch (Throwable $exception) {
-            writeAppLog('mail', 'No fue posible enviar la invitacion del profesional.', [
+            writeAppLog('mail', 'No fue posible enviar la invitación del profesional.', [
                 'professional_id' => $professionalId,
                 'email' => $email,
                 'exception' => $exception->getMessage(),
@@ -124,7 +124,7 @@ if ($method === 'PUT') {
                     $accountAccess['token']
                 );
             } catch (Throwable $exception) {
-                writeAppLog('mail', 'No fue posible enviar la invitacion inicial del profesional editado.', [
+                writeAppLog('mail', 'No fue posible enviar la invitación inicial del profesional editado.', [
                     'professional_id' => $id,
                     'email' => $email,
                     'exception' => $exception->getMessage(),
@@ -180,4 +180,4 @@ if ($method === 'DELETE') {
     jsonResponse(['success' => true]);
 }
 
-jsonResponse(['message' => 'Metodo no permitido.'], 405);
+jsonResponse(['message' => 'Método no permitido.'], 405);

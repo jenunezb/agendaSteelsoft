@@ -111,7 +111,7 @@ function notifyBookingResponseTeam(array $activity, string $status): array
         '3' => substr((string) $activity['start_time'], 0, 5),
         '4' => $customerName,
         '5' => trim((string) ($activity['professional_name'] ?? '')) ?: 'Profesional asignado',
-        '6' => ($activity['booking_customer_phone'] ?? '') !== '' ? '+' . normalizeWhatsappNumber((string) $activity['booking_customer_phone']) : 'Sin numero',
+        '6' => ($activity['booking_customer_phone'] ?? '') !== '' ? '+' . normalizeWhatsappNumber((string) $activity['booking_customer_phone']) : 'Sin número',
     ];
 
     $results = [];

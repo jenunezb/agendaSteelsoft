@@ -244,7 +244,7 @@ function sendTextmebotWhatsappReminder(array $config, array $activity): array
     if ($phone === '' || $apiKey === '') {
         return [
             'success' => false,
-            'message' => 'Falta el numero destino o el apikey de TextMeBot.',
+            'message' => 'Falta el número destino o el apikey de TextMeBot.',
             'response' => '',
         ];
     }
@@ -298,7 +298,7 @@ function sendTwilioWhatsappReminder(array $config, array $activity): array
     if (($from === '' && $messagingServiceSid === '') || $to === '') {
         return [
             'success' => false,
-            'message' => 'Los numeros de origen o destino de Twilio no son validos.',
+            'message' => 'Los números de origen o destino de Twilio no son válidos.',
             'response' => '',
         ];
     }
@@ -599,7 +599,7 @@ function buildTwilioWhatsappBody(array $activity): string
 
     if (!empty($activity['is_personal_reminder'])) {
         $dueText = !empty($activity['due_date'])
-            ? ' Fecha limite: ' . (new DateTimeImmutable((string) $activity['due_date']))->format('d/m/Y') . '.'
+            ? ' Fecha límite: ' . (new DateTimeImmutable((string) $activity['due_date']))->format('d/m/Y') . '.'
             : '';
         return sprintf('Hola %s, tienes pendiente: "%s".%s Entra a Steelsoft para marcarlo como completado.',
             (string) $activity['user_name'], (string) $activity['title'], $dueText);

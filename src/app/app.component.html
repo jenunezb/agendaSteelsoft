@@ -3,7 +3,7 @@
     <section class="panel auth-panel">
       <p class="label">Steelsoft</p>
       <h1>Agenda personal</h1>
-      <p class="activity-launch-copy">Validando la sesion actual...</p>
+      <p class="activity-launch-copy">Validando la sesión actual...</p>
     </section>
   </main>
 } @else if (isPublicProfileMode) {
@@ -21,9 +21,9 @@
               }
               </div>
               <div class="public-brand-copy">
-                <p class="public-open-status"><span></span> Reservas en linea</p>
+                <p class="public-open-status"><span></span> Reservas en línea</p>
                 <h1 class="public-company-name">{{ publicProfileUser?.companyName || activeProfileName }}</h1>
-                <p class="public-booking-intro">Elige el dia y la hora que mejor te funcionen. Reservar toma menos de un minuto.</p>
+                <p class="public-booking-intro">Elige el día y la hora que mejor te funcionen. Reservar toma menos de un minuto.</p>
               </div>
             </div>
 
@@ -33,7 +33,7 @@
                 <strong>{{ currentPeriodLabel }}</strong>
               </div>
               <div class="public-schedule-card">
-                <span>Horario de atencion</span>
+                <span>Horario de atención</span>
                 <strong>
                   {{ formatTimeLabel((currentWorkingHours.start < 10 ? '0' : '') + currentWorkingHours.start + ':00') }}
                   - {{ formatTimeLabel((currentWorkingHours.end < 10 ? '0' : '') + currentWorkingHours.end + ':00') }}
@@ -58,7 +58,7 @@
           </div>
           <div class="public-calendar-guide">
             <span><i></i> Horario disponible</span>
-            <small>Desliza horizontalmente para ver mas dias</small>
+            <small>Desliza horizontalmente para ver más días</small>
           </div>
           <div class="week-agenda">
             <div
@@ -156,9 +156,9 @@
         </h2>
         <p class="activity-launch-copy">
           @if (publicProfileState === 'not-found') {
-            No encontramos un perfil publico para `{{ publicProfileSlug }}`.
+            No encontramos un perfil público para `{{ publicProfileSlug }}`.
           } @else {
-            Este usuario existe, pero su agenda publica esta desactivada.
+            Este usuario existe, pero su agenda pública está desactivada.
           }
         </p>
       </section>
@@ -172,7 +172,7 @@
             <p class="label">Reserva externa</p>
             <h2>Reservar cita</h2>
             <p>
-              Completa los datos del cliente. La hora de inicio toma por defecto el bloque que se toco.
+              Completa los datos del cliente. La hora de inicio toma por defecto el bloque que se tocó.
             </p>
           </div>
           <button type="button" class="close-button" (click)="closePublicBookingModal()">Cerrar</button>
@@ -193,7 +193,7 @@
             <label>
               <span>Profesional</span>
               <select name="publicProfessionalIdModal" [(ngModel)]="publicBookingForm.professionalId">
-                <option [ngValue]="0">Asignar automaticamente</option>
+                <option [ngValue]="0">Asignar automáticamente</option>
                 @for (professional of filteredPublicProfessionals; track professional.id) {
                   <option [ngValue]="professional.id">{{ professional.name }}</option>
                 }
@@ -235,7 +235,7 @@
             </label>
 
             <label>
-              <span>Telefono</span>
+              <span>Teléfono</span>
               <input type="text" name="publicCustomerPhoneModal" [(ngModel)]="publicBookingForm.customerPhone" />
             </label>
 
@@ -295,17 +295,17 @@
         </button>
         <div class="panel-heading">
           <p class="label">Acceso</p>
-          <h2>{{ authMode === 'register' ? 'Crea tu cuenta' : 'Inicia sesion en tu panel' }}</h2>
+          <h2>{{ authMode === 'register' ? 'Crea tu cuenta' : 'Inicia sesión en tu panel' }}</h2>
           <p>
             {{ authMode === 'register'
-              ? 'Registra tu empresa o tu cuenta independiente y recibe la verificacion por correo.'
-              : 'Entra al panel sin ruido visual y sigue desde donde dejaste la operacion.' }}
+              ? 'Registra tu empresa o tu cuenta independiente y recibe la verificación por correo.'
+              : 'Entra al panel sin ruido visual y sigue desde donde dejaste la operación.' }}
           </p>
         </div>
 
         <div class="auth-switch">
           <button type="button" [class.active]="authMode === 'login'" (click)="navigateToAuth('login')">
-            Iniciar sesion
+            Iniciar sesión
           </button>
           <button type="button" [class.active]="authMode === 'register'" (click)="navigateToAuth('register')">
             Crear usuario
@@ -328,7 +328,7 @@
             </label>
 
             <label>
-              <span>Correo electronico</span>
+              <span>Correo electrónico</span>
               <input type="email" name="registerEmail" [(ngModel)]="registerForm.email" required />
             </label>
 
@@ -351,12 +351,12 @@
             </label>
 
             <label>
-              <span>Contrasena</span>
+              <span>Contraseña</span>
               <input type="password" name="registerPassword" [(ngModel)]="registerForm.password" required />
             </label>
 
             <button type="submit" [disabled]="isSubmittingAuth">
-              {{ isSubmittingAuth ? 'Creando cuenta...' : 'Crear cuenta y enviar verificacion' }}
+              {{ isSubmittingAuth ? 'Creando cuenta...' : 'Crear cuenta y enviar verificación' }}
             </button>
           </form>
         } @else {
@@ -367,7 +367,7 @@
             </label>
 
             <label>
-              <span>Contrasena</span>
+              <span>Contraseña</span>
               <input type="password" name="loginPassword" [(ngModel)]="loginForm.password" required />
             </label>
 
@@ -386,15 +386,15 @@
         <span>STEEL</span><strong>SOFT</strong><small>AGENDA</small>
       </a>
 
-      <nav class="landing-nav-links" aria-label="Navegacion principal">
+      <nav class="landing-nav-links" aria-label="Navegación principal">
         <a href="#funciones">Funciones</a>
-        <a href="#para-quien">Para quien es</a>
-        <a href="#como-funciona">Como funciona</a>
+        <a href="#para-quien">Para quién es</a>
+        <a href="#como-funciona">Cómo funciona</a>
       </nav>
 
       <div class="landing-nav-actions">
         <button type="button" class="landing-login" (click)="navigateToAuth('login')">
-          Iniciar sesion
+          Iniciar sesión
         </button>
         <button type="button" class="landing-primary landing-nav-cta" (click)="navigateToAuth('register')">
           Crear mi cuenta
@@ -408,7 +408,7 @@
         <h1>Tu agenda trabaja.<br /><em>Tu negocio crece.</em></h1>
         <p class="landing-hero-lead">
           Citas, equipo, recordatorios y finanzas en un solo lugar. Steelsoft te ayuda a dejar atras
-          el desorden y a dedicarle mas tiempo a tus clientes.
+          el desorden y a dedicarle más tiempo a tus clientes.
         </p>
 
         <div class="landing-hero-actions">
@@ -422,7 +422,7 @@
         <div class="landing-trust-row" aria-label="Beneficios de acceso">
           <span><i>✓</i> Sin instalaciones</span>
           <span><i>✓</i> Acceso desde cualquier dispositivo</span>
-          <span><i>✓</i> Configuracion sencilla</span>
+          <span><i>✓</i> Configuración sencilla</span>
         </div>
       </div>
 
@@ -440,7 +440,7 @@
 
           <div class="showcase-main">
             <div class="showcase-heading">
-              <div><small>Buenos dias, Laura</small><strong>Agenda del equipo</strong></div>
+              <div><small>Buenos días, Laura</small><strong>Agenda del equipo</strong></div>
               <button type="button" tabindex="-1">+ Nueva cita</button>
             </div>
 
@@ -470,10 +470,10 @@
               </div>
               <div class="calendar-column">
                 <div class="demo-event event-yellow" style="--event-top: 10%; --event-height: 20%"><b>Seguimiento</b><span>Marcela G.</span></div>
-                <div class="demo-event event-dark" style="--event-top: 67%; --event-height: 22%"><b>Sesion</b><span>David L.</span></div>
+                <div class="demo-event event-dark" style="--event-top: 67%; --event-height: 22%"><b>Sesión</b><span>David L.</span></div>
               </div>
               <div class="calendar-column">
-                <div class="demo-event event-mint" style="--event-top: 42%; --event-height: 23%"><b>Valoracion</b><span>Juliana C.</span></div>
+                <div class="demo-event event-mint" style="--event-top: 42%; --event-height: 23%"><b>Valoración</b><span>Juliana C.</span></div>
               </div>
             </div>
           </div>
@@ -491,7 +491,7 @@
 
     <section class="landing-proof-strip" aria-label="Resumen de funciones">
       <div><span>01</span><p><strong>Agenda compartida</strong>Todo el equipo, siempre sincronizado.</p></div>
-      <div><span>02</span><p><strong>Reservas en linea</strong>Disponibilidad visible para tus clientes.</p></div>
+      <div><span>02</span><p><strong>Reservas en línea</strong>Disponibilidad visible para tus clientes.</p></div>
       <div><span>03</span><p><strong>Recordatorios</strong>Menos olvidos y citas perdidas.</p></div>
       <div><span>04</span><p><strong>Control financiero</strong>Ingresos y egresos en orden.</p></div>
     </section>
@@ -499,8 +499,8 @@
     <section class="landing-section landing-features" id="funciones">
       <div class="landing-section-heading">
         <p class="landing-kicker"><span></span> Todo bajo control</p>
-        <h2>Menos caos.<br />Mas tiempo para crecer.</h2>
-        <p>Las herramientas que necesitas para coordinar tu operacion diaria sin saltar entre chats, cuadernos y hojas de calculo.</p>
+        <h2>Menos caos.<br />Más tiempo para crecer.</h2>
+        <p>Las herramientas que necesitas para coordinar tu operación diaria sin saltar entre chats, cuadernos y hojas de cálculo.</p>
       </div>
 
       <div class="feature-bento">
@@ -520,15 +520,15 @@
           <div class="feature-icon">◷</div>
           <span class="feature-number">02</span>
           <h3>Recordatorios que no se te escapan</h3>
-          <p>Programa avisos y mantente al dia con los pendientes importantes de tu negocio.</p>
+          <p>Programa avisos y mantente al día con los pendientes importantes de tu negocio.</p>
           <div class="reminder-demo"><i>✓</i><span><b>Recordatorio programado</b><small>Enviar por WhatsApp · 9:00 AM</small></span></div>
         </article>
 
         <article class="feature-card feature-card-light">
           <div class="feature-icon">↗</div>
           <span class="feature-number">03</span>
-          <h3>Tus numeros, sin enredos</h3>
-          <p>Registra ingresos, egresos y participaciones para tener una lectura mas clara de la operacion.</p>
+          <h3>Tus números, sin enredos</h3>
+          <p>Registra ingresos, egresos y participaciones para tener una lectura más clara de la operación.</p>
           <div class="finance-demo"><span style="--bar: 42%"></span><span style="--bar: 68%"></span><span style="--bar: 52%"></span><span style="--bar: 86%"></span><span style="--bar: 72%"></span></div>
         </article>
 
@@ -552,12 +552,12 @@
       <div class="audience-copy">
         <p class="landing-kicker landing-kicker-light"><span></span> Hecho para tu ritmo</p>
         <h2>Si trabajas con citas,<br /><em>Steelsoft trabaja contigo.</em></h2>
-        <p>Una forma simple de organizar equipos y profesionales independientes, sin convertir la tecnologia en otra tarea mas.</p>
+        <p>Una forma simple de organizar equipos y profesionales independientes, sin convertir la tecnología en otra tarea más.</p>
         <button type="button" class="landing-primary landing-primary-light" (click)="navigateToAuth('register')">Organizar mi agenda <span>→</span></button>
       </div>
       <div class="audience-grid">
-        <article><span>✦</span><strong>Centros de estetica</strong><small>Servicios, cabinas y especialistas coordinados.</small></article>
-        <article><span>✂</span><strong>Salones y barberias</strong><small>La disponibilidad de todo el equipo en una sola vista.</small></article>
+        <article><span>✦</span><strong>Centros de estética</strong><small>Servicios, cabinas y especialistas coordinados.</small></article>
+        <article><span>✂</span><strong>Salones y barberías</strong><small>La disponibilidad de todo el equipo en una sola vista.</small></article>
         <article><span>♡</span><strong>Consultorios</strong><small>Citas y seguimiento organizados por profesional.</small></article>
         <article><span>●</span><strong>Independientes</strong><small>Tu tiempo, tus clientes y tus pendientes bajo control.</small></article>
       </div>
@@ -577,8 +577,8 @@
 
     <section class="landing-final-cta">
       <div>
-        <p class="landing-kicker landing-kicker-light"><span></span> Menos pendientes. Mas tranquilidad.</p>
-        <h2>Tu proxima cita empieza con una agenda mejor.</h2>
+        <p class="landing-kicker landing-kicker-light"><span></span> Menos pendientes. Más tranquilidad.</p>
+        <h2>Tu próxima cita empieza con una agenda mejor.</h2>
       </div>
       <button type="button" class="landing-primary landing-primary-light landing-final-button" (click)="navigateToAuth('register')">
         Crear mi cuenta <span>→</span>
@@ -588,7 +588,7 @@
 
     <footer class="landing-footer">
       <a class="landing-logo" href="#inicio"><span>STEEL</span><strong>SOFT</strong><small>AGENDA</small></a>
-      <p>Agenda, equipo y operacion en un solo lugar.</p>
+      <p>Agenda, equipo y operación en un solo lugar.</p>
       <div><button type="button" (click)="openPrivacyModal()">Privacidad</button><span>© 2026 Steelsoft</span></div>
     </footer>
   </main>
@@ -600,10 +600,10 @@
         <div class="activity-modal-header">
           <div>
             <p class="label">Privacidad</p>
-            <h2>Politica de privacidad</h2>
+            <h2>Política de privacidad</h2>
             <p>
-              Steelsoft Agenda trata la informacion necesaria para prestar el servicio de agenda,
-              organizacion personal y recordatorios operativos.
+              Steelsoft Agenda trata la información necesaria para prestar el servicio de agenda,
+              organización personal y recordatorios operativos.
             </p>
           </div>
           <button type="button" class="close-button" (click)="closePrivacyModal()">Cerrar</button>
@@ -613,32 +613,32 @@
           <section>
             <h3>Datos que recopilamos</h3>
             <p>
-              Nombre, usuario, contrasena cifrada y los eventos, pendientes,
+              Nombre, usuario, contraseña cifrada y los eventos, pendientes,
               notas y configuraciones creadas por cada usuario.
             </p>
           </section>
 
           <section>
-            <h3>Para que usamos los datos</h3>
+            <h3>Para qué usamos los datos</h3>
             <p>
               Para autenticar el acceso, guardar la agenda personal, mostrar actividades, gestionar
-              pendientes y enviar recordatorios antes de un evento cuando el usuario active esa opcion.
+              pendientes y enviar recordatorios antes de un evento cuando el usuario active esa opción.
             </p>
           </section>
 
           <section>
-            <h3>Perfiles publicos y control del usuario</h3>
+            <h3>Perfiles públicos y control del usuario</h3>
             <p>
-              Solo las actividades marcadas como publicas pueden aparecer en el enlace publico del
+              Solo las actividades marcadas como públicas pueden aparecer en el enlace público del
               perfil. Cada usuario puede actualizar sus datos, activar o desactivar recordatorios y
-              administrar su informacion desde la plataforma.
+              administrar su información desde la plataforma.
             </p>
           </section>
 
           <section>
             <h3>Contacto</h3>
             <p>
-              Para consultas sobre privacidad, actualizacion o eliminacion de datos puedes escribir a
+              Para consultas sobre privacidad, actualización o eliminación de datos puedes escribir a
               <a href="mailto:prhoteuz@gmail.com">prhoteuz&#64;gmail.com</a>.
             </p>
           </section>
@@ -658,17 +658,17 @@
       <div class="dashboard-brand-copy">
         <p class="label">{{ activeBrandName }}</p>
         <h1>{{ isSystemAdmin ? 'Panel maestro' : 'Panel de agenda' }}</h1>
-        <p class="dashboard-caption">Tu espacio para organizar el dia con claridad.</p>
+        <p class="dashboard-caption">Tu espacio para organizar el día con claridad.</p>
       </div>
     </div>
     <div class="session-summary dashboard-session">
       <span class="session-avatar" aria-hidden="true">{{ (currentUser?.name || 'U').slice(0, 1).toUpperCase() }}</span>
       <div class="session-copy">
-        <p class="session-status"><span></span> Sesion activa</p>
+        <p class="session-status"><span></span> Sesión activa</p>
         <strong>{{ currentUser?.name }}</strong>
         <small>&#64;{{ currentUser?.username }}</small>
       </div>
-      <button type="button" class="logout-button" (click)="logout()" aria-label="Cerrar sesion" title="Cerrar sesion">
+      <button type="button" class="logout-button" (click)="logout()" aria-label="Cerrar sesión" title="Cerrar sesión">
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M10 5H6.8A1.8 1.8 0 0 0 5 6.8v10.4A1.8 1.8 0 0 0 6.8 19H10M14.5 8.5 18 12l-3.5 3.5M9 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Salir</span>
       </button>
@@ -681,7 +681,7 @@
         <div class="enterprise-hero-copy">
           <p class="label">Administrador del sistema</p>
           <h2>Panel maestro de cuentas registradas</h2>
-          <p>Desde aqui puedes revisar las empresas y personas independientes registradas.</p>
+          <p>Desde aquí puedes revisar las empresas y personas independientes registradas.</p>
         </div>
         <div class="superadmin-tabs">
           <button
@@ -712,7 +712,7 @@
             <article class="enterprise-kpi-card">
               <span>Correos verificados</span>
               <strong>{{ verifiedSystemAccountsCount }}</strong>
-              <small>Usuarios habilitados para iniciar sesion.</small>
+              <small>Usuarios habilitados para iniciar sesión.</small>
             </article>
             <article class="enterprise-kpi-card">
               <span>Administrador</span>
@@ -743,7 +743,7 @@
                   <tr>
                     <th>Cuenta</th>
                     <th>Tipo</th>
-                    <th>Verificacion</th>
+                    <th>Verificación</th>
                     <th>Plan</th>
                     <th>Cupos</th>
                     <th>Estado</th>
@@ -811,7 +811,7 @@
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="7">Aun no hay cuentas registradas.</td>
+                      <td colspan="7">Aún no hay cuentas registradas.</td>
                     </tr>
                   }
                 </tbody>
@@ -824,7 +824,7 @@
                 <div class="activity-modal-header">
                   <div>
                     <p class="label">Superadmin</p>
-                    <h2>Editar empresa y suscripcion</h2>
+                    <h2>Editar empresa y suscripción</h2>
                     <p>{{ editingSystemAccount.companyName || editingSystemAccount.ownerName }}</p>
                   </div>
                   <button type="button" class="close-button" (click)="closeSystemAccountEditor()">Cerrar</button>
@@ -840,11 +840,11 @@
                     }
                     <label><span>Estado de empresa</span><select name="systemCompanyStatus" [(ngModel)]="systemAccountForm.companyStatus"><option value="active">Activa</option><option value="inactive">Inactiva</option><option value="suspended">Suspendida</option></select></label>
                     <label><span>Nombre del plan</span><input type="text" name="systemPlanName" [(ngModel)]="systemAccountForm.planName" required /></label>
-                    <label><span>Codigo del plan</span><input type="text" name="systemPlanCode" [(ngModel)]="systemAccountForm.planCode" required /></label>
-                    <label><span>Estado de suscripcion</span><select name="systemSubscriptionStatus" [(ngModel)]="systemAccountForm.subscriptionStatus"><option value="active">Activa</option><option value="trial">Trial</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></label>
+                    <label><span>Código del plan</span><input type="text" name="systemPlanCode" [(ngModel)]="systemAccountForm.planCode" required /></label>
+                    <label><span>Estado de suscripción</span><select name="systemSubscriptionStatus" [(ngModel)]="systemAccountForm.subscriptionStatus"><option value="active">Activa</option><option value="trial">Trial</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></label>
                     <label><span>Precio mensual</span><input type="number" name="systemMonthlyPrice" [(ngModel)]="systemAccountForm.monthlyPrice" min="0" /></label>
-                    <label><span>Limite de profesionales</span><input type="number" name="systemProfessionalLimit" [(ngModel)]="systemAccountForm.professionalLimit" min="4" /></label>
-                    <label><span>Dia de renovacion</span><input type="number" name="systemRenewalDay" [(ngModel)]="systemAccountForm.renewalDay" min="1" max="31" /></label>
+                    <label><span>Límite de profesionales</span><input type="number" name="systemProfessionalLimit" [(ngModel)]="systemAccountForm.professionalLimit" min="4" /></label>
+                    <label><span>Día de renovación</span><input type="number" name="systemRenewalDay" [(ngModel)]="systemAccountForm.renewalDay" min="1" max="31" /></label>
                     <div class="form-actions">
                       <button type="submit" [disabled]="isSavingSystemAccount">{{ isSavingSystemAccount ? 'Guardando...' : 'Guardar cambios' }}</button>
                       <button type="button" class="secondary-button" (click)="closeSystemAccountEditor()">Cancelar</button>
@@ -873,7 +873,7 @@
           <span class="company-nav-icon" aria-hidden="true">▦</span><span>Agenda</span>
         </button>
         <button type="button" class="company-admin-nav-button" [class.active]="companyAdminTab === 'config'" (click)="companyAdminTab = 'config'">
-          <span class="company-nav-icon" aria-hidden="true">⚙</span><span>Configuracion</span>
+          <span class="company-nav-icon" aria-hidden="true">⚙</span><span>Configuración</span>
         </button>
       </nav>
     }
@@ -898,7 +898,7 @@
           <div class="enterprise-hero-copy">
             <p class="label">Perfil independiente</p>
             <h2>{{ currentUser?.name }}</h2>
-            <p>Administra la informacion y las preferencias de tu cuenta personal.</p>
+            <p>Administra la información y las preferencias de tu cuenta personal.</p>
           </div>
         </article>
 
@@ -937,7 +937,7 @@
           <div class="panel-heading">
             <div>
               <p class="label">Datos personales</p>
-              <h2>Informacion de la cuenta</h2>
+              <h2>Información de la cuenta</h2>
               <p>Puedes actualizar el nombre que aparece en tu agenda y en tus recordatorios.</p>
             </div>
           </div>
@@ -964,7 +964,7 @@
             <div>
               <p class="label">Recordatorios personales</p>
               <h2>Notificaciones por WhatsApp</h2>
-              <p>Registra tu numero para recibir el aviso antes de cada actividad, segun el recordatorio que selecciones.</p>
+              <p>Registra tu número para recibir el aviso antes de cada actividad, según el recordatorio que selecciones.</p>
             </div>
           </div>
 
@@ -977,7 +977,7 @@
 
           <form class="pending-form" (ngSubmit)="saveNotificationSettings()">
             <label>
-              <span>Numero de WhatsApp</span>
+              <span>Número de WhatsApp</span>
               <input type="tel" name="independentWhatsappNumber" [(ngModel)]="notificationSettingsForm.whatsappNumber" placeholder="Ejemplo: 573001234567" />
             </label>
             <label>
@@ -998,7 +998,7 @@
     @if (isIndependentUser && independentTab === 'reminders') {
       <section class="panel personal-reminders-view">
         <div class="reminders-toolbar">
-          <div><p class="label">Organizacion personal</p><h2>Pendientes</h2></div>
+          <div><p class="label">Organización personal</p><h2>Pendientes</h2></div>
           <div class="reminders-toolbar-actions">
             <div class="reminder-view-switch" role="group" aria-label="Ver pendientes activos o archivados"><button type="button" [class.active]="personalReminderView === 'active'" (click)="personalReminderView = 'active'">Activos</button><button type="button" [class.active]="personalReminderView === 'archived'" (click)="personalReminderView = 'archived'">Archivados @if (archivedPersonalReminderCount) {<span>{{ archivedPersonalReminderCount }}</span>}</button></div>
             <button type="button" class="add-reminder-button" (click)="openPersonalReminderForm()"><span aria-hidden="true">+</span> Agregar pendiente</button>
@@ -1008,18 +1008,18 @@
         @if (personalReminderMessage) { <p class="success-message reminder-toast">{{ personalReminderMessage }}</p> }
         <div class="reminders-table-wrap">
           <table class="reminders-table">
-            <thead><tr><th>Estado</th><th>Pendiente</th><th>Prioridad</th><th>Fecha limite</th><th>Recordatorio</th><th class="actions-column">Acciones</th></tr></thead>
+            <thead><tr><th>Estado</th><th>Pendiente</th><th>Prioridad</th><th>Fecha límite</th><th>Recordatorio</th><th class="actions-column">Acciones</th></tr></thead>
             <tbody>
               @for (reminder of visiblePersonalReminders; track reminder.id) {
                 <tr [class.completed-row]="reminder.completed">
                   <td data-label="Estado"><button type="button" class="status-toggle" [class.done]="reminder.completed" (click)="togglePersonalReminder(reminder)" [attr.aria-label]="reminder.completed ? 'Reabrir pendiente' : 'Completar pendiente'"><span>{{ reminder.completed ? '✓' : '' }}</span>{{ reminder.completed ? 'Completado' : 'Pendiente' }}</button></td>
                   <td data-label="Pendiente"><strong class="reminder-title">{{ reminder.title }}</strong>@if (reminder.description) {<small class="reminder-description">{{ reminder.description }}</small>}</td>
                   <td data-label="Prioridad"><span class="priority-chip" [class.priority-high-chip]="reminder.priority === 'high'" [class.priority-low-chip]="reminder.priority === 'low'">{{ getPriorityLabel(reminder.priority) }}</span></td>
-                  <td data-label="Fecha limite">{{ reminder.dueDate ? (reminder.dueDate | date:'dd/MM/yyyy') : '—' }}</td>
+                  <td data-label="Fecha límite">{{ reminder.dueDate ? (reminder.dueDate | date:'dd/MM/yyyy') : '—' }}</td>
                   <td data-label="Recordatorio">@if (reminder.whatsappEnabled && reminder.remindAt) {<span class="whatsapp-reminder">WhatsApp · {{ reminder.remindAt | date:'dd/MM/yyyy, h:mm a' }}</span>@if (reminder.reminderSentAt) {<span class="sent-chip">Enviado</span>}} @else {<span class="muted-cell">Sin aviso</span>}</td>
                   <td data-label="Acciones"><div class="table-actions">@if (!reminder.archived) {<button type="button" class="icon-action" (click)="editPersonalReminder(reminder)" aria-label="Editar pendiente">Editar</button>@if (reminder.completed) {<button type="button" class="icon-action archive-action" (click)="setPersonalReminderArchived(reminder, true)" aria-label="Archivar pendiente">Archivar</button>}} @else {<button type="button" class="icon-action archive-action" (click)="setPersonalReminderArchived(reminder, false)" aria-label="Restaurar pendiente">Restaurar</button>}<button type="button" class="icon-action danger-action" (click)="removePersonalReminder(reminder.id)" aria-label="Eliminar pendiente">Eliminar</button></div></td>
                 </tr>
-              } @empty {<tr><td colspan="6"><div class="reminders-empty"><span>✓</span><strong>{{ personalReminderView === 'archived' ? 'Sin historial archivado' : 'Todo al dia' }}</strong><p>{{ personalReminderView === 'archived' ? 'Los pendientes que archives aparecerán aquí.' : 'Agrega un pendiente cuando tengas algo por hacer.' }}</p></div></td></tr>}
+              } @empty {<tr><td colspan="6"><div class="reminders-empty"><span>✓</span><strong>{{ personalReminderView === 'archived' ? 'Sin historial archivado' : 'Todo al día' }}</strong><p>{{ personalReminderView === 'archived' ? 'Los pendientes que archives aparecerán aquí.' : 'Agrega un pendiente cuando tengas algo por hacer.' }}</p></div></td></tr>}
             </tbody>
           </table>
         </div>
@@ -1031,7 +1031,7 @@
         <article class="panel enterprise-hero-panel">
           <div class="enterprise-hero-copy">
             <h2>1 administrador + 4 profesionales operativos</h2>
-            <p>El administrador no consume los 4 cupos. Desde aqui gestionas visibilidad, notificaciones y accesos individuales.</p>
+            <p>El administrador no consume los 4 cupos. Desde aquí gestionas visibilidad, notificaciones y accesos individuales.</p>
           </div>
           <div class="enterprise-kpi-grid">
             <article class="enterprise-kpi-card">
@@ -1045,9 +1045,9 @@
               <small>Cada uno accede a su propio calendario.</small>
             </article>
             <article class="enterprise-kpi-card">
-              <span>Agenda publica</span>
+              <span>Agenda pública</span>
               <strong>{{ currentUser?.profilePublic ? 'Activa' : 'Inactiva' }}</strong>
-              <small>Los clientes eligen profesional desde el enlace publico.</small>
+              <small>Los clientes eligen profesional desde el enlace público.</small>
             </article>
           </div>
         </article>
@@ -1061,16 +1061,16 @@
             aria-live="assertive"
           >
             <div class="floating-feedback-copy">
-              <strong>{{ companySettingsError ? 'No se pudo completar la accion' : 'Cambios guardados' }}</strong>
+              <strong>{{ companySettingsError ? 'No se pudo completar la acción' : 'Cambios guardados' }}</strong>
               <p>{{ companySettingsError || companySettingsMessage }}</p>
             </div>
-            <button type="button" class="floating-feedback-close" (click)="dismissCompanySettingsFeedback()" aria-label="Cerrar notificacion">
+            <button type="button" class="floating-feedback-close" (click)="dismissCompanySettingsFeedback()" aria-label="Cerrar notificación">
               Cerrar
             </button>
           </aside>
         }
 
-        <nav class="panel config-section-tabs" aria-label="Secciones de configuracion">
+        <nav class="panel config-section-tabs" aria-label="Secciones de configuración">
           <button type="button" [class.active]="companyConfigTab === 'general'" (click)="companyConfigTab = 'general'">Empresa</button>
           <button type="button" [class.active]="companyConfigTab === 'notifications'" (click)="companyConfigTab = 'notifications'">Notificaciones</button>
           <button type="button" [class.active]="companyConfigTab === 'roles'" (click)="companyConfigTab = 'roles'">Especialidades</button>
@@ -1082,8 +1082,8 @@
         <article class="panel enterprise-admin-panel">
           <div class="panel-heading">
             <p class="label">Empresa y plan</p>
-            <h2>Configuracion general</h2>
-            <p>El estado de la empresa y la suscripcion del plan los administra el superadmin.</p>
+            <h2>Configuración general</h2>
+            <p>El estado de la empresa y la suscripción del plan los administra el superadmin.</p>
           </div>
           <div class="company-control-grid">
             <article class="company-control-card">
@@ -1124,9 +1124,9 @@
             </article>
             <article class="company-control-card">
               <div class="pending-form company-visibility-card">
-                <p class="label">Perfil publico</p>
+                <p class="label">Perfil público</p>
                 <strong>{{ currentUser?.profilePublic ? 'Activo por defecto' : 'Inactivo' }}</strong>
-                <p>La agenda general se comparte publicamente y el cliente puede elegir servicio y, si desea, profesional.</p>
+                <p>La agenda general se comparte públicamente y el cliente puede elegir servicio y, si desea, profesional.</p>
                 <button type="button" (click)="toggleProfileVisibility()" [disabled]="isUpdatingProfileVisibility">{{ isUpdatingProfileVisibility ? 'Actualizando...' : (currentUser?.profilePublic ? 'Desactivar enlace' : 'Activar enlace') }}</button>
               </div>
             </article>
@@ -1139,7 +1139,7 @@
           <div class="panel-heading">
             <p class="label">Notificaciones</p>
             <h2>Canales del administrador</h2>
-            <p>Gestiona las alertas de la empresa desde este mismo bloque de configuracion.</p>
+            <p>Gestiona las alertas de la empresa desde este mismo bloque de configuración.</p>
           </div>
           @if (notificationSettingsError) {
             <p class="auth-error">{{ notificationSettingsError }}</p>
@@ -1161,7 +1161,7 @@
             <div>
               <p class="label">Especialidades</p>
               <h2>Roles de servicio</h2>
-              <p>Define categorias como manicura, pedicura, peluqueria, cejas o pestañas.</p>
+              <p>Define categorías como manicura, pedicura, peluquería, cejas o pestañas.</p>
             </div>
             <button type="button" class="primary-action-button" (click)="openCompanyConfigEditor('role')">Crear especialidad</button>
           </div>
@@ -1194,7 +1194,7 @@
                 <div class="config-table-wrap"><table class="config-table"><thead><tr><th>Especialidad</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
                   @for (role of serviceRoles; track role.id) {<tr><td><strong>{{ role.name }}</strong></td><td><span class="assignee-badge" [class.assignee-steelsoft]="role.active">{{ role.active ? 'Activa' : 'Inactiva' }}</span></td><td><div class="card-actions"><button type="button" (click)="editServiceRole(role)">Editar</button><button type="button" (click)="removeServiceRole(role.id)">Eliminar</button></div></td></tr>}
                 </tbody></table></div>
-              } @else { <p class="empty-state">No hay especialidades registradas todavia.</p> }
+              } @else { <p class="empty-state">No hay especialidades registradas todavía.</p> }
             </article>
           </div>
         </article>
@@ -1205,8 +1205,8 @@
           <div class="panel-heading">
             <div>
               <p class="label">Servicios</p>
-              <h2>Catalogo de atencion</h2>
-              <p>Configura cada servicio, su duracion y la especialidad que lo puede atender.</p>
+              <h2>Catálogo de atención</h2>
+              <p>Configura cada servicio, su duración y la especialidad que lo puede atender.</p>
             </div>
             <button type="button" class="primary-action-button" (click)="openCompanyConfigEditor('service')">Crear servicio</button>
           </div>
@@ -1224,9 +1224,9 @@
               <form class="pending-form" (ngSubmit)="saveService()">
                 <label><span>Servicio</span><input type="text" name="serviceName" [(ngModel)]="serviceForm.name" required /></label>
                 <label><span>Especialidad</span><select name="serviceRoleId" [(ngModel)]="serviceForm.roleId" required><option [ngValue]="0">Selecciona</option>@for (role of serviceRoles; track role.id) {<option [ngValue]="role.id">{{ role.name }}</option>}</select></label>
-                <label><span>Duracion (minutos)</span><input type="number" name="serviceDurationMinutes" [(ngModel)]="serviceForm.durationMinutes" min="15" step="15" required /></label>
+                <label><span>Duración (minutos)</span><input type="number" name="serviceDurationMinutes" [(ngModel)]="serviceForm.durationMinutes" min="15" step="15" required /></label>
                 <label><span>Precio (COP)</span><input type="number" name="servicePrice" [(ngModel)]="serviceForm.price" min="0" step="1000" required /></label>
-                <label><span>Descripcion</span><textarea name="serviceDescription" [(ngModel)]="serviceForm.description" rows="3"></textarea></label>
+                <label><span>Descripción</span><textarea name="serviceDescription" [(ngModel)]="serviceForm.description" rows="3"></textarea></label>
                 <label><span>Estado</span><select name="serviceActive" [(ngModel)]="serviceForm.active"><option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option></select></label>
                 <div class="form-actions">
                   <button type="submit" [disabled]="isSavingService">{{ isSavingService ? 'Guardando...' : (isEditingService ? 'Actualizar servicio' : 'Crear servicio') }}</button>
@@ -1240,10 +1240,10 @@
             }
             <article class="company-control-card config-table-card">
               @if (companyServices.length) {
-                <div class="config-table-wrap"><table class="config-table"><thead><tr><th>Servicio</th><th>Especialidad</th><th>Duracion</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+                <div class="config-table-wrap"><table class="config-table"><thead><tr><th>Servicio</th><th>Especialidad</th><th>Duración</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
                   @for (service of companyServices; track service.id) {<tr><td><strong>{{ service.name }}</strong>@if (service.description) { <small>{{ service.description }}</small> }</td><td>{{ service.roleName }}</td><td>{{ service.durationMinutes }} min</td><td>{{ formatCurrency(service.price) }}</td><td><span class="assignee-badge" [class.assignee-steelsoft]="service.active">{{ service.active ? 'Activo' : 'Inactivo' }}</span></td><td><div class="card-actions"><button type="button" (click)="editService(service)">Editar</button><button type="button" (click)="removeService(service.id)">Eliminar</button></div></td></tr>}
                 </tbody></table></div>
-              } @else { <p class="empty-state">No hay servicios registrados todavia.</p> }
+              } @else { <p class="empty-state">No hay servicios registrados todavía.</p> }
             </article>
           </div>
         </article>
@@ -1255,7 +1255,7 @@
             <div>
               <p class="label">Profesionales</p>
               <h2>Accesos individuales</h2>
-              <p>Cada profesional recibe usuario real, verificacion por correo y sus especialidades asignadas.</p>
+              <p>Cada profesional recibe usuario real, verificación por correo y sus especialidades asignadas.</p>
             </div>
             <button type="button" class="primary-action-button" (click)="openCompanyConfigEditor('professional')">Crear profesional</button>
           </div>
@@ -1267,7 +1267,7 @@
               <form class="pending-form" (ngSubmit)="saveProfessional()">
                 <label><span>Nombre</span><input type="text" name="professionalName" [(ngModel)]="professionalForm.name" required /></label>
                 <label><span>Correo</span><input type="email" name="professionalEmail" [(ngModel)]="professionalForm.email" /></label>
-                <label><span>Telefono</span><input type="text" name="professionalPhone" [(ngModel)]="professionalForm.phone" /></label>
+                <label><span>Teléfono</span><input type="text" name="professionalPhone" [(ngModel)]="professionalForm.phone" /></label>
                 <label><span>Estado</span><select name="professionalActive" [(ngModel)]="professionalForm.active"><option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option></select></label>
                 <div class="role-selector">
                   <span>Especialidades</span>
@@ -1301,7 +1301,7 @@
                 <div class="config-table-wrap"><table class="config-table"><thead><tr><th>Profesional</th><th>Especialidades</th><th>Acceso</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
                   @for (professional of companyContext?.professionals; track professional.id) {<tr><td><strong>{{ professional.name }}</strong>@if (professional.email) { <small>{{ professional.email }}</small> }</td><td>{{ professional.roleNames.length ? professional.roleNames.join(', ') : 'Sin asignar' }}</td><td>@if (professional.username) { <span>{{ professional.username }}</span><small>Correo: {{ professional.emailVerified ? 'validado' : 'pendiente' }}</small> } @else { <span>Sin acceso</span> }</td><td><span class="assignee-badge" [class.assignee-steelsoft]="professional.active">{{ professional.active ? 'Activo' : 'Inactivo' }}</span></td><td><div class="card-actions"><button type="button" (click)="editProfessional(professional)">Editar</button><button type="button" (click)="removeProfessional(professional.id)">Eliminar</button></div></td></tr>}
                 </tbody></table></div>
-              } @else { <p class="empty-state">No hay profesionales registrados todavia.</p> }
+              } @else { <p class="empty-state">No hay profesionales registrados todavía.</p> }
             </article>
           </div>
         </article>
@@ -1313,7 +1313,7 @@
           <div class="enterprise-hero-copy">
             <p class="label">Profesional</p>
             <h2>Tu calendario personal</h2>
-            <p>Solo puedes ver tu agenda asignada. La administracion de empresa, tareas y finanzas queda para el administrador.</p>
+            <p>Solo puedes ver tu agenda asignada. La administración de empresa, tareas y finanzas queda para el administrador.</p>
           </div>
         </article>
       </section>
@@ -1331,7 +1331,7 @@
           <div class="calendar-controls">
             <div class="view-switch" role="group" aria-label="Cambiar vista del calendario">
               <button type="button" [class.active]="viewMode === 'month'" (click)="setViewMode('month')">Por fechas</button>
-              <button type="button" [class.active]="viewMode === 'week'" (click)="setViewMode('week')">Dia y hora</button>
+              <button type="button" [class.active]="viewMode === 'week'" (click)="setViewMode('week')">Día y hora</button>
             </div>
             <div class="month-actions">
               <button type="button" (click)="previousPeriod()">Anterior</button>
@@ -1419,9 +1419,9 @@
       </div>
       @if (personalReminderError) { <p class="auth-error">{{ personalReminderError }}</p> }
       <form class="pending-form reminder-floating-form" (ngSubmit)="savePersonalReminder()">
-        <label class="full-field"><span>Titulo</span><input type="text" name="personalReminderTitle" [(ngModel)]="newPersonalReminder.title" placeholder="Ej. Enviar documentos al contador" required autofocus /></label>
+        <label class="full-field"><span>Título</span><input type="text" name="personalReminderTitle" [(ngModel)]="newPersonalReminder.title" placeholder="Ej. Enviar documentos al contador" required autofocus /></label>
         <label class="full-field"><span>Notas (opcional)</span><textarea name="personalReminderDescription" [(ngModel)]="newPersonalReminder.description" rows="3" placeholder="Agrega contexto o detalles importantes"></textarea></label>
-        <label><span>Fecha limite (opcional)</span><input type="date" name="personalReminderDueDate" [(ngModel)]="newPersonalReminder.dueDate" /></label>
+        <label><span>Fecha límite (opcional)</span><input type="date" name="personalReminderDueDate" [(ngModel)]="newPersonalReminder.dueDate" /></label>
         <label><span>Prioridad</span><select name="personalReminderPriority" [(ngModel)]="newPersonalReminder.priority"><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>
         <label class="reminder-checkbox full-field"><input type="checkbox" name="personalReminderWhatsapp" [(ngModel)]="newPersonalReminder.whatsappEnabled" /><span><strong>Recordarme por WhatsApp</strong><small>Recibirás el aviso en el número configurado en tu perfil.</small></span></label>
         @if (newPersonalReminder.whatsappEnabled) {
@@ -1439,14 +1439,14 @@
     <section class="activity-modal panel" (click)="$event.stopPropagation()">
       <div class="activity-modal-header">
         <div>
-          <p class="label">{{ isProfessionalUser ? 'Mi agenda' : 'Agenda del dia' }}</p>
+          <p class="label">{{ isProfessionalUser ? 'Mi agenda' : 'Agenda del día' }}</p>
           <h2>{{ formatDayLabel(selectedDate) }}</h2>
           <p>
             {{ isIndependentUser
               ? 'Crea o edita una actividad de tu agenda personal.'
               : isCompanyAdminUser
-              ? 'Desde aqui puedes crear o editar una cita para la fecha seleccionada.'
-              : 'Estas viendo solo las actividades asignadas a tu calendario.' }}
+              ? 'Desde aquí puedes crear o editar una cita para la fecha seleccionada.'
+              : 'Estás viendo solo las actividades asignadas a tu calendario.' }}
           </p>
         </div>
         <button type="button" class="close-button" (click)="closeActivityPanel()">Cerrar</button>
@@ -1461,9 +1461,9 @@
             @if (!isIndependentUser) {
             <label><span>Servicio</span><select name="modalServiceId" [(ngModel)]="activityBookingForm.serviceId" (ngModelChange)="onActivityServiceChange()"><option [ngValue]="0">Selecciona</option>@for (service of activeServiceOptions; track service.id) {<option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</option>}</select></label>
             <label><span>Cliente</span><input type="text" name="modalCustomerName" [(ngModel)]="activityBookingForm.customerName" /></label>
-            <label><span>Telefono cliente</span><input type="text" name="modalCustomerPhone" [(ngModel)]="activityBookingForm.customerPhone" /></label>
+            <label><span>Teléfono cliente</span><input type="text" name="modalCustomerPhone" [(ngModel)]="activityBookingForm.customerPhone" /></label>
             }
-            <label><span>Titulo</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" [placeholder]="isIndependentUser ? 'Escribe el titulo de la actividad' : 'Se llena automaticamente si eliges servicio o cliente'" required /></label>
+            <label><span>Título</span><input type="text" name="modalTitle" [(ngModel)]="newActivity.title" [placeholder]="isIndependentUser ? 'Escribe el título de la actividad' : 'Se llena automáticamente si eliges servicio o cliente'" required /></label>
             <label><span>Fecha</span><input type="date" name="modalDate" [(ngModel)]="newActivity.date" [min]="todayIsoDate" (ngModelChange)="onActivityStartTimeChange()" required /></label>
             @if (isIndependentUser) {
               <label><span>Hora inicio</span><input type="time" name="independentStartTime" [(ngModel)]="newActivity.startTime" [min]="activityMinimumStartTime" (ngModelChange)="onActivityStartTimeChange()" step="60" required /></label>
@@ -1475,29 +1475,29 @@
             @if (!isIndependentUser) {
             <label><span>Profesional</span><select name="modalAssignee" [(ngModel)]="newActivity.assignee" required>@for (assignee of assigneeOptions; track assignee) {<option [value]="assignee">{{ assignee }}</option>}</select></label>
             }
-            <label><span>{{ isIndependentUser ? 'Descripcion' : 'Notas' }}</span><textarea name="modalDescription" [(ngModel)]="newActivity.description" rows="3"></textarea></label>
+            <label><span>{{ isIndependentUser ? 'Descripción' : 'Notas' }}</span><textarea name="modalDescription" [(ngModel)]="newActivity.description" rows="3"></textarea></label>
             @if (isIndependentUser) {
               <label>
                 <span>Repetir actividad</span>
                 <select name="independentRecurrenceType" [(ngModel)]="newActivity.recurrenceType">
                   <option value="none">No repetir</option>
-                  <option value="daily">Cada dia</option>
+                  <option value="daily">Cada día</option>
                   <option value="weekly">Cada semana</option>
                   <option value="monthly">Cada mes</option>
                 </select>
               </label>
               <label>
                 <span>Recordatorio (minutos antes)</span>
-                <input type="number" name="independentReminderMinutes" [(ngModel)]="newActivity.reminderMinutes" min="1" max="1440" step="1" placeholder="Sin notificacion" />
+                <input type="number" name="independentReminderMinutes" [(ngModel)]="newActivity.reminderMinutes" min="1" max="1440" step="1" placeholder="Sin notificación" />
               </label>
             } @else {
               <label><span>Recordatorio</span><select name="modalReminder" [(ngModel)]="newActivity.reminderMinutes">@for (option of reminderOptions; track option.label) {<option [ngValue]="option.value">{{ option.label }}</option>}</select></label>
             }
-            <label><span>Visibilidad</span><select name="modalVisibility" [(ngModel)]="newActivity.visibility"><option value="private">Privada</option><option value="public">Publica</option></select></label>
+            <label><span>Visibilidad</span><select name="modalVisibility" [(ngModel)]="newActivity.visibility"><option value="private">Privada</option><option value="public">Pública</option></select></label>
             <div class="form-actions">
               <button type="submit">{{ isEditingActivity ? 'Guardar cambios' : (isIndependentUser ? 'Crear actividad' : 'Crear cita') }}</button>
               @if (isEditingActivity) {
-                <button type="button" class="secondary-button" (click)="cancelActivityEdit()">Cancelar edicion</button>
+                <button type="button" class="secondary-button" (click)="cancelActivityEdit()">Cancelar edición</button>
               }
             </div>
           </form>
@@ -1522,7 +1522,7 @@
                   </div>
                   <p class="activity-time">{{ formatActivityTimeRange(activity) }}</p>
                   @if (isIndependentUser && activity.recurrenceType && activity.recurrenceType !== 'none') {
-                    <p class="activity-reminder">Se repite {{ activity.recurrenceType === 'daily' ? 'cada dia' : activity.recurrenceType === 'weekly' ? 'cada semana' : 'cada mes' }}</p>
+                    <p class="activity-reminder">Se repite {{ activity.recurrenceType === 'daily' ? 'cada día' : activity.recurrenceType === 'weekly' ? 'cada semana' : 'cada mes' }}</p>
                   }
                   @if (activity.location) { <p class="activity-location">{{ activity.location }}</p> }
                   @if (activity.description) { <p>{{ activity.description }}</p> }

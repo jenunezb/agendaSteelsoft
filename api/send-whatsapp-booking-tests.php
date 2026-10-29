@@ -53,7 +53,7 @@ $booking = [
 ];
 
 $ownerUser = [
-    'name' => trim((string) ($_GET['admin_name'] ?? 'Administracion')),
+    'name' => trim((string) ($_GET['admin_name'] ?? 'Administración')),
 ];
 
 $professional = [
@@ -74,7 +74,7 @@ foreach ($selectedRecipients as $recipient) {
     if ($targetNumber === '') {
         $errors[] = [
             'recipient' => $recipient,
-            'message' => 'Debes indicar un numero de prueba para este destinatario.',
+            'message' => 'Debes indicar un número de prueba para este destinatario.',
         ];
         continue;
     }
@@ -172,7 +172,7 @@ function buildBookingTestPreview(
         $payload['ContentSid'] = $contentSid;
         $payload['ContentVariables'] = encodeBookingTestContentVariables($contentVariables);
     } else {
-        $payload['warning'] = 'No se enviara: falta una plantilla aprobada para este destinatario.';
+        $payload['warning'] = 'No se enviará: falta una plantilla aprobada para este destinatario.';
     }
 
     return $payload;
@@ -203,7 +203,7 @@ function sendBookingTestNotification(
         return [
             'recipient' => $recipient,
             'success' => false,
-            'message' => 'Numero de origen o destino invalido.',
+            'message' => 'Número de origen o destino inválido.',
         ];
     }
 
@@ -319,7 +319,7 @@ function sendTextmebotBookingTestNotification(
         return [
             'recipient' => $recipient,
             'success' => false,
-            'message' => 'Falta el numero destino o el apikey de TextMeBot.',
+            'message' => 'Falta el número destino o el apikey de TextMeBot.',
         ];
     }
 
@@ -372,7 +372,7 @@ function buildBookingRecipientContent(
     return match ($recipient) {
         'admin' => [
             buildAdminBookingTestMessage(
-                (string) ($ownerUser['name'] ?? 'Administracion'),
+                (string) ($ownerUser['name'] ?? 'Administración'),
                 $professionalName,
                 $serviceName,
                 $customerName,
@@ -387,7 +387,7 @@ function buildBookingRecipientContent(
                 '3' => $timeLabel,
                 '4' => $customerName,
                 '5' => $professionalName !== '' ? $professionalName : 'Profesional asignado',
-                '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin numero',
+                '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin número',
             ],
         ],
         'professional' => [
@@ -406,7 +406,7 @@ function buildBookingRecipientContent(
                 '3' => $timeLabel,
                 '4' => $customerName,
                 '5' => $professionalName !== '' ? $professionalName : 'Profesional asignado',
-                '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin numero',
+                '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin número',
             ],
         ],
         'customer' => [

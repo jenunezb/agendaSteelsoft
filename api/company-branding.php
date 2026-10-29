@@ -23,20 +23,20 @@ if ($method === 'DELETE') {
 }
 
 if ($method !== 'POST') {
-    jsonResponse(['message' => 'Metodo no permitido.'], 405);
+    jsonResponse(['message' => 'Método no permitido.'], 405);
 }
 
 $file = $_FILES['logo'] ?? null;
 
 if (!is_array($file) || (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-    jsonResponse(['message' => 'Selecciona un logo valido.'], 422);
+    jsonResponse(['message' => 'Selecciona un logo válido.'], 422);
 }
 
 $size = (int) ($file['size'] ?? 0);
 $temporaryPath = (string) ($file['tmp_name'] ?? '');
 
 if ($size <= 0 || $size > 1_500_000 || $temporaryPath === '' || !is_uploaded_file($temporaryPath)) {
-    jsonResponse(['message' => 'El logo debe pesar maximo 1.5 MB.'], 422);
+    jsonResponse(['message' => 'El logo debe pesar máximo 1.5 MB.'], 422);
 }
 
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -55,7 +55,7 @@ if (!in_array($mimeType, $allowedMimeTypes, true)) {
 $imageInfo = @getimagesize($temporaryPath);
 
 if (!is_array($imageInfo) || (int) ($imageInfo[0] ?? 0) <= 0 || (int) ($imageInfo[1] ?? 0) <= 0) {
-    jsonResponse(['message' => 'El archivo no contiene una imagen valida.'], 422);
+    jsonResponse(['message' => 'El archivo no contiene una imagen válida.'], 422);
 }
 
 if ((int) $imageInfo[0] > 4000 || (int) $imageInfo[1] > 4000) {

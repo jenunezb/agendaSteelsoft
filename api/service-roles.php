@@ -111,7 +111,7 @@ try {
         jsonResponse(['success' => true]);
     }
 
-    jsonResponse(['message' => 'Metodo no permitido.'], 405);
+    jsonResponse(['message' => 'Método no permitido.'], 405);
 } catch (Throwable $exception) {
     writeAppLog('service_roles', 'Error en service-roles.php', [
         'message' => $exception->getMessage(),

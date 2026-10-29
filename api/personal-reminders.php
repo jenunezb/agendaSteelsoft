@@ -9,7 +9,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuthenticatedUser();
 
 if (($user['accountType'] ?? '') !== 'independent') {
-    jsonResponse(['message' => 'Los recordatorios personales solo estan disponibles para perfiles independientes.'], 403);
+    jsonResponse(['message' => 'Los recordatorios personales solo están disponibles para perfiles independientes.'], 403);
 }
 
 if ($method === 'GET') {
@@ -25,7 +25,7 @@ if ($method === 'GET') {
 $payload = getPayload();
 $title = trim((string) ($payload['title'] ?? ''));
 if ($method !== 'DELETE' && $title === '') {
-    jsonResponse(['message' => 'El titulo es obligatorio.'], 422);
+    jsonResponse(['message' => 'El título es obligatorio.'], 422);
 }
 
 if ($method === 'POST') {
@@ -69,7 +69,7 @@ if ($method === 'DELETE') {
     jsonResponse(['success' => true]);
 }
 
-jsonResponse(['message' => 'Metodo no permitido.'], 405);
+jsonResponse(['message' => 'Método no permitido.'], 405);
 
 function validatePersonalReminder(array $payload): array
 {
@@ -78,7 +78,7 @@ function validatePersonalReminder(array $payload): array
     $dueDate = trim((string) ($payload['dueDate'] ?? '')) ?: null;
     $remindAt = trim((string) ($payload['remindAt'] ?? '')) ?: null;
     $whatsapp = !empty($payload['whatsappEnabled']);
-    if ($whatsapp && $remindAt === null) jsonResponse(['message' => 'Selecciona fecha y hora para la notificacion.'], 422);
+    if ($whatsapp && $remindAt === null) jsonResponse(['message' => 'Selecciona fecha y hora para la notificación.'], 422);
     return [':description' => trim((string) ($payload['description'] ?? '')), ':due_date' => $dueDate,
         ':priority' => $priority, ':completed' => !empty($payload['completed']) ? 1 : 0,
         ':whatsapp_enabled' => $whatsapp ? 1 : 0, ':remind_at' => $remindAt,

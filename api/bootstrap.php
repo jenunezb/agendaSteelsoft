@@ -162,7 +162,7 @@ function getRequiredId(): int
     $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
     if ($id <= 0) {
-        jsonResponse(['message' => 'Id invalido.'], 422);
+        jsonResponse(['message' => 'Id inválido.'], 422);
     }
 
     return $id;
@@ -716,7 +716,7 @@ function seedDefaultPlans(PDO $pdo): void
 
     foreach ([
         ['code' => 'free', 'name' => 'Plan gratuito', 'monthly_price' => 0, 'professional_limit' => 4],
-        ['code' => 'basic', 'name' => 'Basico empresarial', 'monthly_price' => 150000, 'professional_limit' => 4],
+        ['code' => 'basic', 'name' => 'Básico empresarial', 'monthly_price' => 150000, 'professional_limit' => 4],
     ] as $plan) {
         $statement->execute([
             ':code' => $plan['code'],
@@ -867,7 +867,7 @@ function requireAuthenticatedUser(): array
     $user = getAuthenticatedUser();
 
     if ($user === null) {
-        jsonResponse(['message' => 'Sesion no iniciada.'], 401);
+        jsonResponse(['message' => 'Sesión no iniciada.'], 401);
     }
 
     return $user;
@@ -1072,7 +1072,7 @@ function initializeDefaultCompanyForUser(
         ':company_id' => $companyId,
         ':plan_id' => $plan['id'] ?? null,
         ':plan_code' => $plan['code'] ?? $defaultPlanCode,
-        ':plan_name' => $plan['name'] ?? ($defaultPlanCode === 'free' ? 'Plan gratuito' : 'Basico empresarial'),
+        ':plan_name' => $plan['name'] ?? ($defaultPlanCode === 'free' ? 'Plan gratuito' : 'Básico empresarial'),
         ':monthly_price' => $plan['monthly_price'] ?? ($defaultPlanCode === 'free' ? 0 : 150000),
         ':professional_limit' => $plan['professional_limit'] ?? 4,
         ':started_at' => date('Y-m-d'),
@@ -1376,7 +1376,7 @@ function getCompanyContext(PDO $pdo, array $user): array
         'subscription' => [
             'id' => isset($subscription['id']) ? (int) $subscription['id'] : 0,
             'planCode' => (string) ($subscription['plan_code'] ?? 'basic'),
-            'planName' => (string) ($subscription['plan_name'] ?? 'Basico empresarial'),
+            'planName' => (string) ($subscription['plan_name'] ?? 'Básico empresarial'),
             'status' => (string) ($subscription['status'] ?? 'active'),
             'monthlyPrice' => isset($subscription['monthly_price']) ? (float) $subscription['monthly_price'] : 150000,
             'professionalLimit' => $professionalLimit,
@@ -1735,7 +1735,7 @@ function createOrRefreshProfessionalAccess(
 ): array
 {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        jsonResponse(['message' => 'Debes indicar un correo valido para habilitar acceso al profesional.'], 422);
+        jsonResponse(['message' => 'Debes indicar un correo válido para habilitar acceso al profesional.'], 422);
     }
 
     $existingProfessionalUser = findProfessionalUserByProfessionalId($pdo, $professionalId);
@@ -1745,7 +1745,7 @@ function createOrRefreshProfessionalAccess(
         && (int) ($existingUser['professional_id'] ?? 0) !== $professionalId
         && ($existingProfessionalUser === null || (int) $existingUser['id'] !== (int) $existingProfessionalUser['id'])
     ) {
-        jsonResponse(['message' => 'Ese correo ya esta en uso por otra cuenta.'], 422);
+        jsonResponse(['message' => 'Ese correo ya está en uso por otra cuenta.'], 422);
     }
 
     if ($existingProfessionalUser === null && $existingUser !== null && (int) ($existingUser['professional_id'] ?? 0) === $professionalId) {
@@ -2013,7 +2013,7 @@ function sendSmtpEmail(array $mailConfig, string $toEmail, string $subject, stri
     $password = $mailConfig['smtp_password'];
 
     if ($host === '' || $username === '' || $password === '') {
-        throw new RuntimeException('La configuracion SMTP esta incompleta.');
+        throw new RuntimeException('La configuración SMTP está incompleta.');
     }
 
     $transportHost = $encryption === 'ssl' ? 'ssl://' . $host : $host;
@@ -2042,7 +2042,7 @@ function sendSmtpEmail(array $mailConfig, string $toEmail, string $subject, stri
         $code = (int) substr($response, 0, 3);
         if (!in_array($code, $allowedCodes, true)) {
             fclose($socket);
-            throw new RuntimeException(sprintf('SMTP respondio con error: %s', trim($response)));
+            throw new RuntimeException(sprintf('SMTP respondió con error: %s', trim($response)));
         }
     };
 
@@ -2132,14 +2132,14 @@ function sendProfessionalInvitationEmail(
     $verificationUrl = buildBaseUrl() . '/?verify_email=' . urlencode($token);
     $subject = 'Activa tu acceso profesional en SteelSoft Agenda';
     $plainBody = sprintf(
-        "Hola %s,\n\nTu acceso profesional fue creado.\nUsuario: %s\nContrasena temporal: %s\n\nVerifica tu correo aqui:\n%s\n\nDespues de verificar, ya puedes iniciar sesion.",
+        "Hola %s,\n\nTu acceso profesional fue creado.\nUsuario: %s\nContraseña temporal: %s\n\nVerifica tu correo aquí:\n%s\n\nDespués de verificar, ya puedes iniciar sesión.",
         $name,
         $username,
         $temporaryPassword,
         $verificationUrl
     );
     $htmlBody = sprintf(
-        '<p>Hola %s,</p><p>Tu acceso profesional fue creado.</p><p><strong>Usuario:</strong> %s<br><strong>Contrasena temporal:</strong> %s</p><p>Verifica tu correo aqui:</p><p><a href="%s">%s</a></p><p>Despues de verificar, ya puedes iniciar sesion.</p>',
+        '<p>Hola %s,</p><p>Tu acceso profesional fue creado.</p><p><strong>Usuario:</strong> %s<br><strong>Contraseña temporal:</strong> %s</p><p>Verifica tu correo aquí:</p><p><a href="%s">%s</a></p><p>Después de verificar, ya puedes iniciar sesión.</p>',
         htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
         htmlspecialchars($username, ENT_QUOTES, 'UTF-8'),
         htmlspecialchars($temporaryPassword, ENT_QUOTES, 'UTF-8'),

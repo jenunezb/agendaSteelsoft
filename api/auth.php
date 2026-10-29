@@ -41,12 +41,12 @@ if ($method === 'PUT') {
     $action = (string) ($payload['action'] ?? '');
 
     if (!in_array($action, ['updateProfile', 'updateNotifications', 'updateIndependentAccount'], true)) {
-        jsonResponse(['message' => 'Accion no permitida.'], 422);
+        jsonResponse(['message' => 'Acción no permitida.'], 422);
     }
 
     if ($action === 'updateIndependentAccount') {
         if (($user['accountType'] ?? '') !== 'independent') {
-            jsonResponse(['message' => 'Esta configuracion solo esta disponible para independientes.'], 403);
+            jsonResponse(['message' => 'Esta configuración solo está disponible para independientes.'], 403);
         }
 
         $name = trim((string) ($payload['name'] ?? ''));
@@ -92,7 +92,7 @@ if ($method === 'PUT') {
         $whatsappNotificationsEnabled = !empty($payload['whatsappNotificationsEnabled']) ? 1 : 0;
 
         if ($whatsappNotificationsEnabled && $whatsappNumber === '') {
-            jsonResponse(['message' => 'Debes indicar un numero de WhatsApp para activar notificaciones.'], 422);
+            jsonResponse(['message' => 'Debes indicar un número de WhatsApp para activar notificaciones.'], 422);
         }
 
         $statement = $pdo->prepare(
@@ -118,7 +118,7 @@ if ($method === 'PUT') {
 }
 
 if ($method !== 'POST') {
-    jsonResponse(['message' => 'Metodo no permitido.'], 405);
+    jsonResponse(['message' => 'Método no permitido.'], 405);
 }
 
 $payload = getPayload();
@@ -130,12 +130,12 @@ if ($action === 'login') {
     $user = findUserByUsername($pdo, $username);
 
     if ($user === null || !password_verify($password, (string) $user['password_hash'])) {
-        jsonResponse(['message' => 'Usuario o contrasena incorrectos.'], 422);
+        jsonResponse(['message' => 'Usuario o contraseña incorrectos.'], 422);
     }
 
     if (empty($user['is_system_admin']) && empty($user['email_verified_at'])) {
         jsonResponse([
-            'message' => 'Debes verificar tu correo electronico antes de iniciar sesion.',
+            'message' => 'Debes verificar tu correo electrónico antes de iniciar sesión.',
             'requiresEmailVerification' => true,
         ], 403);
     }
@@ -166,7 +166,7 @@ if ($action === 'register') {
     $accountType = (string) ($payload['accountType'] ?? 'business');
 
     if ($name === '' || $username === '' || $email === '' || $password === '') {
-        jsonResponse(['message' => 'Nombre, usuario, correo y contrasena son obligatorios.'], 422);
+        jsonResponse(['message' => 'Nombre, usuario, correo y contraseña son obligatorios.'], 422);
     }
 
     if (findUserByUsername($pdo, $username) !== null) {
@@ -174,15 +174,15 @@ if ($action === 'register') {
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        jsonResponse(['message' => 'Ingresa un correo electronico valido.'], 422);
+        jsonResponse(['message' => 'Ingresa un correo electrónico válido.'], 422);
     }
 
     if (findUserByEmail($pdo, $email) !== null) {
-        jsonResponse(['message' => 'Ese correo electronico ya esta registrado.'], 422);
+        jsonResponse(['message' => 'Ese correo electrónico ya está registrado.'], 422);
     }
 
     if (!in_array($accountType, ['business', 'independent'], true)) {
-        jsonResponse(['message' => 'Tipo de cuenta invalido.'], 422);
+        jsonResponse(['message' => 'Tipo de cuenta inválido.'], 422);
     }
 
     $resolvedCompanyName = $companyName !== ''
@@ -214,7 +214,7 @@ if ($action === 'register') {
             sendVerificationEmail($email, $name, $token);
         } catch (Throwable $exception) {
             $emailDeliveryIssues[] = 'verification_email';
-            writeAppLog('mail', 'No fue posible enviar el correo de verificacion.', [
+            writeAppLog('mail', 'No fue posible enviar el correo de verificación.', [
                 'user_id' => $userId,
                 'email' => $email,
                 'exception' => $exception->getMessage(),
@@ -236,7 +236,7 @@ if ($action === 'register') {
             $pdo->rollBack();
         }
 
-        writeAppLog('register', 'Fallo el registro de una nueva cuenta.', [
+        writeAppLog('register', 'Falló el registro de una nueva cuenta.', [
             'name' => $name,
             'username' => $username,
             'email' => $email,
@@ -250,12 +250,12 @@ if ($action === 'register') {
         ], 500);
     }
 
-    $responseMessage = 'Registro creado. Revisa tu correo para validar la cuenta antes de iniciar sesion.';
+    $responseMessage = 'Registro creado. Revisa tu correo para validar la cuenta antes de iniciar sesión.';
 
     if (in_array('verification_email', $emailDeliveryIssues, true)) {
-        $responseMessage = 'La cuenta fue creada, pero fallo el envio del correo de verificacion. Revisa api/logs/app.log y la configuracion SMTP.';
+        $responseMessage = 'La cuenta fue creada, pero falló el envío del correo de verificación. Revisa api/logs/app.log y la configuración SMTP.';
     } elseif (in_array('system_admin_notification', $emailDeliveryIssues, true)) {
-        $responseMessage = 'La cuenta fue creada y el correo de verificacion fue enviado, pero fallo la notificacion al administrador.';
+        $responseMessage = 'La cuenta fue creada y el correo de verificación fue enviado, pero falló la notificación al administrador.';
     }
 
     jsonResponse([
@@ -271,23 +271,23 @@ if ($action === 'verifyEmail') {
     $token = trim((string) ($payload['token'] ?? ''));
 
     if ($token === '') {
-        jsonResponse(['success' => false, 'message' => 'Token de verificacion invalido.'], 422);
+        jsonResponse(['success' => false, 'message' => 'Token de verificación inválido.'], 422);
     }
 
     $verificationResult = verifyEmailToken($pdo, $token);
 
     if ($verificationResult === null) {
-        jsonResponse(['success' => false, 'message' => 'El token de verificacion no es valido.'], 422);
+        jsonResponse(['success' => false, 'message' => 'El token de verificación no es válido.'], 422);
     }
 
     if (!empty($verificationResult['expired'])) {
-        jsonResponse(['success' => false, 'message' => 'El token de verificacion ya vencio.'], 422);
+        jsonResponse(['success' => false, 'message' => 'El token de verificación ya venció.'], 422);
     }
 
     jsonResponse([
         'success' => true,
-        'message' => 'Correo verificado correctamente. Ya puedes iniciar sesion.',
+        'message' => 'Correo verificado correctamente. Ya puedes iniciar sesión.',
     ]);
 }
 
-jsonResponse(['message' => 'Accion no permitida.'], 422);
+jsonResponse(['message' => 'Acción no permitida.'], 422);

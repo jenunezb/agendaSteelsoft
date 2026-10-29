@@ -10,7 +10,7 @@ $user = requireAuthenticatedUser();
 $companyId = requireCurrentCompanyId($user);
 
 if (isProfessionalUser($user)) {
-    jsonResponse(['message' => 'El profesional no tiene acceso a la operacion financiera.'], 403);
+    jsonResponse(['message' => 'El profesional no tiene acceso a la operación financiera.'], 403);
 }
 
 if ($method === 'GET') {
@@ -149,7 +149,7 @@ if ($method === 'DELETE') {
     jsonResponse(['success' => true]);
 }
 
-jsonResponse(['message' => 'Metodo no permitido.'], 405);
+jsonResponse(['message' => 'Método no permitido.'], 405);
 
 function normalizeParticipationPercentage(mixed $value): ?float
 {

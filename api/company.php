@@ -19,7 +19,7 @@ if ($method === 'GET') {
 }
 
 if ($method !== 'PUT') {
-    jsonResponse(['message' => 'Metodo no permitido.'], 405);
+    jsonResponse(['message' => 'Método no permitido.'], 405);
 }
 
 requireCompanyAdminUser();
@@ -39,7 +39,7 @@ if ($action === 'updateCompany') {
     }
 
     if ($workingHourStart < 0 || $workingHourStart > 23 || $workingHourEnd < 1 || $workingHourEnd > 23) {
-        jsonResponse(['message' => 'El horario laboral es invalido.'], 422);
+        jsonResponse(['message' => 'El horario laboral es inválido.'], 422);
     }
 
     if ($workingHourEnd <= $workingHourStart) {
@@ -47,7 +47,7 @@ if ($action === 'updateCompany') {
     }
 
     if (!preg_match('/^#[0-9a-f]{6}$/', $primaryColor)) {
-        jsonResponse(['message' => 'El color principal no es valido.'], 422);
+        jsonResponse(['message' => 'El color principal no es válido.'], 422);
     }
 
     $statement = $pdo->prepare(
@@ -70,7 +70,7 @@ if ($action === 'updateCompany') {
 }
 
 if ($action === 'updateSubscription') {
-    jsonResponse(['message' => 'La suscripcion solo puede ser actualizada por el superadmin.'], 403);
+    jsonResponse(['message' => 'La suscripción solo puede ser actualizada por el superadmin.'], 403);
 }
 
-jsonResponse(['message' => 'Accion no permitida.'], 422);
+jsonResponse(['message' => 'Acción no permitida.'], 422);

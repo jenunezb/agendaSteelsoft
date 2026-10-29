@@ -8,7 +8,7 @@ $pdo = getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method !== 'POST') {
-    jsonResponse(['message' => 'Metodo no permitido.'], 405);
+    jsonResponse(['message' => 'Método no permitido.'], 405);
 }
 
 $payload = getPayload();
@@ -27,15 +27,15 @@ if ($username === '' || $serviceId <= 0 || $customerName === '' || $date === '' 
 }
 
 if (!isValidBookingDate($date)) {
-    jsonResponse(['message' => 'La fecha de la reserva no es valida.'], 422);
+    jsonResponse(['message' => 'La fecha de la reserva no es válida.'], 422);
 }
 
 if (!isValidBookingTime($startTime)) {
-    jsonResponse(['message' => 'La hora de inicio no es valida.'], 422);
+    jsonResponse(['message' => 'La hora de inicio no es válida.'], 422);
 }
 
 if (isBookingSlotTooSoon($date, $startTime)) {
-    jsonResponse(['message' => 'La cita debe reservarse con minimo una hora de anticipacion.'], 422);
+    jsonResponse(['message' => 'La cita debe reservarse con mínimo una hora de anticipación.'], 422);
 }
 
 $statement = $pdo->prepare(
@@ -48,14 +48,14 @@ $statement->execute([':username' => $username]);
 $user = $statement->fetch();
 
 if (!is_array($user) || empty($user['profile_public'])) {
-    jsonResponse(['message' => 'La agenda publica no esta disponible.'], 404);
+    jsonResponse(['message' => 'La agenda pública no está disponible.'], 404);
 }
 
 $companyId = (int) ($user['company_id'] ?? 0);
 $companyRole = (string) ($user['company_role'] ?? '');
 
 if ($companyId <= 0 || !in_array($companyRole, ['owner', 'admin'], true)) {
-    jsonResponse(['message' => 'La agenda publica no permite reservas generales.'], 422);
+    jsonResponse(['message' => 'La agenda pública no permite reservas generales.'], 422);
 }
 
 $service = findServiceById($pdo, $companyId, $serviceId);
@@ -82,7 +82,7 @@ $professional = findAvailableProfessionalForService(
 
 if ($professional === null) {
     if ($professionalId > 0) {
-        jsonResponse(['message' => 'El profesional seleccionado no esta disponible o no ofrece este servicio.'], 409);
+        jsonResponse(['message' => 'El profesional seleccionado no está disponible o no ofrece este servicio.'], 409);
     }
 
     jsonResponse(['message' => 'No hay profesionales disponibles para este servicio en ese horario.'], 409);
@@ -91,12 +91,12 @@ if ($professional === null) {
 $title = sprintf('Reserva web - %s - %s', (string) ($service['name'] ?? 'Servicio'), $customerName);
 $descriptionParts = [
     sprintf('Servicio: %s', (string) ($service['name'] ?? '')),
-    sprintf('Duracion: %d minutos', (int) ($service['durationMinutes'] ?? 30)),
+    sprintf('Duración: %d minutos', (int) ($service['durationMinutes'] ?? 30)),
     sprintf('Cliente: %s', $customerName),
 ];
 
 if ($customerPhone !== '') {
-    $descriptionParts[] = sprintf('Telefono: %s', $customerPhone);
+    $descriptionParts[] = sprintf('Teléfono: %s', $customerPhone);
 }
 
 if ($notes !== '') {
@@ -161,7 +161,7 @@ jsonResponse([
 
 function buildBookingResponseMessage(array $notificationSummary): string
 {
-    $baseMessage = 'Reserva creada correctamente. La empresa recibira esta cita en la agenda del profesional.';
+    $baseMessage = 'Reserva creada correctamente. La empresa recibirá esta cita en la agenda del profesional.';
     $details = [];
     $sent = is_array($notificationSummary['sent'] ?? null) ? $notificationSummary['sent'] : [];
     $failed = is_array($notificationSummary['failed'] ?? null) ? $notificationSummary['failed'] : [];
@@ -223,7 +223,7 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
             $config,
             $ownerPhone,
             buildAdminBookingMessage(
-                (string) ($ownerUser['name'] ?? 'Administracion'),
+                (string) ($ownerUser['name'] ?? 'Administración'),
                 $professionalName,
                 $serviceName,
                 $customerName,
@@ -281,7 +281,7 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
             'recipient' => 'professional',
             'success' => false,
             'skipped' => true,
-            'message' => 'El profesional no tiene WhatsApp propio configurado o coincide con administracion.',
+            'message' => 'El profesional no tiene WhatsApp propio configurado o coincide con administración.',
         ];
     }
 
@@ -309,7 +309,7 @@ function sendBookingWhatsappNotifications(PDO $pdo, array $ownerUser, array $pro
             'recipient' => 'customer',
             'success' => false,
             'skipped' => true,
-            'message' => 'El cliente no envio numero de WhatsApp.',
+            'message' => 'El cliente no envió número de WhatsApp.',
         ];
     }
 
@@ -377,7 +377,7 @@ function sendTextmebotBookingNotification(
         return [
             'recipient' => $recipient,
             'success' => false,
-            'message' => 'Falta el numero destino o el apikey de TextMeBot.',
+            'message' => 'Falta el número destino o el apikey de TextMeBot.',
         ];
     }
 
@@ -431,7 +431,7 @@ function sendTwilioBookingNotification(
         return [
             'recipient' => $recipient,
             'success' => false,
-            'message' => 'Numero de origen o destino invalido.',
+            'message' => 'Número de origen o destino inválido.',
         ];
     }
 
@@ -531,11 +531,11 @@ function recordBookingWhatsappResults(PDO $pdo, int $activityId, string $provide
                 ':provider' => $provider,
                 ':message_sid' => (string) ($result['sid'] ?? ''),
                 ':delivery_status' => $status,
-                ':error_message' => $success ? null : (string) ($result['message'] ?? 'Error de envio sin detalle.'),
+                ':error_message' => $success ? null : (string) ($result['message'] ?? 'Error de envío sin detalle.'),
             ]);
         }
     } catch (Throwable $error) {
-        writeAppLog('whatsapp-notifications', 'No fue posible registrar la trazabilidad del envio.', [
+        writeAppLog('whatsapp-notifications', 'No fue posible registrar la trazabilidad del envío.', [
             'activityId' => $activityId,
             'error' => $error->getMessage(),
         ]);
@@ -889,7 +889,7 @@ function buildAdminBookingContentVariables(
         '3' => $timeLabel,
         '4' => $customerName,
         '5' => $professionalName !== '' ? $professionalName : 'Profesional asignado',
-        '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin numero',
+        '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin número',
     ];
 }
 
@@ -907,7 +907,7 @@ function buildProfessionalBookingContentVariables(
         '3' => $timeLabel,
         '4' => $customerName,
         '5' => $professionalName !== '' ? $professionalName : 'Profesional asignado',
-        '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin numero',
+        '6' => $customerPhone !== '' ? '+' . $customerPhone : 'Sin número',
     ];
 }
 

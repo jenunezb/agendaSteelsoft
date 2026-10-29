@@ -28,7 +28,7 @@ if ($method === 'POST') {
     }
 
     if ($durationMinutes < 15 || $durationMinutes > 480) {
-        jsonResponse(['message' => 'La duracion del servicio debe estar entre 15 y 480 minutos.'], 422);
+        jsonResponse(['message' => 'La duración del servicio debe estar entre 15 y 480 minutos.'], 422);
     }
 
     if (!is_finite($price) || $price < 0) {
@@ -36,7 +36,7 @@ if ($method === 'POST') {
     }
 
     if ($roleId <= 0 || findServiceRoleById($pdo, $companyId, $roleId) === null) {
-        jsonResponse(['message' => 'Selecciona una especialidad valida para el servicio.'], 422);
+        jsonResponse(['message' => 'Selecciona una especialidad válida para el servicio.'], 422);
     }
 
     $statement = $pdo->prepare(
@@ -77,7 +77,7 @@ if ($method === 'PUT') {
     }
 
     if ($durationMinutes < 15 || $durationMinutes > 480) {
-        jsonResponse(['message' => 'La duracion del servicio debe estar entre 15 y 480 minutos.'], 422);
+        jsonResponse(['message' => 'La duración del servicio debe estar entre 15 y 480 minutos.'], 422);
     }
 
     if (!is_finite($price) || $price < 0) {
@@ -85,7 +85,7 @@ if ($method === 'PUT') {
     }
 
     if ($roleId <= 0 || findServiceRoleById($pdo, $companyId, $roleId) === null) {
-        jsonResponse(['message' => 'Selecciona una especialidad valida para el servicio.'], 422);
+        jsonResponse(['message' => 'Selecciona una especialidad válida para el servicio.'], 422);
     }
 
     $statement = $pdo->prepare(
@@ -130,4 +130,4 @@ if ($method === 'DELETE') {
     jsonResponse(['success' => true]);
 }
 
-jsonResponse(['message' => 'Metodo no permitido.'], 405);
+jsonResponse(['message' => 'Método no permitido.'], 405);

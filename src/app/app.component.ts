@@ -35,7 +35,7 @@ export class AppComponent implements OnInit {
   @HostBinding('style.--gold-deep') protected brandPrimaryDarkColor = '#c99200';
   @HostBinding('style.--brand-on-primary') protected brandOnPrimaryColor = '#0a0a0a';
   protected readonly reminderOptions = [
-    { value: null, label: 'Sin notificacion' },
+    { value: null, label: 'Sin notificación' },
     { value: 60, label: '1 hora antes' },
     { value: 30, label: '30 minutos antes' },
     { value: 15, label: '15 minutos antes' },
@@ -139,7 +139,7 @@ export class AppComponent implements OnInit {
     primaryColor: '#f2b705'
   };
   protected companySubscriptionForm = {
-    planName: 'Basico empresarial',
+    planName: 'Básico empresarial',
     planCode: 'basic',
     status: 'active',
     monthlyPrice: 150000,
@@ -412,7 +412,7 @@ export class AppComponent implements OnInit {
 
   protected get selectedPublicProfessionalName(): string {
     if (!this.publicBookingForm.professionalId) {
-      return 'Asignacion automatica';
+      return 'Asignación automática';
     }
 
     return (
@@ -496,7 +496,7 @@ export class AppComponent implements OnInit {
     const whatsappNotificationsEnabled = this.notificationSettingsForm.whatsappNotificationsEnabled;
 
     if (whatsappNotificationsEnabled && !whatsappNumber) {
-      this.notificationSettingsError = 'Ingresa el numero de WhatsApp para activar notificaciones.';
+      this.notificationSettingsError = 'Ingresa el número de WhatsApp para activar notificaciones.';
       this.notificationSettingsMessage = '';
       return;
     }
@@ -513,12 +513,12 @@ export class AppComponent implements OnInit {
         next: (session) => {
           this.isUpdatingNotificationSettings = false;
           this.applySession(session);
-          this.notificationSettingsMessage = 'Canales de notificacion actualizados.';
+          this.notificationSettingsMessage = 'Canales de notificación actualizados.';
         },
         error: (error) => {
           this.isUpdatingNotificationSettings = false;
           this.notificationSettingsError =
-            error?.error?.message ?? 'No fue posible guardar la configuracion de notificaciones.';
+            error?.error?.message ?? 'No fue posible guardar la configuración de notificaciones.';
         }
       });
   }
@@ -530,7 +530,7 @@ export class AppComponent implements OnInit {
 
     const name = this.independentProfileForm.name.trim();
     if (name.length < 2) {
-      this.independentProfileError = 'Ingresa un nombre valido.';
+      this.independentProfileError = 'Ingresa un nombre válido.';
       this.independentProfileMessage = '';
       return;
     }
@@ -602,7 +602,7 @@ export class AppComponent implements OnInit {
 
     const accountName = account.companyName || account.ownerName;
     const confirmed = window.confirm(
-      `¿Eliminar permanentemente la cuenta "${accountName}"? Se borraran sus usuarios, agenda, servicios y datos asociados. Esta accion no se puede deshacer.`
+      `¿Eliminar permanentemente la cuenta "${accountName}"? Se borrarán sus usuarios, agenda, servicios y datos asociados. Esta acción no se puede deshacer.`
     );
 
     if (!confirmed) {
@@ -676,7 +676,7 @@ export class AppComponent implements OnInit {
     }
 
     if (workingHourStart < 0 || workingHourStart > 23 || workingHourEnd < 1 || workingHourEnd > 23) {
-      this.companySettingsError = 'Define un horario laboral valido.';
+      this.companySettingsError = 'Define un horario laboral válido.';
       this.companySettingsMessage = '';
       return;
     }
@@ -688,7 +688,7 @@ export class AppComponent implements OnInit {
     }
 
     if (!/^#[0-9a-f]{6}$/.test(primaryColor)) {
-      this.companySettingsError = 'Selecciona un color principal valido.';
+      this.companySettingsError = 'Selecciona un color principal válido.';
       this.companySettingsMessage = '';
       return;
     }
@@ -732,7 +732,7 @@ export class AppComponent implements OnInit {
     }
 
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 1_500_000) {
-      this.companySettingsError = 'Usa un logo PNG, JPG o WebP de maximo 1.5 MB.';
+      this.companySettingsError = 'Usa un logo PNG, JPG o WebP de máximo 1.5 MB.';
       this.companySettingsMessage = '';
       return;
     }
@@ -787,12 +787,12 @@ export class AppComponent implements OnInit {
         next: (context) => {
           this.isSavingSubscription = false;
           this.applyCompanyContext(context);
-          this.companySettingsMessage = 'Suscripcion actualizada.';
+          this.companySettingsMessage = 'Suscripción actualizada.';
         },
         error: (error) => {
           this.isSavingSubscription = false;
           this.companySettingsError =
-            error?.error?.message ?? 'No fue posible actualizar la suscripcion.';
+            error?.error?.message ?? 'No fue posible actualizar la suscripción.';
         }
       });
   }
@@ -831,7 +831,7 @@ export class AppComponent implements OnInit {
         this.companySettingsMessage =
           wasEditing
             ? 'Profesional actualizado.'
-            : 'Profesional agregado. Si tiene correo, se envio su acceso para verificacion.';
+            : 'Profesional agregado. Si tiene correo, se envió su acceso para verificación.';
       },
       error: (error) => {
         this.isSavingProfessional = false;
@@ -1002,7 +1002,7 @@ export class AppComponent implements OnInit {
     };
 
     if (!payload.name || payload.roleId <= 0 || payload.price < 0) {
-      this.companySettingsError = 'Completa nombre y especialidad, e ingresa un precio valido para el servicio.';
+      this.companySettingsError = 'Completa nombre y especialidad, e ingresa un precio válido para el servicio.';
       this.companySettingsMessage = '';
       return;
     }
@@ -1122,7 +1122,7 @@ export class AppComponent implements OnInit {
     const password = this.loginForm.password;
 
     if (!username || !password) {
-      this.authError = 'Ingresa tu usuario y tu contrasena.';
+      this.authError = 'Ingresa tu usuario y tu contraseña.';
       return;
     }
 
@@ -1137,7 +1137,7 @@ export class AppComponent implements OnInit {
       },
       error: (error) => {
         this.isSubmittingAuth = false;
-        this.authError = error?.error?.message ?? 'No fue posible iniciar sesion.';
+        this.authError = error?.error?.message ?? 'No fue posible iniciar sesión.';
       }
     });
   }
@@ -1151,7 +1151,7 @@ export class AppComponent implements OnInit {
     const password = this.registerForm.password;
 
     if (!name || !username || !email || !password) {
-      this.authError = 'Completa nombre, usuario, correo y contrasena.';
+      this.authError = 'Completa nombre, usuario, correo y contraseña.';
       return;
     }
 
@@ -1238,7 +1238,7 @@ export class AppComponent implements OnInit {
     }
 
     if (!this.isPublicBookingSlotAvailable(date, startTime)) {
-      this.authError = 'La cita debe reservarse con minimo una hora de anticipacion.';
+      this.authError = 'La cita debe reservarse con mínimo una hora de anticipación.';
       this.authMessage = '';
       return;
     }
@@ -1780,7 +1780,7 @@ export class AppComponent implements OnInit {
     this.personalReminderError = '';
     this.personalReminderMessage = '';
     if (!payload.title || (payload.whatsappEnabled && !payload.remindAt)) {
-      this.personalReminderError = !payload.title ? 'Escribe el titulo del pendiente.' : 'Selecciona cuando quieres recibir el WhatsApp.';
+      this.personalReminderError = !payload.title ? 'Escribe el título del pendiente.' : 'Selecciona cuándo quieres recibir el WhatsApp.';
       return;
     }
     const request = this.editingPersonalReminderId === null
@@ -2235,7 +2235,7 @@ export class AppComponent implements OnInit {
 
   protected getReminderLabel(reminderMinutes: number | null): string {
     if (reminderMinutes === null) {
-      return 'Sin notificacion';
+      return 'Sin notificación';
     }
 
     return (
@@ -2350,7 +2350,7 @@ export class AppComponent implements OnInit {
         this.isAuthLoading = false;
 
         if (showLoader) {
-          this.authError = 'No fue posible validar la sesion.';
+          this.authError = 'No fue posible validar la sesión.';
         }
       }
     });
@@ -3066,7 +3066,7 @@ export class AppComponent implements OnInit {
     }
 
     if (customerPhone) {
-      metadataLines.push(`Telefono: ${customerPhone}`);
+      metadataLines.push(`Teléfono: ${customerPhone}`);
     }
 
     if (notes) {
@@ -3108,7 +3108,7 @@ export class AppComponent implements OnInit {
     return {
       serviceId: selectedService?.id ?? 0,
       customerName: lineMap.get('cliente') ?? '',
-      customerPhone: lineMap.get('telefono') ?? '',
+      customerPhone: lineMap.get('teléfono') ?? lineMap.get('telefono') ?? '',
       notes: lineMap.get('notas') ?? activity.description
     };
   }
