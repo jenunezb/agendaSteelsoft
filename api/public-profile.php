@@ -56,7 +56,7 @@ $company = null;
 
 if ($companyId > 0) {
     $companyStatement = $pdo->prepare(
-        'SELECT name, working_hour_start, working_hour_end, brand_primary_color, brand_logo_updated_at
+        'SELECT name, account_type, working_hour_start, working_hour_end, brand_primary_color, brand_logo_updated_at
          FROM companies
          WHERE id = :company_id'
     );
@@ -127,6 +127,7 @@ jsonResponse([
         'name' => $user['name'],
         'username' => $user['username'],
         'companyName' => (string) ($company['name'] ?? $user['name']),
+        'accountType' => (string) ($company['account_type'] ?? 'business'),
         'publicUrl' => buildPublicProfileUrl((string) $user['username']),
         'whatsappNumber' => (string) ($user['whatsapp_number'] ?? ''),
         'whatsappContactUrl' => buildWhatsappClickUrl(

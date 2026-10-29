@@ -386,7 +386,7 @@ export class AgendaApiService {
 
   createPublicBooking(payload: {
     username: string;
-    serviceId: number;
+    serviceId: number | null;
     professionalId: number | null;
     customerName: string;
     customerPhone: string;

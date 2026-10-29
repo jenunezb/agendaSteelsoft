@@ -2212,6 +2212,32 @@ app-root .public-unavailable-footer { margin: 0; color: #918a7f; font-size: .68r
   app-root .public-profile-loader { animation: none; }
 }
 
+/* Direct booking for independent public profiles */
+app-root .independent-public-booking-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, #ddd8ce);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--gold) 10%, #ffffff);
+}
+app-root .independent-public-booking-note > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--brand-on-primary);
+  background: var(--gold);
+  font-weight: 900;
+}
+app-root .independent-public-booking-note strong,
+app-root .independent-public-booking-note small { display: block; }
+app-root .independent-public-booking-note strong { color: var(--black); font-size: .9rem; }
+app-root .independent-public-booking-note small { margin-top: 3px; color: var(--muted); font-size: .74rem; line-height: 1.35; }
+
 /* Independent profile and activity privacy */
 app-root .independent-visibility-panel { overflow: hidden; }
 app-root .independent-visibility-card {

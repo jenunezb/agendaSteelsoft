@@ -22,7 +22,7 @@ $startTime = trim((string) ($payload['startTime'] ?? ''));
 $notes = trim((string) ($payload['notes'] ?? ''));
 $confirmationToken = bin2hex(random_bytes(32));
 
-if ($username === '' || $serviceId <= 0 || $customerName === '' || $date === '' || $startTime === '') {
+if ($username === '' || $customerName === '' || $date === '' || $startTime === '') {
     jsonResponse(['message' => 'Completa los datos de la reserva.'], 422);
 }
 
@@ -39,7 +39,10 @@ if (isBookingSlotTooSoon($date, $startTime)) {
 }
 
 $statement = $pdo->prepare(
-    'SELECT id, name, company_id, company_role, profile_public, whatsapp_number, whatsapp_notifications_enabled
+    'SELECT id, name, company_id, company_role, profile_public, whatsapp_number, whatsapp_notifications_enabled,
+            (SELECT account_type FROM companies WHERE id = users.company_id LIMIT 1) AS account_type,
+            (SELECT working_hour_start FROM companies WHERE id = users.company_id LIMIT 1) AS working_hour_start,
+            (SELECT working_hour_end FROM companies WHERE id = users.company_id LIMIT 1) AS working_hour_end
      FROM users
      WHERE username = :username
      LIMIT 1'
@@ -58,42 +61,105 @@ if ($companyId <= 0 || !in_array($companyRole, ['owner', 'admin'], true)) {
     jsonResponse(['message' => 'La agenda pública no permite reservas generales.'], 422);
 }
 
-$service = findServiceById($pdo, $companyId, $serviceId);
-if ($service === null || empty($service['active'])) {
-    jsonResponse(['message' => 'Servicio no disponible para esta reserva.'], 422);
-}
+$isIndependentAccount = (string) ($user['account_type'] ?? 'business') === 'independent';
 
-$roleId = (int) ($service['roleId'] ?? 0);
-if ($roleId <= 0) {
-    jsonResponse(['message' => 'El servicio no tiene una especialidad asociada.'], 422);
-}
+if ($isIndependentAccount) {
+    $service = [
+        'name' => 'Cita',
+        'durationMinutes' => 60,
+        'active' => true,
+    ];
+    $endTime = addMinutesToTime($startTime, 60);
+    $workingHourStart = sprintf('%02d:00', (int) ($user['working_hour_start'] ?? 8));
+    $workingHourEnd = sprintf('%02d:00', (int) ($user['working_hour_end'] ?? 18));
 
-$endTime = addMinutesToTime($startTime, (int) ($service['durationMinutes'] ?? 30));
-
-$professional = findAvailableProfessionalForService(
-    $pdo,
-    $companyId,
-    $roleId,
-    $date,
-    $startTime,
-    $endTime,
-    $professionalId > 0 ? $professionalId : null
-);
-
-if ($professional === null) {
-    if ($professionalId > 0) {
-        jsonResponse(['message' => 'El profesional seleccionado no está disponible o no ofrece este servicio.'], 409);
+    if ($startTime < $workingHourStart || $endTime > $workingHourEnd || $endTime <= $startTime) {
+        jsonResponse(['message' => 'Selecciona un horario dentro de la jornada disponible.'], 422);
     }
 
-    jsonResponse(['message' => 'No hay profesionales disponibles para este servicio en ese horario.'], 409);
-}
+    $availabilityStatement = $pdo->prepare(
+        'SELECT COUNT(*)
+         FROM activities
+         WHERE user_id = :user_id
+           AND (
+                activity_date = :exact_date
+                OR (activity_date <= :daily_date AND recurrence_type = "daily")
+                OR (activity_date <= :weekly_date AND recurrence_type = "weekly" AND DAYOFWEEK(activity_date) = DAYOFWEEK(:weekly_target))
+                OR (activity_date <= :monthly_date AND recurrence_type = "monthly" AND DAY(activity_date) = DAY(:monthly_target))
+           )
+           AND start_time < :end_time
+           AND end_time > :start_time'
+    );
+    $availabilityStatement->execute([
+        ':user_id' => (int) $user['id'],
+        ':exact_date' => $date,
+        ':daily_date' => $date,
+        ':weekly_date' => $date,
+        ':weekly_target' => $date,
+        ':monthly_date' => $date,
+        ':monthly_target' => $date,
+        ':start_time' => $startTime,
+        ':end_time' => $endTime,
+    ]);
 
-$title = sprintf('Reserva web - %s - %s', (string) ($service['name'] ?? 'Servicio'), $customerName);
-$descriptionParts = [
-    sprintf('Servicio: %s', (string) ($service['name'] ?? '')),
-    sprintf('Duración: %d minutos', (int) ($service['durationMinutes'] ?? 30)),
-    sprintf('Cliente: %s', $customerName),
-];
+    if ((int) $availabilityStatement->fetchColumn() > 0) {
+        jsonResponse(['message' => 'Este horario acaba de ocuparse. Selecciona otro disponible.'], 409);
+    }
+
+    $professional = [
+        'id' => null,
+        'name' => (string) $user['name'],
+        'linked_user_id' => (int) $user['id'],
+        'phone' => '',
+    ];
+    $title = sprintf('Reserva web - %s', $customerName);
+    $descriptionParts = [
+        'Reserva directa desde la agenda pública',
+        'Duración: 60 minutos',
+        sprintf('Cliente: %s', $customerName),
+    ];
+} else {
+    if ($serviceId <= 0) {
+        jsonResponse(['message' => 'Selecciona un servicio para continuar.'], 422);
+    }
+
+    $service = findServiceById($pdo, $companyId, $serviceId);
+    if ($service === null || empty($service['active'])) {
+        jsonResponse(['message' => 'Servicio no disponible para esta reserva.'], 422);
+    }
+
+    $roleId = (int) ($service['roleId'] ?? 0);
+    if ($roleId <= 0) {
+        jsonResponse(['message' => 'El servicio no tiene una especialidad asociada.'], 422);
+    }
+
+    $endTime = addMinutesToTime($startTime, (int) ($service['durationMinutes'] ?? 30));
+
+    $professional = findAvailableProfessionalForService(
+        $pdo,
+        $companyId,
+        $roleId,
+        $date,
+        $startTime,
+        $endTime,
+        $professionalId > 0 ? $professionalId : null
+    );
+
+    if ($professional === null) {
+        if ($professionalId > 0) {
+            jsonResponse(['message' => 'El profesional seleccionado no está disponible o no ofrece este servicio.'], 409);
+        }
+
+        jsonResponse(['message' => 'No hay profesionales disponibles para este servicio en ese horario.'], 409);
+    }
+
+    $title = sprintf('Reserva web - %s - %s', (string) ($service['name'] ?? 'Servicio'), $customerName);
+    $descriptionParts = [
+        sprintf('Servicio: %s', (string) ($service['name'] ?? '')),
+        sprintf('Duración: %d minutos', (int) ($service['durationMinutes'] ?? 30)),
+        sprintf('Cliente: %s', $customerName),
+    ];
+}
 
 if ($customerPhone !== '') {
     $descriptionParts[] = sprintf('Teléfono: %s', $customerPhone);
@@ -113,7 +179,7 @@ $statement = $pdo->prepare(
 $statement->execute([
     ':user_id' => (int) $user['id'],
     ':company_id' => $companyId,
-    ':professional_id' => (int) $professional['id'],
+    ':professional_id' => $isIndependentAccount ? null : (int) $professional['id'],
     ':title' => $title,
     ':start_time' => $startTime,
     ':end_time' => $endTime,
@@ -142,12 +208,12 @@ $notificationSummary = sendBookingWhatsappNotifications(
         'notes' => $notes,
     ]
 );
-$responseMessage = buildBookingResponseMessage($notificationSummary);
+$responseMessage = buildBookingResponseMessage($notificationSummary, $isIndependentAccount);
 
 writeAppLog('public-bookings', 'Booking created from public profile.', [
     'activityId' => $activityId,
     'username' => $username,
-    'serviceId' => $serviceId,
+    'serviceId' => $isIndependentAccount ? null : $serviceId,
     'professionalId' => (int) ($professional['id'] ?? 0),
     'customerPhone' => normalizeWhatsappNumber($customerPhone),
     'notifications' => $notificationSummary,
@@ -159,9 +225,11 @@ jsonResponse([
     'notifications' => $notificationSummary,
 ], 201);
 
-function buildBookingResponseMessage(array $notificationSummary): string
+function buildBookingResponseMessage(array $notificationSummary, bool $isIndependentAccount = false): string
 {
-    $baseMessage = 'Reserva creada correctamente. La empresa recibirá esta cita en la agenda del profesional.';
+    $baseMessage = $isIndependentAccount
+        ? 'Reserva creada correctamente. La persona responsable recibirá esta cita en su agenda.'
+        : 'Reserva creada correctamente. La empresa recibirá esta cita en la agenda del profesional.';
     $details = [];
     $sent = is_array($notificationSummary['sent'] ?? null) ? $notificationSummary['sent'] : [];
     $failed = is_array($notificationSummary['failed'] ?? null) ? $notificationSummary['failed'] : [];

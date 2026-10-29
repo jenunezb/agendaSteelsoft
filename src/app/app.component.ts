@@ -69,6 +69,7 @@ export class AppComponent implements OnInit {
   protected publicProfileProfessionals: NonNullable<PublicProfile['professionals']> = [];
   protected publicProfileServices: CompanyService[] = [];
   protected publicProfileHours = { start: 8, end: 18 };
+  protected readonly independentPublicBookingDurationMinutes = 60;
   protected canRegister = false;
   protected authMode: 'login' | 'register' = 'login';
   protected authError = '';
@@ -288,6 +289,10 @@ export class AppComponent implements OnInit {
     );
   }
 
+  protected get isIndependentPublicProfile(): boolean {
+    return this.isPublicProfileMode && this.publicProfileUser?.accountType === 'independent';
+  }
+
   protected get showPrivateWorkspace(): boolean {
     return this.isAuthenticated && !this.isPublicProfileMode;
   }
@@ -411,6 +416,10 @@ export class AppComponent implements OnInit {
   }
 
   protected get selectedPublicProfessionalName(): string {
+    if (this.isIndependentPublicProfile) {
+      return this.publicProfileUser?.name ?? 'Responsable de la agenda';
+    }
+
     if (!this.publicBookingForm.professionalId) {
       return 'Asignación automática';
     }
@@ -423,9 +432,20 @@ export class AppComponent implements OnInit {
   }
 
   protected get publicBookingEndTime(): string {
+    if (!this.publicBookingForm.startTime) {
+      return '';
+    }
+
+    if (this.isIndependentPublicProfile) {
+      return this.getEndTimeByDuration(
+        this.publicBookingForm.startTime,
+        this.independentPublicBookingDurationMinutes
+      );
+    }
+
     const selectedService = this.selectedPublicService;
 
-    if (!selectedService || !this.publicBookingForm.startTime) {
+    if (!selectedService) {
       return '';
     }
 
@@ -1227,12 +1247,14 @@ export class AppComponent implements OnInit {
 
     if (
       !this.publicProfileUser ||
-      this.publicBookingForm.serviceId <= 0 ||
+      (!this.isIndependentPublicProfile && this.publicBookingForm.serviceId <= 0) ||
       !customerName ||
       !date ||
       !startTime
     ) {
-      this.authError = 'Completa los datos de la reserva y selecciona un servicio.';
+      this.authError = this.isIndependentPublicProfile
+        ? 'Completa tu nombre, la fecha y la hora de la reserva.'
+        : 'Completa los datos de la reserva y selecciona un servicio.';
       this.authMessage = '';
       return;
     }
@@ -1249,8 +1271,10 @@ export class AppComponent implements OnInit {
 
     this.agendaApi.createPublicBooking({
       username: this.publicProfileUser.username,
-      serviceId: this.publicBookingForm.serviceId,
-      professionalId: this.publicBookingForm.professionalId > 0 ? this.publicBookingForm.professionalId : null,
+      serviceId: this.isIndependentPublicProfile ? null : this.publicBookingForm.serviceId,
+      professionalId: this.isIndependentPublicProfile
+        ? null
+        : (this.publicBookingForm.professionalId > 0 ? this.publicBookingForm.professionalId : null),
       customerName,
       customerPhone: this.publicBookingForm.customerPhone.trim(),
       date,
@@ -1389,15 +1413,19 @@ export class AppComponent implements OnInit {
     this.selectDate(isoDate);
     this.authError = '';
     this.authMessage = '';
-    const serviceId = this.publicBookingForm.serviceId || this.publicProfileServices[0]?.id || 0;
+    const serviceId = this.isIndependentPublicProfile
+      ? 0
+      : (this.publicBookingForm.serviceId || this.publicProfileServices[0]?.id || 0);
     this.publicBookingForm = {
       ...this.publicBookingForm,
       serviceId,
       date: this.selectedDate,
       startTime,
-      professionalId: this.isProfessionalCompatibleWithSelectedService(this.publicBookingForm.professionalId)
-        ? this.publicBookingForm.professionalId
-        : 0
+      professionalId: this.isIndependentPublicProfile
+        ? 0
+        : (this.isProfessionalCompatibleWithSelectedService(this.publicBookingForm.professionalId)
+          ? this.publicBookingForm.professionalId
+          : 0)
     };
     this.syncPublicBookingSelection();
     this.isPublicBookingModalOpen = true;
@@ -1449,7 +1477,26 @@ export class AppComponent implements OnInit {
     }
 
     const minimumBookingTime = Date.now() + this.publicBookingLeadMinutes * 60_000;
-    return slotDateTime.getTime() >= minimumBookingTime;
+    if (slotDateTime.getTime() < minimumBookingTime) {
+      return false;
+    }
+
+    if (!this.isIndependentPublicProfile) {
+      return true;
+    }
+
+    const startMinutes = this.parseTimeToMinutes(time);
+    const endMinutes = startMinutes + this.independentPublicBookingDurationMinutes;
+
+    if (endMinutes > this.currentWorkingHours.end * 60) {
+      return false;
+    }
+
+    return !this.getActivitiesForDate(isoDate).some((activity) => {
+      const activityStart = this.parseTimeToMinutes(activity.startTime);
+      const activityEnd = this.parseTimeToMinutes(activity.endTime);
+      return activityStart < endMinutes && activityEnd > startMinutes;
+    });
   }
 
   protected isPastCalendarDate(isoDate: string): boolean {

@@ -211,7 +211,9 @@
             <p class="label">Reserva externa</p>
             <h2>Reservar cita</h2>
             <p>
-              Completa los datos del cliente. La hora de inicio toma por defecto el bloque que se tocó.
+              {{ isIndependentPublicProfile
+                ? 'Completa tus datos para solicitar este horario. La reserva será directamente con la persona de esta agenda.'
+                : 'Completa los datos del cliente. La hora de inicio toma por defecto el bloque que se tocó.' }}
             </p>
           </div>
           <button type="button" class="close-button" (click)="closePublicBookingModal()">Cerrar</button>
@@ -219,25 +221,35 @@
 
         <div class="activity-modal-body public-booking-body">
           <form class="pending-form" (ngSubmit)="submitPublicBooking()">
-            <label>
-              <span>Servicio</span>
-              <select name="publicBookingServiceModal" [(ngModel)]="publicBookingForm.serviceId" (ngModelChange)="onPublicBookingServiceChange()" required>
-                <option [ngValue]="0">Selecciona</option>
-                @for (service of publicProfileServices; track service.id) {
-                  <option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</option>
-                }
-              </select>
-            </label>
+            @if (isIndependentPublicProfile) {
+              <div class="independent-public-booking-note">
+                <span aria-hidden="true">✓</span>
+                <div>
+                  <strong>Reserva directa</strong>
+                  <small>Una cita de {{ independentPublicBookingDurationMinutes }} minutos con {{ activeProfileName }}.</small>
+                </div>
+              </div>
+            } @else {
+              <label>
+                <span>Servicio</span>
+                <select name="publicBookingServiceModal" [(ngModel)]="publicBookingForm.serviceId" (ngModelChange)="onPublicBookingServiceChange()" required>
+                  <option [ngValue]="0">Selecciona</option>
+                  @for (service of publicProfileServices; track service.id) {
+                    <option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</option>
+                  }
+                </select>
+              </label>
 
-            <label>
-              <span>Profesional</span>
-              <select name="publicProfessionalIdModal" [(ngModel)]="publicBookingForm.professionalId">
-                <option [ngValue]="0">Asignar automáticamente</option>
-                @for (professional of filteredPublicProfessionals; track professional.id) {
-                  <option [ngValue]="professional.id">{{ professional.name }}</option>
-                }
-              </select>
-            </label>
+              <label>
+                <span>Profesional</span>
+                <select name="publicProfessionalIdModal" [(ngModel)]="publicBookingForm.professionalId">
+                  <option [ngValue]="0">Asignar automáticamente</option>
+                  @for (professional of filteredPublicProfessionals; track professional.id) {
+                    <option [ngValue]="professional.id">{{ professional.name }}</option>
+                  }
+                </select>
+              </label>
+            }
 
             <label>
               <span>Fecha</span>
@@ -299,14 +311,19 @@
           <div class="selected-day activity-modal-list public-modal-list">
             <p class="label">Horario seleccionado</p>
             <h3>{{ formatFullDateLabel(publicBookingForm.date || selectedDate) }}</h3>
-            <p class="activity-launch-copy">
-              Servicio:
-              <strong>{{ selectedPublicService?.name || 'Selecciona un servicio' }}</strong>
-            </p>
-            <p class="activity-launch-copy">
-              Precio:
-              <strong>{{ selectedPublicService ? formatCurrency(selectedPublicService.price) : 'Selecciona un servicio' }}</strong>
-            </p>
+            @if (isIndependentPublicProfile) {
+              <p class="activity-launch-copy">Tipo: <strong>Reserva directa</strong></p>
+              <p class="activity-launch-copy">Duración: <strong>{{ independentPublicBookingDurationMinutes }} minutos</strong></p>
+            } @else {
+              <p class="activity-launch-copy">
+                Servicio:
+                <strong>{{ selectedPublicService?.name || 'Selecciona un servicio' }}</strong>
+              </p>
+              <p class="activity-launch-copy">
+                Precio:
+                <strong>{{ selectedPublicService ? formatCurrency(selectedPublicService.price) : 'Selecciona un servicio' }}</strong>
+              </p>
+            }
             <p class="activity-launch-copy">
               Inicio:
               <strong>{{ publicBookingForm.startTime ? formatTimeLabel(publicBookingForm.startTime) : 'Selecciona una hora' }}</strong>
@@ -316,7 +333,7 @@
               <strong>{{ publicBookingEndTime ? formatTimeLabel(publicBookingEndTime) : 'Selecciona una hora' }}</strong>
             </p>
             <p class="activity-launch-copy">
-              Profesional:
+              {{ isIndependentPublicProfile ? 'Con:' : 'Profesional:' }}
               <strong>{{ selectedPublicProfessionalName }}</strong>
             </p>
           </div>
