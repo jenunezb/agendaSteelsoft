@@ -5,6 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
 
 $pdo = getConnection();
+enforceIndependentProfileVisibility($pdo);
 $username = strtolower(trim((string) ($_GET['username'] ?? '')));
 
 if ($username === '') {

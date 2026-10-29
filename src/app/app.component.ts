@@ -69,7 +69,6 @@ export class AppComponent implements OnInit {
   protected publicProfileProfessionals: NonNullable<PublicProfile['professionals']> = [];
   protected publicProfileServices: CompanyService[] = [];
   protected publicProfileHours = { start: 8, end: 18 };
-  protected readonly independentPublicBookingDurationMinutes = 60;
   protected canRegister = false;
   protected authMode: 'login' | 'register' = 'login';
   protected authError = '';
@@ -83,6 +82,7 @@ export class AppComponent implements OnInit {
   protected isUpdatingProfileVisibility = false;
   protected isUpdatingNotificationSettings = false;
   protected isSavingIndependentProfile = false;
+  protected profileVisibilityError = '';
   protected notificationSettingsMessage = '';
   protected notificationSettingsError = '';
   protected independentProfileMessage = '';
@@ -108,7 +108,7 @@ export class AppComponent implements OnInit {
   protected authRouteMode: 'login' | 'register' | null = null;
   protected superAdminTab: 'overview' | 'accounts' = 'overview';
   protected companyAdminTab: 'agenda' | 'config' = 'agenda';
-  protected independentTab: 'agenda' | 'reminders' | 'profile' = 'agenda';
+  protected independentTab: 'agenda' | 'reminders' | 'services' | 'profile' = 'agenda';
   protected companyConfigTab: 'general' | 'notifications' | 'roles' | 'services' | 'professionals' = 'general';
   protected companyConfigEditor: 'role' | 'service' | 'professional' | null = null;
   protected editingSystemAccountId: number | null = null;
@@ -395,6 +395,10 @@ export class AppComponent implements OnInit {
     return this.companyServices.filter((service) => service.active);
   }
 
+  protected get hasActiveServices(): boolean {
+    return this.activeServiceOptions.length > 0;
+  }
+
   protected get selectedActivityService(): CompanyService | null {
     return this.activeServiceOptions.find((service) => service.id === this.activityBookingForm.serviceId) ?? null;
   }
@@ -434,13 +438,6 @@ export class AppComponent implements OnInit {
   protected get publicBookingEndTime(): string {
     if (!this.publicBookingForm.startTime) {
       return '';
-    }
-
-    if (this.isIndependentPublicProfile) {
-      return this.getEndTimeByDuration(
-        this.publicBookingForm.startTime,
-        this.independentPublicBookingDurationMinutes
-      );
     }
 
     const selectedService = this.selectedPublicService;
@@ -494,7 +491,14 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    if (this.isIndependentUser && !this.currentUser.profilePublic && !this.hasActiveServices) {
+      this.profileVisibilityError = 'Crea al menos un servicio activo antes de publicar tu agenda.';
+      this.independentTab = 'services';
+      return;
+    }
+
     this.isUpdatingProfileVisibility = true;
+    this.profileVisibilityError = '';
     this.agendaApi.updateProfileVisibility(!this.currentUser.profilePublic).subscribe({
       next: (session) => {
         this.isUpdatingProfileVisibility = false;
@@ -502,7 +506,7 @@ export class AppComponent implements OnInit {
       },
       error: (error) => {
         this.isUpdatingProfileVisibility = false;
-        this.authError = error?.error?.message ?? 'No fue posible actualizar la visibilidad del perfil.';
+        this.profileVisibilityError = error?.error?.message ?? 'No fue posible actualizar la visibilidad del perfil.';
       }
     });
   }
@@ -1014,15 +1018,22 @@ export class AppComponent implements OnInit {
   protected saveService(): void {
     const payload = {
       name: this.serviceForm.name.trim(),
-      roleId: Number(this.serviceForm.roleId) || 0,
+      roleId: this.isIndependentUser ? 0 : (Number(this.serviceForm.roleId) || 0),
       durationMinutes: Number(this.serviceForm.durationMinutes) || 0,
       price: Number(this.serviceForm.price) || 0,
       description: this.serviceForm.description.trim(),
       active: this.serviceForm.active
     };
 
-    if (!payload.name || payload.roleId <= 0 || payload.price < 0) {
-      this.companySettingsError = 'Completa nombre y especialidad, e ingresa un precio válido para el servicio.';
+    if (
+      !payload.name ||
+      (!this.isIndependentUser && payload.roleId <= 0) ||
+      payload.durationMinutes < 15 ||
+      payload.price < 0
+    ) {
+      this.companySettingsError = this.isIndependentUser
+        ? 'Completa el nombre, una duración mínima de 15 minutos y un precio válido.'
+        : 'Completa nombre y especialidad, e ingresa una duración y un precio válidos.';
       this.companySettingsMessage = '';
       return;
     }
@@ -1044,15 +1055,17 @@ export class AppComponent implements OnInit {
           return;
         }
 
+        const services =
+          this.editingServiceId === null
+            ? [...this.companyContext.services, service].sort((left, right) => left.name.localeCompare(right.name))
+            : this.companyContext.services
+                .map((existingService) => (existingService.id === service.id ? service : existingService))
+                .sort((left, right) => left.name.localeCompare(right.name));
         this.companyContext = {
           ...this.companyContext,
-          services:
-            this.editingServiceId === null
-              ? [...this.companyContext.services, service].sort((left, right) => left.name.localeCompare(right.name))
-              : this.companyContext.services
-                  .map((existingService) => (existingService.id === service.id ? service : existingService))
-                  .sort((left, right) => left.name.localeCompare(right.name))
+          services
         };
+        this.syncIndependentProfileVisibilityWithServices(services);
         this.isSavingService = false;
         this.resetServiceForm();
         this.companyConfigEditor = null;
@@ -1119,10 +1132,12 @@ export class AppComponent implements OnInit {
     this.agendaApi.deleteService(serviceId).subscribe({
       next: () => {
         if (this.companyContext) {
+          const services = this.companyContext.services.filter((service) => service.id !== serviceId);
           this.companyContext = {
             ...this.companyContext,
-            services: this.companyContext.services.filter((service) => service.id !== serviceId)
+            services
           };
+          this.syncIndependentProfileVisibilityWithServices(services);
         }
 
         if (this.editingServiceId === serviceId) {
@@ -1247,14 +1262,12 @@ export class AppComponent implements OnInit {
 
     if (
       !this.publicProfileUser ||
-      (!this.isIndependentPublicProfile && this.publicBookingForm.serviceId <= 0) ||
+      this.publicBookingForm.serviceId <= 0 ||
       !customerName ||
       !date ||
       !startTime
     ) {
-      this.authError = this.isIndependentPublicProfile
-        ? 'Completa tu nombre, la fecha y la hora de la reserva.'
-        : 'Completa los datos de la reserva y selecciona un servicio.';
+      this.authError = 'Completa los datos de la reserva y selecciona un servicio.';
       this.authMessage = '';
       return;
     }
@@ -1271,7 +1284,7 @@ export class AppComponent implements OnInit {
 
     this.agendaApi.createPublicBooking({
       username: this.publicProfileUser.username,
-      serviceId: this.isIndependentPublicProfile ? null : this.publicBookingForm.serviceId,
+      serviceId: this.publicBookingForm.serviceId,
       professionalId: this.isIndependentPublicProfile
         ? null
         : (this.publicBookingForm.professionalId > 0 ? this.publicBookingForm.professionalId : null),
@@ -1413,9 +1426,7 @@ export class AppComponent implements OnInit {
     this.selectDate(isoDate);
     this.authError = '';
     this.authMessage = '';
-    const serviceId = this.isIndependentPublicProfile
-      ? 0
-      : (this.publicBookingForm.serviceId || this.publicProfileServices[0]?.id || 0);
+    const serviceId = this.publicBookingForm.serviceId || this.publicProfileServices[0]?.id || 0;
     this.publicBookingForm = {
       ...this.publicBookingForm,
       serviceId,
@@ -1486,7 +1497,13 @@ export class AppComponent implements OnInit {
     }
 
     const startMinutes = this.parseTimeToMinutes(time);
-    const endMinutes = startMinutes + this.independentPublicBookingDurationMinutes;
+    const selectedService = this.selectedPublicService;
+
+    if (!selectedService) {
+      return false;
+    }
+
+    const endMinutes = startMinutes + selectedService.durationMinutes;
 
     if (endMinutes > this.currentWorkingHours.end * 60) {
       return false;
@@ -2771,6 +2788,22 @@ export class AppComponent implements OnInit {
   private syncPublicBookingSelection(): void {
     if (!this.isProfessionalCompatibleWithSelectedService(this.publicBookingForm.professionalId)) {
       this.publicBookingForm.professionalId = 0;
+    }
+  }
+
+  private syncIndependentProfileVisibilityWithServices(services: CompanyService[]): void {
+    if (!this.isIndependentUser) {
+      return;
+    }
+
+    if (services.some((service) => service.active)) {
+      this.profileVisibilityError = '';
+      return;
+    }
+
+    if (this.currentUser?.profilePublic) {
+      this.currentUser = { ...this.currentUser, profilePublic: false };
+      this.profileVisibilityError = 'Tu agenda volvió a modo privado porque no tienes servicios activos.';
     }
   }
 

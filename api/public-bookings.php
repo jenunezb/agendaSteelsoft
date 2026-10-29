@@ -63,13 +63,18 @@ if ($companyId <= 0 || !in_array($companyRole, ['owner', 'admin'], true)) {
 
 $isIndependentAccount = (string) ($user['account_type'] ?? 'business') === 'independent';
 
+if ($serviceId <= 0) {
+    jsonResponse(['message' => 'Selecciona un servicio para continuar.'], 422);
+}
+
+$service = findServiceById($pdo, $companyId, $serviceId);
+if ($service === null || empty($service['active'])) {
+    jsonResponse(['message' => 'Servicio no disponible para esta reserva.'], 422);
+}
+
 if ($isIndependentAccount) {
-    $service = [
-        'name' => 'Cita',
-        'durationMinutes' => 60,
-        'active' => true,
-    ];
-    $endTime = addMinutesToTime($startTime, 60);
+    $durationMinutes = (int) ($service['durationMinutes'] ?? 30);
+    $endTime = addMinutesToTime($startTime, $durationMinutes);
     $workingHourStart = sprintf('%02d:00', (int) ($user['working_hour_start'] ?? 8));
     $workingHourEnd = sprintf('%02d:00', (int) ($user['working_hour_end'] ?? 18));
 
@@ -115,19 +120,11 @@ if ($isIndependentAccount) {
     $title = sprintf('Reserva web - %s', $customerName);
     $descriptionParts = [
         'Reserva directa desde la agenda pública',
-        'Duración: 60 minutos',
+        sprintf('Servicio: %s', (string) ($service['name'] ?? '')),
+        sprintf('Duración: %d minutos', $durationMinutes),
         sprintf('Cliente: %s', $customerName),
     ];
 } else {
-    if ($serviceId <= 0) {
-        jsonResponse(['message' => 'Selecciona un servicio para continuar.'], 422);
-    }
-
-    $service = findServiceById($pdo, $companyId, $serviceId);
-    if ($service === null || empty($service['active'])) {
-        jsonResponse(['message' => 'Servicio no disponible para esta reserva.'], 422);
-    }
-
     $roleId = (int) ($service['roleId'] ?? 0);
     if ($roleId <= 0) {
         jsonResponse(['message' => 'El servicio no tiene una especialidad asociada.'], 422);

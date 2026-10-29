@@ -225,21 +225,23 @@
               <div class="independent-public-booking-note">
                 <span aria-hidden="true">✓</span>
                 <div>
-                  <strong>Reserva directa</strong>
-                  <small>Una cita de {{ independentPublicBookingDurationMinutes }} minutos con {{ activeProfileName }}.</small>
+                  <strong>Reserva directamente con {{ activeProfileName }}</strong>
+                  <small>El servicio que elijas define la duración de la cita.</small>
                 </div>
               </div>
-            } @else {
-              <label>
-                <span>Servicio</span>
-                <select name="publicBookingServiceModal" [(ngModel)]="publicBookingForm.serviceId" (ngModelChange)="onPublicBookingServiceChange()" required>
-                  <option [ngValue]="0">Selecciona</option>
-                  @for (service of publicProfileServices; track service.id) {
-                    <option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</option>
-                  }
-                </select>
-              </label>
+            }
 
+            <label>
+              <span>Servicio</span>
+              <select name="publicBookingServiceModal" [(ngModel)]="publicBookingForm.serviceId" (ngModelChange)="onPublicBookingServiceChange()" required>
+                <option [ngValue]="0">Selecciona</option>
+                @for (service of publicProfileServices; track service.id) {
+                  <option [ngValue]="service.id">{{ service.name }} · {{ service.durationMinutes }} min · {{ formatCurrency(service.price) }}</option>
+                }
+              </select>
+            </label>
+
+            @if (!isIndependentPublicProfile) {
               <label>
                 <span>Profesional</span>
                 <select name="publicProfessionalIdModal" [(ngModel)]="publicBookingForm.professionalId">
@@ -311,19 +313,18 @@
           <div class="selected-day activity-modal-list public-modal-list">
             <p class="label">Horario seleccionado</p>
             <h3>{{ formatFullDateLabel(publicBookingForm.date || selectedDate) }}</h3>
-            @if (isIndependentPublicProfile) {
-              <p class="activity-launch-copy">Tipo: <strong>Reserva directa</strong></p>
-              <p class="activity-launch-copy">Duración: <strong>{{ independentPublicBookingDurationMinutes }} minutos</strong></p>
-            } @else {
-              <p class="activity-launch-copy">
-                Servicio:
-                <strong>{{ selectedPublicService?.name || 'Selecciona un servicio' }}</strong>
-              </p>
-              <p class="activity-launch-copy">
-                Precio:
-                <strong>{{ selectedPublicService ? formatCurrency(selectedPublicService.price) : 'Selecciona un servicio' }}</strong>
-              </p>
-            }
+            <p class="activity-launch-copy">
+              Servicio:
+              <strong>{{ selectedPublicService?.name || 'Selecciona un servicio' }}</strong>
+            </p>
+            <p class="activity-launch-copy">
+              Duración:
+              <strong>{{ selectedPublicService ? selectedPublicService.durationMinutes + ' minutos' : 'Selecciona un servicio' }}</strong>
+            </p>
+            <p class="activity-launch-copy">
+              Precio:
+              <strong>{{ selectedPublicService ? formatCurrency(selectedPublicService.price) : 'Selecciona un servicio' }}</strong>
+            </p>
             <p class="activity-launch-copy">
               Inicio:
               <strong>{{ publicBookingForm.startTime ? formatTimeLabel(publicBookingForm.startTime) : 'Selecciona una hora' }}</strong>
@@ -332,10 +333,11 @@
               Fin:
               <strong>{{ publicBookingEndTime ? formatTimeLabel(publicBookingEndTime) : 'Selecciona una hora' }}</strong>
             </p>
-            <p class="activity-launch-copy">
-              {{ isIndependentPublicProfile ? 'Con:' : 'Profesional:' }}
-              <strong>{{ selectedPublicProfessionalName }}</strong>
-            </p>
+            @if (isIndependentPublicProfile) {
+              <p class="activity-launch-copy">Con: <strong>{{ activeProfileName }}</strong></p>
+            } @else {
+              <p class="activity-launch-copy">Profesional: <strong>{{ selectedPublicProfessionalName }}</strong></p>
+            }
           </div>
         </div>
       </section>
@@ -942,6 +944,9 @@
         <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'reminders'" (click)="independentTab = 'reminders'">
           <span class="company-nav-icon" aria-hidden="true">✓</span><span>Pendientes</span>
         </button>
+        <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'services'" (click)="independentTab = 'services'">
+          <span class="company-nav-icon" aria-hidden="true">◇</span><span>Servicios</span>
+        </button>
         <button type="button" class="company-admin-nav-button" [class.active]="independentTab === 'profile'" (click)="independentTab = 'profile'">
           <span class="company-nav-icon" aria-hidden="true">○</span><span>Perfil</span>
         </button>
@@ -990,23 +995,32 @@
         </article>
 
         <article class="panel enterprise-admin-panel independent-visibility-panel">
-          <div class="independent-visibility-card" [class.is-public]="currentUser?.profilePublic">
-            <span class="independent-visibility-icon" aria-hidden="true">{{ currentUser?.profilePublic ? '◎' : '◇' }}</span>
+          <div class="independent-visibility-card" [class.is-public]="currentUser?.profilePublic && hasActiveServices">
+            <span class="independent-visibility-icon" aria-hidden="true">{{ currentUser?.profilePublic && hasActiveServices ? '◎' : '◇' }}</span>
             <div class="independent-visibility-copy">
               <p class="label">Agenda pública</p>
-              <h2>{{ currentUser?.profilePublic ? 'Tu agenda está visible' : 'Tu agenda es privada' }}</h2>
+              <h2>{{ currentUser?.profilePublic && hasActiveServices ? 'Tu agenda está visible' : 'Tu agenda es privada' }}</h2>
               <p>
-                {{ currentUser?.profilePublic
-                  ? 'Tus clientes pueden abrir tu enlace y ver únicamente las actividades que marques como públicas.'
-                  : 'Solo tú puedes acceder a tu agenda. Actívala cuando quieras compartir horarios con tus clientes.' }}
+                {{ !hasActiveServices
+                  ? 'Crea al menos un servicio activo con su duración antes de publicar y recibir reservas.'
+                  : currentUser?.profilePublic
+                    ? 'Tus clientes pueden elegir uno de tus servicios y reservar directamente contigo.'
+                    : 'Ya tienes servicios configurados. Publica tu agenda cuando quieras comenzar a recibir reservas.' }}
               </p>
-              @if (currentUser?.profilePublic && currentPublicUrl) {
+              @if (profileVisibilityError) {
+                <small class="independent-visibility-error">{{ profileVisibilityError }}</small>
+              }
+              @if (currentUser?.profilePublic && hasActiveServices && currentPublicUrl) {
                 <a class="independent-public-link" [href]="currentPublicUrl" target="_blank" rel="noopener">Ver mi agenda pública <span aria-hidden="true">↗</span></a>
               }
             </div>
-            <button type="button" class="profile-visibility-toggle" [class.is-public]="currentUser?.profilePublic" (click)="toggleProfileVisibility()" [disabled]="isUpdatingProfileVisibility">
-              {{ isUpdatingProfileVisibility ? 'Actualizando...' : (currentUser?.profilePublic ? 'Hacer privada' : 'Hacer pública') }}
-            </button>
+            @if (!hasActiveServices) {
+              <button type="button" class="profile-visibility-toggle" (click)="independentTab = 'services'">Crear mi primer servicio</button>
+            } @else {
+              <button type="button" class="profile-visibility-toggle" [class.is-public]="currentUser?.profilePublic" (click)="toggleProfileVisibility()" [disabled]="isUpdatingProfileVisibility">
+                {{ isUpdatingProfileVisibility ? 'Actualizando...' : (currentUser?.profilePublic ? 'Hacer privada' : 'Hacer pública') }}
+              </button>
+            }
           </div>
         </article>
 
@@ -1068,6 +1082,95 @@
               {{ isUpdatingNotificationSettings ? 'Guardando...' : 'Guardar WhatsApp' }}
             </button>
           </form>
+        </article>
+      </section>
+    }
+
+    @if (isIndependentUser && independentTab === 'services') {
+      <section class="enterprise-overview independent-services-view">
+        <article class="panel enterprise-hero-panel">
+          <div class="enterprise-hero-copy">
+            <p class="label">Reservas públicas</p>
+            <h2>Tus servicios</h2>
+            <p>Define qué pueden reservar tus clientes y cuánto tiempo ocupa cada cita. No necesitas crear profesionales.</p>
+          </div>
+          <div class="enterprise-kpi-grid">
+            <article class="enterprise-kpi-card">
+              <span>Servicios activos</span>
+              <strong>{{ activeServiceOptions.length }}</strong>
+              <small>{{ hasActiveServices ? 'Ya puedes publicar tu agenda.' : 'Necesitas al menos uno para publicar.' }}</small>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel enterprise-admin-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="label">Catálogo personal</p>
+              <h2>Servicios y duración</h2>
+              <p>Agrega el nombre, duración y precio de cada servicio que ofreces.</p>
+            </div>
+            <button type="button" class="primary-action-button" (click)="openCompanyConfigEditor('service')">Crear servicio</button>
+          </div>
+
+          @if (companySettingsError) { <p class="auth-error">{{ companySettingsError }}</p> }
+          @if (companySettingsMessage) { <p class="success-message">{{ companySettingsMessage }}</p> }
+          @if (profileVisibilityError) { <p class="independent-service-guidance">{{ profileVisibilityError }}</p> }
+
+          @if (companyConfigEditor === 'service') {
+            <div class="config-editor-overlay" (click)="closeCompanyConfigEditor()">
+              <article class="panel config-editor-modal config-editor-service" (click)="$event.stopPropagation()">
+                <div class="activity-modal-header">
+                  <div><p class="label">Servicio</p><h2>{{ isEditingService ? 'Editar servicio' : 'Crear servicio' }}</h2></div>
+                  <button type="button" class="close-button" (click)="closeCompanyConfigEditor()">Cerrar</button>
+                </div>
+                <form class="pending-form" (ngSubmit)="saveService()">
+                  <label><span>Servicio</span><input type="text" name="independentServiceName" [(ngModel)]="serviceForm.name" placeholder="Ejemplo: Asesoría" required /></label>
+                  <label><span>Duración (minutos)</span><input type="number" name="independentServiceDuration" [(ngModel)]="serviceForm.durationMinutes" min="15" max="480" step="15" required /></label>
+                  <label><span>Precio (COP)</span><input type="number" name="independentServicePrice" [(ngModel)]="serviceForm.price" min="0" step="1000" required /></label>
+                  <label><span>Descripción</span><textarea name="independentServiceDescription" [(ngModel)]="serviceForm.description" rows="3" placeholder="Cuéntale brevemente al cliente qué incluye."></textarea></label>
+                  <label><span>Estado</span><select name="independentServiceActive" [(ngModel)]="serviceForm.active"><option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option></select></label>
+                  <div class="form-actions">
+                    <button type="submit" [disabled]="isSavingService">{{ isSavingService ? 'Guardando...' : (isEditingService ? 'Actualizar servicio' : 'Crear servicio') }}</button>
+                    @if (isEditingService) { <button type="button" class="secondary-button" (click)="cancelServiceEdit()">Cancelar</button> }
+                  </div>
+                </form>
+              </article>
+            </div>
+          }
+
+          @if (companyServices.length) {
+            <div class="config-table-wrap independent-services-table">
+              <table class="config-table">
+                <thead><tr><th>Servicio</th><th>Duración</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody>
+                  @for (service of companyServices; track service.id) {
+                    <tr>
+                      <td><strong>{{ service.name }}</strong>@if (service.description) { <small>{{ service.description }}</small> }</td>
+                      <td>{{ service.durationMinutes }} min</td>
+                      <td>{{ formatCurrency(service.price) }}</td>
+                      <td><span class="assignee-badge" [class.assignee-steelsoft]="service.active">{{ service.active ? 'Activo' : 'Inactivo' }}</span></td>
+                      <td><div class="card-actions"><button type="button" (click)="editService(service)">Editar</button><button type="button" (click)="removeService(service.id)">Eliminar</button></div></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="independent-services-empty">
+              <span aria-hidden="true">◇</span>
+              <strong>Aún no tienes servicios</strong>
+              <p>Crea el primero para poder publicar tu agenda y recibir reservas.</p>
+              <button type="button" (click)="openCompanyConfigEditor('service')">Crear mi primer servicio</button>
+            </div>
+          }
+
+          @if (hasActiveServices && !currentUser?.profilePublic) {
+            <div class="independent-services-ready">
+              <div><strong>¡Tu catálogo está listo!</strong><span>Ahora puedes publicar tu agenda desde Perfil.</span></div>
+              <button type="button" (click)="independentTab = 'profile'">Ir a publicar</button>
+            </div>
+          }
         </article>
       </section>
     }

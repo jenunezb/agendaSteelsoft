@@ -1228,6 +1228,30 @@ function getCompanyServices(PDO $pdo, int $companyId, bool $onlyActive = false):
     }, $statement->fetchAll());
 }
 
+function enforceIndependentProfileVisibility(PDO $pdo, ?int $companyId = null): bool
+{
+    $sql = 'UPDATE users u
+            INNER JOIN companies c ON c.id = u.company_id
+            SET u.profile_public = 0
+            WHERE c.account_type = "independent"
+              AND u.profile_public = 1
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM services s
+                  WHERE s.company_id = c.id AND s.active = 1
+              )';
+    $params = [];
+
+    if ($companyId !== null && $companyId > 0) {
+        $sql .= ' AND c.id = :company_id';
+        $params[':company_id'] = $companyId;
+    }
+
+    $statement = $pdo->prepare($sql);
+    $statement->execute($params);
+    return $statement->rowCount() > 0;
+}
+
 function findServiceRoleById(PDO $pdo, int $companyId, int $roleId): ?array
 {
     $statement = $pdo->prepare(

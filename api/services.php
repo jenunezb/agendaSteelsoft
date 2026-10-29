@@ -8,6 +8,8 @@ $pdo = getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireCompanyAdminUser();
 $companyId = requireCurrentCompanyId($user);
+$isIndependentAccount = ($user['accountType'] ?? '') === 'independent';
+enforceIndependentProfileVisibility($pdo, $companyId);
 
 if ($method === 'GET') {
     jsonResponse(getCompanyServices($pdo, $companyId));
@@ -35,7 +37,7 @@ if ($method === 'POST') {
         jsonResponse(['message' => 'El precio del servicio no puede ser negativo.'], 422);
     }
 
-    if ($roleId <= 0 || findServiceRoleById($pdo, $companyId, $roleId) === null) {
+    if (!$isIndependentAccount && ($roleId <= 0 || findServiceRoleById($pdo, $companyId, $roleId) === null)) {
         jsonResponse(['message' => 'Selecciona una especialidad válida para el servicio.'], 422);
     }
 
@@ -45,7 +47,7 @@ if ($method === 'POST') {
     );
     $statement->execute([
         ':company_id' => $companyId,
-        ':role_id' => $roleId,
+        ':role_id' => $isIndependentAccount ? null : $roleId,
         ':name' => $name,
         ':duration_minutes' => $durationMinutes,
         ':price' => $price,
@@ -53,6 +55,7 @@ if ($method === 'POST') {
         ':active' => $active ? 1 : 0,
     ]);
 
+    enforceIndependentProfileVisibility($pdo, $companyId);
     $savedService = findServiceById($pdo, $companyId, (int) $pdo->lastInsertId());
     jsonResponse($savedService, 201);
 }
@@ -84,7 +87,7 @@ if ($method === 'PUT') {
         jsonResponse(['message' => 'El precio del servicio no puede ser negativo.'], 422);
     }
 
-    if ($roleId <= 0 || findServiceRoleById($pdo, $companyId, $roleId) === null) {
+    if (!$isIndependentAccount && ($roleId <= 0 || findServiceRoleById($pdo, $companyId, $roleId) === null)) {
         jsonResponse(['message' => 'Selecciona una especialidad válida para el servicio.'], 422);
     }
 
@@ -99,7 +102,7 @@ if ($method === 'PUT') {
          WHERE id = :id AND company_id = :company_id'
     );
     $statement->execute([
-        ':role_id' => $roleId,
+        ':role_id' => $isIndependentAccount ? null : $roleId,
         ':name' => $name,
         ':duration_minutes' => $durationMinutes,
         ':price' => $price,
@@ -109,6 +112,7 @@ if ($method === 'PUT') {
         ':company_id' => $companyId,
     ]);
 
+    enforceIndependentProfileVisibility($pdo, $companyId);
     $savedService = findServiceById($pdo, $companyId, $id);
     jsonResponse($savedService);
 }
@@ -126,6 +130,8 @@ if ($method === 'DELETE') {
         ':id' => $id,
         ':company_id' => $companyId,
     ]);
+
+    enforceIndependentProfileVisibility($pdo, $companyId);
 
     jsonResponse(['success' => true]);
 }

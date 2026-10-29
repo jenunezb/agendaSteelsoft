@@ -6,6 +6,7 @@ require __DIR__ . '/bootstrap.php';
 
 $pdo = getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
+enforceIndependentProfileVisibility($pdo);
 
 if ($method === 'GET') {
     $user = getAuthenticatedUser();
@@ -76,6 +77,15 @@ if ($method === 'PUT') {
 
     if ($action === 'updateProfile') {
         $profilePublic = !empty($payload['profilePublic']) ? 1 : 0;
+
+        if (
+            $profilePublic === 1 &&
+            ($user['accountType'] ?? '') === 'independent' &&
+            getCompanyServices($pdo, (int) ($user['companyId'] ?? 0), true) === []
+        ) {
+            jsonResponse(['message' => 'Crea al menos un servicio activo antes de publicar tu agenda.'], 422);
+        }
+
         $statement = $pdo->prepare(
             'UPDATE users
              SET profile_public = :profile_public
