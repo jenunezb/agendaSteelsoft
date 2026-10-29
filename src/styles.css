@@ -1818,3 +1818,187 @@ app-root .layout:not(.public-layout) .month-actions button:last-child {
   app-root .layout:not(.public-layout) .calendar-panel { padding: 15px; border-radius: 24px; }
   app-root .layout:not(.public-layout) .calendar-header { margin: -2px -2px 16px; padding: 15px; }
 }
+
+/* Public booking experience */
+app-root .layout.public-layout {
+  width: 100%;
+  max-width: none;
+  padding: 22px 18px 46px;
+  background:
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--gold) 18%, transparent), transparent 25rem),
+    radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--gold) 10%, transparent), transparent 30rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--gold) 7%, #faf9f6), #f3f0e9 72%, #eeebe4);
+}
+app-root .public-board { width: min(1080px, 100%); margin-inline: auto; }
+app-root .public-calendar-panel {
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.85);
+  border-radius: 32px;
+  background: rgba(255,255,255,.86);
+  box-shadow: 0 28px 70px rgba(50,42,24,.11);
+  backdrop-filter: blur(14px);
+}
+
+app-root .public-profile-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, .72fr);
+  gap: 20px;
+  padding: 24px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gold) 17%, #e8e3d9);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--gold) 25%, transparent), transparent 13rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--gold) 9%, #ffffff), #fff 60%);
+}
+app-root .public-profile-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 240px;
+  height: 240px;
+  right: -130px;
+  bottom: -170px;
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 26px color-mix(in srgb, var(--gold) 6%, transparent), 0 0 0 54px color-mix(in srgb, var(--gold) 4%, transparent);
+}
+app-root .public-brand-identity { min-width: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: center; gap: 22px; }
+app-root .public-logo-shell {
+  width: 190px;
+  height: 116px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border: 1px solid rgba(20,20,20,.06);
+  border-radius: 20px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 15px 34px rgba(42,35,21,.10);
+}
+app-root .public-brand-logo { width: 100%; height: 100%; margin: 0; object-fit: contain; object-position: center; }
+app-root .public-brand-fallback {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  background: var(--gold);
+  color: var(--brand-on-primary);
+  font: 850 1.8rem/1 "Segoe UI", Arial, sans-serif;
+}
+app-root .public-brand-copy { min-width: 0; }
+app-root .public-open-status {
+  width: fit-content;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gold) 13%, #ffffff);
+  color: var(--gold-deep);
+  font-size: .65rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+app-root .public-open-status > span { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 13%, transparent); }
+app-root .public-brand-copy .public-company-name { margin: 0; font-size: clamp(1.7rem, 3.2vw, 2.7rem); line-height: .98; letter-spacing: -.035em; }
+app-root .public-booking-intro { max-width: 45ch; margin: 11px 0 0; color: #716c62; font-size: .88rem; line-height: 1.55; }
+
+app-root .public-schedule-summary { display: grid; align-content: center; gap: 10px; }
+app-root .public-schedule-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--gold) 15%, #e4dfd5);
+  border-radius: 16px;
+  background: rgba(255,255,255,.74);
+}
+app-root .public-schedule-card span { color: #888176; font-size: .63rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+app-root .public-schedule-card strong { color: #302d28; font: 750 .88rem/1.3 "Segoe UI", Arial, sans-serif; }
+
+app-root .public-calendar-panel .public-week-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 14px 0 0;
+  padding: 16px 10px 12px;
+}
+app-root .public-week-copy { min-width: 0; }
+app-root .public-week-copy .public-period-label { margin-top: 5px; color: #2e2b26; font-size: clamp(1.15rem, 2.5vw, 1.6rem); line-height: 1.08; }
+app-root .public-week-copy > p:last-child { margin: 7px 0 0; color: #817b71; font-size: .78rem; }
+app-root .public-calendar-panel .calendar-controls { justify-self: auto; }
+app-root .public-calendar-panel .month-actions button {
+  min-width: 112px;
+  min-height: 43px;
+  border-radius: 13px;
+  font: 750 .8rem/1 "Segoe UI", Arial, sans-serif;
+}
+app-root .public-calendar-panel .month-actions button:last-child {
+  border-color: color-mix(in srgb, var(--gold) 35%, #ded8cc);
+  background: color-mix(in srgb, var(--gold) 20%, #ffffff);
+  color: var(--gold-deep);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--gold) 11%, transparent);
+}
+app-root .public-calendar-guide {
+  min-height: 38px;
+  margin: 0 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 11px;
+  border-radius: 12px;
+  background: #f8f6f1;
+  color: #6f6a61;
+  font-size: .7rem;
+}
+app-root .public-calendar-guide span { display: inline-flex; align-items: center; gap: 7px; font-weight: 750; }
+app-root .public-calendar-guide i { width: 9px; height: 9px; border-radius: 3px; background: color-mix(in srgb, var(--gold) 42%, #ffffff); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 10%, transparent); }
+app-root .public-calendar-guide small { color: #918b81; font-size: .66rem; }
+
+app-root .public-layout .week-agenda { padding: 4px; border-radius: 18px; background: #faf9f6; }
+app-root .public-layout .week-day-heading { border: 1px solid color-mix(in srgb, var(--gold) 9%, #ebe7df); background: #ffffff; box-shadow: 0 5px 14px rgba(48,40,24,.04); }
+app-root .public-layout .slot-heading,
+app-root .public-layout .time-slot { border-color: color-mix(in srgb, var(--gold) 21%, #ded9cf); background: color-mix(in srgb, var(--gold) 10%, #ffffff); }
+app-root .public-layout .week-grid-button:not(:disabled) {
+  border-color: color-mix(in srgb, var(--gold) 16%, #ece8df);
+  background: linear-gradient(180deg, #ffffff, color-mix(in srgb, var(--gold) 5%, #ffffff));
+}
+app-root .public-layout .week-grid-button:not(:disabled)::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin: auto;
+  display: block;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gold) 36%, #ffffff);
+  opacity: .55;
+}
+app-root .public-layout .week-grid-button:disabled { background: #f4f2ed; box-shadow: none; opacity: .58; }
+
+@media (max-width: 720px) {
+  app-root .public-layout { padding: 12px 10px 34px; }
+  app-root .public-calendar-panel { padding: 8px; border-radius: 26px; }
+  app-root .public-profile-hero { grid-template-columns: minmax(0, 1fr); gap: 15px; padding: 17px; border-radius: 21px; }
+  app-root .public-brand-identity { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 14px; text-align: center; }
+  app-root .public-logo-shell { width: 100%; height: 110px; padding: 10px 18px; }
+  app-root .public-brand-logo { width: min(260px, 100%); }
+  app-root .public-open-status { margin-inline: auto; }
+  app-root .public-brand-copy .public-company-name { font-size: 1.72rem; }
+  app-root .public-booking-intro { margin-inline: auto; font-size: .8rem; }
+  app-root .public-schedule-summary { grid-template-columns: 1fr 1fr; gap: 7px; }
+  app-root .public-schedule-card { padding: 11px; border-radius: 14px; }
+  app-root .public-schedule-card strong { font-size: .72rem; }
+  app-root .public-calendar-panel .public-week-toolbar { align-items: stretch; margin-top: 9px; padding: 14px 7px 10px; }
+  app-root .public-week-copy > p:last-child { display: none; }
+  app-root .public-calendar-panel .calendar-controls { width: 100%; }
+  app-root .public-calendar-panel .month-actions { width: 100%; }
+  app-root .public-calendar-panel .month-actions button { min-width: 0; width: 100%; }
+  app-root .public-calendar-guide { margin-inline: 2px; }
+  app-root .public-calendar-guide small { display: none; }
+}

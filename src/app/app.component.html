@@ -11,18 +11,42 @@
     @if (publicProfileState === 'ready') {
       <section class="board public-board">
         <article class="panel calendar-panel public-calendar-panel">
-          <div class="calendar-header">
-            <div class="public-calendar-heading">
+          <section class="public-profile-hero">
+            <div class="public-brand-identity">
+              <div class="public-logo-shell">
               @if (brandLogoUrl) {
                 <img class="public-brand-logo" [src]="brandLogoUrl" [alt]="'Logo de ' + activeBrandName" />
+                } @else {
+                  <span class="public-brand-fallback">{{ activeBrandName.slice(0, 1).toUpperCase() }}</span>
               }
-              <p class="label">Agenda publica semanal</p>
-              <h1 class="public-company-name">{{ publicProfileUser?.companyName || activeProfileName }}</h1>
+              </div>
+              <div class="public-brand-copy">
+                <p class="public-open-status"><span></span> Reservas en linea</p>
+                <h1 class="public-company-name">{{ publicProfileUser?.companyName || activeProfileName }}</h1>
+                <p class="public-booking-intro">Elige el dia y la hora que mejor te funcionen. Reservar toma menos de un minuto.</p>
+              </div>
+            </div>
+
+            <div class="public-schedule-summary">
+              <div class="public-schedule-card">
+                <span>Semana disponible</span>
+                <strong>{{ currentPeriodLabel }}</strong>
+              </div>
+              <div class="public-schedule-card">
+                <span>Horario de atencion</span>
+                <strong>
+                  {{ formatTimeLabel((currentWorkingHours.start < 10 ? '0' : '') + currentWorkingHours.start + ':00') }}
+                  - {{ formatTimeLabel((currentWorkingHours.end < 10 ? '0' : '') + currentWorkingHours.end + ':00') }}
+                </strong>
+              </div>
+            </div>
+          </section>
+
+          <div class="calendar-header public-week-toolbar">
+            <div class="public-week-copy">
+              <p class="label">Disponibilidad semanal</p>
               <h2 class="public-period-label">{{ currentPeriodLabel }}</h2>
-              <p class="public-working-hours">
-                Horario laboral: {{ formatTimeLabel((currentWorkingHours.start < 10 ? '0' : '') + currentWorkingHours.start + ':00') }}
-                - {{ formatTimeLabel((currentWorkingHours.end < 10 ? '0' : '') + currentWorkingHours.end + ':00') }}
-              </p>
+              <p>Selecciona una celda disponible para reservar.</p>
             </div>
 
             <div class="calendar-controls">
@@ -31,6 +55,10 @@
                 <button type="button" (click)="nextPeriod()">Siguiente</button>
               </div>
             </div>
+          </div>
+          <div class="public-calendar-guide">
+            <span><i></i> Horario disponible</span>
+            <small>Desliza horizontalmente para ver mas dias</small>
           </div>
           <div class="week-agenda">
             <div
